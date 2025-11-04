@@ -128,7 +128,7 @@ def check_first_run(agents: List[Agent], force: bool) -> bool:
         console.print(f"  [{agent_name}] {path}")
 
     console.print(
-        "\n[dim]These will be replaced with symlinks. Original files will be backed up.[/dim]\n"
+        "\n[dim]These will be replaced with symlinks (originals will be backed up).[/dim]\n"
     )
 
     response = console.input("[yellow]?[/yellow] Continue? (y/N): ")
@@ -183,7 +183,8 @@ def install(force: bool, dry_run: bool, agents: Optional[str]):
             total_excluded += excluded_count
 
         for target, source in filtered_symlinks:
-            result, message = create_symlink(target, source, force, dry_run)
+            effective_force = force or not dry_run
+            result, message = create_symlink(target, source, effective_force, dry_run)
 
             if result == SymlinkResult.CREATED:
                 console.print(f"  [green]✓[/green] {target} → {source}")
