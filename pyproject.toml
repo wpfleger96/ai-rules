@@ -1,6 +1,6 @@
 [project]
 name = "ai-rules"
-version = "v0.1.0"
+version = "v0.1.1"
 description = "Manage user-level AI agent configurations"
 readme = "README.md"
 requires-python = ">=3.10"
