@@ -1,0 +1,22 @@
+# Example AI Rules configuration file
+#
+# This file can be placed in two locations:
+#   1. ~/.ai-rules-config.yaml (user-specific preferences)
+#   2. <repo>/.ai-rules-config.yaml (repo default)
+#
+# User-specific config takes precedence and both are merged.
+
+version: 1
+
+# List of symlinks to exclude from installation
+# Use this to skip symlinks that you want to manage manually
+# or that are managed by another system (e.g., company IT)
+exclude_symlinks:
+  # Example: Skip Goose config if managed by IT
+  # - "~/.config/goose/config.yaml"
+
+  # Example: Skip Claude settings if you have custom local settings
+  # - "~/.claude/settings.json"
+
+  # Example: Skip specific Claude agent
+  # - "~/.claude/agents/pr-creator.md"

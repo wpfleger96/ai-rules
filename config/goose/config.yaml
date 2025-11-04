@@ -1,0 +1,55 @@
+OPENAI_BASE_PATH: v1/chat/completions
+GOOSE_MODE: auto
+GOOSE_ROUTER_TOOL_SELECTION_STRATEGY: default
+OPENAI_HOST: https://api.openai.com
+extensions:
+  chatrecall:
+    enabled: false
+    type: platform
+    name: chatrecall
+    description: Search past conversations and load session summaries for contextual memory
+    bundled: true
+    available_tools: []
+  memory:
+    enabled: false
+    type: builtin
+    name: memory
+    description: ''
+    display_name: Memory
+    timeout: 300
+    bundled: true
+    available_tools: []
+  developer:
+    enabled: true
+    type: builtin
+    name: developer
+    description: ''
+    display_name: Developer
+    timeout: 300
+    bundled: true
+    available_tools: []
+  todo:
+    enabled: false
+    type: platform
+    name: todo
+    description: Enable a todo list for Goose so it can keep track of what it is doing
+    bundled: true
+    available_tools: []
+  computercontroller:
+    enabled: true
+    type: builtin
+    name: computercontroller
+    description: ''
+    display_name: Computer Controller
+    timeout: 300
+    bundled: true
+    available_tools: []
+  extensionmanager:
+    enabled: false
+    type: platform
+    name: Extension Manager
+    description: Enable extension management tools for discovering, enabling, and disabling extensions
+    bundled: true
+    available_tools: []
+GOOSE_AUTO_COMPACT_THRESHOLD: 0.0
+GOOSE_MODEL: goose-claude-4-5-sonnet
