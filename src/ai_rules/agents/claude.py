@@ -20,15 +20,11 @@ class ClaudeAgent(Agent):
         """Get all Claude Code symlinks including dynamic agents/commands."""
         symlinks = []
 
-        symlinks.append(
-            (Path("~/.CLAUDE.md"), self.config_dir / "AGENTS.md")
-        )
+        symlinks.append((Path("~/.CLAUDE.md"), self.config_dir / "AGENTS.md"))
 
         settings_file = self.config_dir / "claude" / "settings.json"
         if settings_file.exists():
-            symlinks.append(
-                (Path("~/.claude/settings.json"), settings_file)
-            )
+            symlinks.append((Path("~/.claude/settings.json"), settings_file))
 
         agents_dir = self.config_dir / "claude" / "agents"
         if agents_dir.exists():

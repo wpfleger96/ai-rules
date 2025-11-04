@@ -1,7 +1,7 @@
 """Configuration loading and management."""
 
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import List, Optional
 import yaml
 
 

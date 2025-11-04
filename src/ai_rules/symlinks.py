@@ -185,9 +185,7 @@ def remove_symlink(target_path: Path, force: bool = False) -> Tuple[bool, str]:
         return (False, "Not a symlink (refusing to delete)")
 
     if not force:
-        response = console.input(
-            f"[yellow]?[/yellow] Remove {target}? (y/N): "
-        )
+        response = console.input(f"[yellow]?[/yellow] Remove {target}? (y/N): ")
         if response.lower() != "y":
             return (False, "Skipped by user")
 

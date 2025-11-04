@@ -86,9 +86,23 @@ config/
 
 ## Development
 
+### Running Tests
+The test suite includes both unit tests and integration tests.
+
+The pytest-cov args are optional, use them to include a test coverage report in the output. To run all tests:
+
 ```bash
-uv run pytest                      # Run tests
-uv run ai-rules install            # Run from source
+uv run pytest [--cov=src --cov-report=term-missing]
+```
+
+To only run unit tests:
+```bash
+uv run pytest -m unit
+```
+
+To only run integration tests:
+```bash
+uv run pytest -m integration
 ```
 
 ## Troubleshooting

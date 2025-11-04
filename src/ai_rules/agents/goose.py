@@ -26,8 +26,6 @@ class GooseAgent(Agent):
 
         config_file = self.config_dir / "goose" / "config.yaml"
         if config_file.exists():
-            symlinks.append(
-                (Path("~/.config/goose/config.yaml"), config_file)
-            )
+            symlinks.append((Path("~/.config/goose/config.yaml"), config_file))
 
         return symlinks

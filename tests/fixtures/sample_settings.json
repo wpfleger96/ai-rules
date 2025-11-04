@@ -1,0 +1,14 @@
+{
+  "model": "claude-opus-4",
+  "permissions": {
+    "allow": [
+      "Read",
+      "Write",
+      "Bash"
+    ],
+    "deny": []
+  },
+  "environment": {
+    "TEST_VAR": "test_value"
+  }
+}

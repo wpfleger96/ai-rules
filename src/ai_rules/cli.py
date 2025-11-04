@@ -66,7 +66,14 @@ def select_agents(all_agents: List[Agent], filter_string: Optional[str]) -> List
     return selected
 
 
-def format_summary(dry_run: bool, created: int, updated: int, skipped: int, excluded: int = 0, errors: int = 0) -> None:
+def format_summary(
+    dry_run: bool,
+    created: int,
+    updated: int,
+    skipped: int,
+    excluded: int = 0,
+    errors: int = 0,
+) -> None:
     """Format and print operation summary.
 
     Args:
@@ -193,7 +200,14 @@ def install(force: bool, dry_run: bool, agents: Optional[str]):
                 console.print(f"  [red]✗[/red] {target}: {message}")
                 total_errors += 1
 
-    format_summary(dry_run, total_created, total_updated, total_skipped, total_excluded, total_errors)
+    format_summary(
+        dry_run,
+        total_created,
+        total_updated,
+        total_skipped,
+        total_excluded,
+        total_errors,
+    )
 
     if total_errors > 0:
         sys.exit(1)
@@ -245,9 +259,7 @@ def status(agents: Optional[str]):
                 all_correct = False
 
         for target, _ in excluded_symlinks:
-            console.print(
-                f"  [dim]○[/dim] {target} [dim](excluded by config)[/dim]"
-            )
+            console.print(f"  [dim]○[/dim] {target} [dim](excluded by config)[/dim]")
 
         console.print()
 
@@ -383,11 +395,14 @@ def validate(agents: Optional[str]):
                 console.print(f"  [green]✓[/green] {source.name}")
 
         excluded_symlinks = [
-            (t, s) for t, s in agent.get_symlinks()
+            (t, s)
+            for t, s in agent.get_symlinks()
             if (t, s) not in agent.get_filtered_symlinks()
         ]
         if excluded_symlinks:
-            console.print(f"  [dim]({len(excluded_symlinks)} symlink(s) excluded by config)[/dim]")
+            console.print(
+                f"  [dim]({len(excluded_symlinks)} symlink(s) excluded by config)[/dim]"
+            )
 
         for path, issue in agent_issues:
             console.print(f"  [red]✗[/red] {path}")
@@ -438,13 +453,19 @@ def diff(agents: Optional[str]):
             elif status_code == "wrong_target":
                 try:
                     actual = target_path.resolve()
-                    agent_diffs.append((target_path, source, "wrong", f"Points to {actual}"))
+                    agent_diffs.append(
+                        (target_path, source, "wrong", f"Points to {actual}")
+                    )
                     agent_has_diff = True
                 except (OSError, RuntimeError):
-                    agent_diffs.append((target_path, source, "broken", "Broken symlink"))
+                    agent_diffs.append(
+                        (target_path, source, "broken", "Broken symlink")
+                    )
                     agent_has_diff = True
             elif status_code == "not_symlink":
-                agent_diffs.append((target_path, source, "file", "Regular file (not symlink)"))
+                agent_diffs.append(
+                    (target_path, source, "file", "Regular file (not symlink)")
+                )
                 agent_has_diff = True
 
         if agent_has_diff:
@@ -471,7 +492,9 @@ def diff(agents: Optional[str]):
     if not found_differences:
         console.print("[green]No differences found - all symlinks are correct![/green]")
     else:
-        console.print("[yellow]💡 Run 'ai-rules install' to fix these differences[/yellow]")
+        console.print(
+            "[yellow]💡 Run 'ai-rules install' to fix these differences[/yellow]"
+        )
 
 
 if __name__ == "__main__":
