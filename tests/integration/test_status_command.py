@@ -1,9 +1,7 @@
 from pathlib import Path
 
 import pytest
-
 from ai_rules.agents.claude import ClaudeAgent
-from ai_rules.agents.goose import GooseAgent
 from ai_rules.config import Config
 from ai_rules.symlinks import check_symlink, create_symlink
 
@@ -132,7 +130,6 @@ class TestStatusValidation:
         create_symlink(target1_path, source1, force=False, dry_run=False)
 
         target2, source2 = symlinks[1]
-        target2_path = Path(str(target2).replace("~", str(mock_home)))
 
         target3, source3 = symlinks[2]
         target3_path = Path(str(target3).replace("~", str(mock_home)))

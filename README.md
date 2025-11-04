@@ -2,6 +2,9 @@
 
 Manage AI agent configurations through symlinks. Keep all your configs in one git-tracked location.
 
+[![GitHub Contributors](https://img.shields.io/github/contributors/wpfleger96/ai-rules.svg)](https://github.com/wpfleger96/ai-rules/graphs/contributors)
+[![License](https://img.shields.io/github/license/wpfleger96/ai-rules.svg)](https://github.com/wpfleger96/ai-rules/blob/main/LICENSE)
+
 ## Overview
 
 Consolidates config files for AI coding agents (Claude Code, Goose) into a single source of truth via symlinks:
@@ -13,13 +16,19 @@ Consolidates config files for AI coding agents (Claude Code, Goose) into a singl
 
 **Supported:** Claude Code (settings, agents, commands), Goose (hints, config)
 
-## Installation
+## Getting Started
 
 **Requirements:** Python 3.10+, [uv](https://github.com/astral-sh/uv)
 
+1. Clone the repository:
+```bash
+git clone https://github.com/wpfleger96/ai-rules.git
+```
+
+2. Install dependencies:
 ```bash
 cd ai-rules
-uv run ai-rules install  # Run directly (no install needed)
+uv sync
 ```
 
 ## Usage

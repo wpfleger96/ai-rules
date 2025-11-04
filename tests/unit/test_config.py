@@ -14,7 +14,7 @@ class TestConfigLoading:
         monkeypatch.setenv("HOME", str(tmp_path / "home"))
         repo_config = tmp_path / ".ai-rules-config.yaml"
         repo_config.write_text(
-            "version: 1\n" "exclude_symlinks:\n" "  - ~/.claude/settings.json\n"
+            "version: 1\nexclude_symlinks:\n  - ~/.claude/settings.json\n"
         )
 
         config = Config.load(tmp_path)
@@ -28,7 +28,7 @@ class TestConfigLoading:
 
         user_config = home / ".ai-rules-config.yaml"
         user_config.write_text(
-            "version: 1\n" "exclude_symlinks:\n" "  - ~/.config/goose/config.yaml\n"
+            "version: 1\nexclude_symlinks:\n  - ~/.config/goose/config.yaml\n"
         )
 
         config = Config.load(tmp_path)
@@ -42,12 +42,12 @@ class TestConfigLoading:
 
         repo_config = tmp_path / ".ai-rules-config.yaml"
         repo_config.write_text(
-            "version: 1\n" "exclude_symlinks:\n" "  - ~/.claude/settings.json\n"
+            "version: 1\nexclude_symlinks:\n  - ~/.claude/settings.json\n"
         )
 
         user_config = home / ".ai-rules-config.yaml"
         user_config.write_text(
-            "version: 1\n" "exclude_symlinks:\n" "  - ~/.config/goose/config.yaml\n"
+            "version: 1\nexclude_symlinks:\n  - ~/.config/goose/config.yaml\n"
         )
 
         config = Config.load(tmp_path)

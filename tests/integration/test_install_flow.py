@@ -68,7 +68,9 @@ class TestInstallFlow:
         results = []
         for target, source in claude.get_symlinks():
             target_path = Path(str(target).replace("~", str(mock_home)))
-            result, message = create_symlink(target_path, source, dry_run=True, force=False)
+            result, message = create_symlink(
+                target_path, source, dry_run=True, force=False
+            )
             results.append((result, target_path))
 
         for result, target_path in results:
@@ -140,7 +142,9 @@ class TestInstallFlow:
 
         original_mtime = target_path.lstat().st_mtime
 
-        result, message = create_symlink(target_path, source, force=False, dry_run=False)
+        result, message = create_symlink(
+            target_path, source, force=False, dry_run=False
+        )
 
         new_mtime = target_path.lstat().st_mtime
         assert result.name == "ALREADY_CORRECT"

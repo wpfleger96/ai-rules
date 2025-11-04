@@ -1,5 +1,3 @@
-from pathlib import Path
-
 import pytest
 
 from ai_rules.agents.claude import ClaudeAgent
