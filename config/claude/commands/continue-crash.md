@@ -5,4 +5,4 @@ model: inherit
 
 # Continue After Session Crash
 
-Our session crashed so you were interrupted while you were working on a task. Recreate your TODO list if you had one before the crash, then continue working where you left off.
+Our session crashed so you were interrupted while you were working on a task. You may have had multiple tasks queued up so recreate your TODO list if you had one before the crash, then continue working where you left off.
