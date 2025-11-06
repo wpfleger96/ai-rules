@@ -82,6 +82,18 @@
     "defaultMode": "plan"
   },
   "model": "opusplan",
+  "hooks": {
+    "SubagentStop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "uv run /Users/wpfleger/Development/Personal/ai-rules/config/claude/hooks/subagentStop.py"
+          }
+        ]
+      }
+    ]
+  },
   "statusLine": {
     "type": "command",
     "command": "sh -c 'cd ~/Development/Personal/claude-code-status-line && uv run --no-config claude-statusline'"
