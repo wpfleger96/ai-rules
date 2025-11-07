@@ -71,15 +71,15 @@ You must wait for explicit approval before proceeding to create the PR. When pre
 **Only proceed after receiving explicit user approval.**
 
 1. Use "Base branch" from Context to determine target branch
-2. Verify no PLAN.md files will be pushed:
-   - Check if PLAN.md exists in any commits that would be pushed: `git log origin/{base}..HEAD --name-only --pretty=format: | grep -q "^PLAN\.md$"`
-   - Also check if PLAN.md is currently tracked in the repository: `git ls-files | grep -q "^PLAN\.md$"`
-   - If PLAN.md is found in either check, STOP immediately and inform the user with a clear error message
-   - Explain that PLAN.md is a development documentation file (created by /dev-docs command) that should not be included in PRs
+2. Verify no PLAN.md or PLAN__<TASK>.md files will be pushed:
+   - Check if PLAN.md or PLAN__<TASK>.md exists in any commits that would be pushed: `git log origin/{base}..HEAD --name-only --pretty=format: | grep -q "^PLAN\.md$"`
+   - Also check if PLAN.md or PLAN__<TASK>.md is currently tracked in the repository: `git ls-files | grep -q "^PLAN\.md$"`
+   - If PLAN.md or PLAN__<TASK>.md is found in either check, STOP immediately and inform the user with a clear error message
+   - Explain that PLAN.md/PLAN__<TASK>.md are development documentation files (created by /dev-docs command) that should not be included in PRs
    - Provide remediation guidance:
-     - Option 1: Remove PLAN.md from the repository and amend or rebase commits to exclude it
-     - Option 2: Create a new clean branch without PLAN.md
-     - Remind user to delete PLAN.md before committing in their development workflow
+     - Option 1: Remove PLAN.md and/or PLAN__<TASK>.md from the repository and amend or rebase commits to exclude it
+     - Option 2: Create a new clean branch without PLAN.md and/or PLAN__<TASK>.md
+     - Remind user to delete PLAN.md and/or PLAN__<TASK>.md before committing in their development workflow
 3. Ensure the feature branch is pushed to remote:
    - Check "Remote status" from Context
    - If "NOT_PUSHED", run: `git push -u origin HEAD`
