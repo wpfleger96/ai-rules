@@ -1,6 +1,14 @@
 # CHANGELOG
 
 
+## v0.2.0 (2025-11-07)
+
+### Features
+
+- Add SubagentStop hook, project-level rule support, shared AGENTS.md config, and post-merge hook
+  ([`263e07c`](https://github.com/wpfleger96/ai-rules/commit/263e07cbf712afad6720c17fe4327818d80fedb1))
+
+
 ## v0.1.1 (2025-11-04)
 
 ### Bug Fixes
