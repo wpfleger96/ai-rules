@@ -33,39 +33,110 @@ uv sync
 
 ## Usage
 
+### User-Level Configuration
+
 ```bash
-ai-rules install                    # Install all agents
+ai-rules install                    # Install all agents (user + projects)
+ai-rules install --user-only        # Install only user-level configs
 ai-rules install --agents claude    # Install specific agents
 ai-rules install --dry-run          # Preview changes
 ai-rules install --force            # Skip confirmations
 
 ai-rules status                     # Check symlink status (✓✗⚠○)
+ai-rules status --user-only         # Check only user-level configs
 ai-rules diff                       # Show config differences
 ai-rules validate                   # Verify source files exist
 ai-rules update                     # Re-sync after adding files
-ai-rules uninstall                  # Remove symlinks
+ai-rules uninstall                  # Remove all symlinks
+ai-rules uninstall --user-only      # Remove only user-level symlinks
 ai-rules list-agents                # Show available agents
+```
+
+### Project-Level Configuration
+
+```bash
+ai-rules list-projects              # List configured projects
+ai-rules add-project <name> <path>  # Add a project
+ai-rules remove-project <name>      # Remove a project
+
+ai-rules install --projects my-api  # Install specific project only
+ai-rules status --projects my-api   # Check specific project status
+ai-rules uninstall --projects api   # Uninstall specific project
 ```
 
 ## Configuration
 
-**Exclude symlinks** (company-managed, local-only, machine-specific):
+### User-Level Config
 
-Create `~/.ai-rules-config.yaml`:
+Create `~/.ai-rules-config.yaml` for user-level settings and project mappings:
+
 ```yaml
 version: 1
+
+# Global exclusions (apply to all contexts)
 exclude_symlinks:
   - "~/.config/goose/config.yaml"
   - "~/.claude/settings.json"
+
+# Project configurations
+projects:
+  my-api:
+    path: ~/Development/work/my-api
+    exclude_symlinks:
+      - ".goosehints"  # Don't use Goose for this project
+
+  personal-blog:
+    path: ~/Projects/personal-blog
+    exclude_symlinks: []  # Use all agents
+
+  python-project:
+    path: ~/Development/python-ml
+    exclude_symlinks:
+      - "CLAUDE.md"  # Only use Goose
 ```
 
 Optional: Add `.ai-rules-config.yaml` in repo for defaults. User config takes precedence.
+
+### Project-Level Rules
+
+1. **Create project config directory:**
+   ```bash
+   mkdir -p config/projects/my-api
+   ```
+
+2. **Add project-specific rules:**
+   ```bash
+   # Edit config/projects/my-api/AGENTS.md
+   # Add project-specific AI agent rules
+   ```
+
+3. **Configure and install:**
+   ```bash
+   ai-rules add-project my-api ~/Development/my-api
+   ai-rules install --projects my-api
+   ```
+
+The system will create symlinks in your project:
+- `<project>/CLAUDE.md` → `config/projects/<name>/AGENTS.md`
+- `<project>/.goosehints` → `config/projects/<name>/AGENTS.md`
+
+### Exclusion Behavior
+
+Exclusions are additive:
+- **Global exclusions** (root config) apply everywhere (user + all projects)
+- **Project exclusions** only apply to that specific project
+- A symlink is excluded if it matches *either* global or project exclusions
 
 ## Structure
 
 ```
 config/
-├── AGENTS.md              # Shared rules → ~/.AGENTS.md, ~/.CLAUDE.md, ~/.config/goose/.goosehints
+├── AGENTS.md              # User-level rules → ~/.CLAUDE.md, ~/.config/goose/.goosehints
+├── projects/              # Project-level configurations
+│   ├── my-api/
+│   │   └── AGENTS.md      # → <project>/CLAUDE.md, <project>/.goosehints
+│   └── my-blog/
+│       └── AGENTS.md      # → <project>/CLAUDE.md, <project>/.goosehints
 ├── claude/
 │   ├── settings.json      # → ~/.claude/settings.json
 │   ├── agents/*.md        # → ~/.claude/agents/*.md (dynamic)
@@ -73,6 +144,8 @@ config/
 └── goose/
     └── config.yaml        # → ~/.config/goose/config.yaml
 ```
+
+See [config/projects/README.md](config/projects/README.md) for detailed project configuration guide.
 
 ## Extending
 

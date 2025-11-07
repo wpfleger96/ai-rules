@@ -16,7 +16,7 @@ class TestClaudeAgent:
         symlinks = agent.get_symlinks()
 
         targets = [str(target) for target, _ in symlinks]
-        assert "~/.CLAUDE.md" in targets
+        assert "~/CLAUDE.md" in targets
         assert "~/.claude/settings.json" in targets
         assert "~/.claude/agents/test-agent.md" in targets
         assert "~/.claude/commands/test-command.md" in targets
@@ -101,7 +101,7 @@ class TestClaudeAgent:
         targets = [str(target) for target, _ in symlinks]
         assert "~/.claude/settings.json" not in targets
         assert "~/.claude/agents/test-agent.md" not in targets
-        assert "~/.CLAUDE.md" in targets
+        assert "~/CLAUDE.md" in targets
         assert "~/.claude/commands/test-command.md" in targets
 
     def test_all_sources_point_to_existing_files(self, test_repo):

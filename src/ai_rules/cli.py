@@ -2,16 +2,17 @@
 
 import sys
 from pathlib import Path
-from typing import List, Optional
+from typing import Dict, List, Optional, Tuple
 
 import click
+import yaml
 from rich.console import Console
 from rich.table import Table
 
 from ai_rules.agents.base import Agent
 from ai_rules.agents.claude import ClaudeAgent
 from ai_rules.agents.goose import GooseAgent
-from ai_rules.config import Config
+from ai_rules.config import Config, ProjectConfig
 from ai_rules.symlinks import (
     SymlinkResult,
     check_symlink,
@@ -64,6 +65,64 @@ def select_agents(all_agents: List[Agent], filter_string: Optional[str]) -> List
         sys.exit(1)
 
     return selected
+
+
+def filter_selected_projects(
+    config: Config, projects_filter: Optional[str], user_only: bool
+) -> Dict[str, ProjectConfig]:
+    """Filter and validate project selection.
+
+    Args:
+        config: Configuration object containing all projects
+        projects_filter: Comma-separated project names or None for all
+        user_only: If True, return empty dict
+
+    Returns:
+        Dictionary of selected projects
+
+    Raises:
+        SystemExit: If invalid project names are specified
+    """
+    if user_only:
+        return {}
+
+    if projects_filter:
+        project_ids = {p.strip() for p in projects_filter.split(",") if p.strip()}
+        selected = {
+            name: proj for name, proj in config.projects.items() if name in project_ids
+        }
+        invalid_projects = project_ids - set(config.projects.keys())
+        if invalid_projects:
+            console.print(
+                f"[red]Error:[/red] Invalid project(s): {', '.join(sorted(invalid_projects))}\n"
+                f"[dim]Available projects: {', '.join(sorted(config.projects.keys())) or 'none'}[/dim]"
+            )
+            sys.exit(1)
+        return selected
+    else:
+        return config.projects
+
+
+def get_filtered_project_symlinks(
+    agent: Agent, project: ProjectConfig, config: Config, project_name: str
+) -> List[Tuple[Path, Path]]:
+    """Get project symlinks filtered by exclusions.
+
+    Args:
+        agent: Agent to get symlinks for
+        project: Project configuration
+        config: Global configuration with exclusion rules
+        project_name: Name of the project
+
+    Returns:
+        List of (target, source) tuples after filtering exclusions
+    """
+    all_symlinks = agent.get_project_symlinks(project)
+    return [
+        (target, source)
+        for target, source in all_symlinks
+        if not config.is_project_excluded(project_name, str(target))
+    ]
 
 
 def format_summary(
@@ -142,32 +201,16 @@ def main():
     pass
 
 
-@main.command()
-@click.option("--force", is_flag=True, help="Skip all confirmations")
-@click.option("--dry-run", is_flag=True, help="Preview changes without applying")
-@click.option(
-    "--agents",
-    help="Comma-separated list of agents to install (default: all)",
-)
-def install(force: bool, dry_run: bool, agents: Optional[str]):
-    """Install AI agent configs via symlinks."""
-    repo_root = get_repo_root()
-    config = Config.load(repo_root)
-    all_agents = get_agents(repo_root, config)
-    selected_agents = select_agents(all_agents, agents)
+def install_user_symlinks(
+    selected_agents: List[Agent], force: bool, dry_run: bool
+) -> Dict[str, int]:
+    """Install user-level symlinks for all selected agents.
 
-    if not dry_run and not check_first_run(selected_agents, force):
-        console.print("[yellow]Installation cancelled[/yellow]")
-        sys.exit(0)
+    Returns dict with keys: created, updated, skipped, excluded, errors
+    """
+    console.print("[bold cyan]User-Level Configuration[/bold cyan]")
 
-    if dry_run:
-        console.print("[bold]Dry run mode - no changes will be made[/bold]\n")
-
-    total_created = 0
-    total_updated = 0
-    total_skipped = 0
-    total_excluded = 0
-    total_errors = 0
+    created = updated = skipped = excluded = errors = 0
 
     for agent in selected_agents:
         console.print(f"\n[bold]{agent.name}[/bold]")
@@ -180,7 +223,7 @@ def install(force: bool, dry_run: bool, agents: Optional[str]):
             console.print(
                 f"  [dim]({excluded_count} symlink(s) excluded by config)[/dim]"
             )
-            total_excluded += excluded_count
+            excluded += excluded_count
 
         for target, source in filtered_symlinks:
             effective_force = force or not dry_run
@@ -188,18 +231,182 @@ def install(force: bool, dry_run: bool, agents: Optional[str]):
 
             if result == SymlinkResult.CREATED:
                 console.print(f"  [green]✓[/green] {target} → {source}")
-                total_created += 1
+                created += 1
             elif result == SymlinkResult.ALREADY_CORRECT:
                 console.print(f"  [dim]•[/dim] {target} [dim](already correct)[/dim]")
             elif result == SymlinkResult.UPDATED:
                 console.print(f"  [yellow]↻[/yellow] {target} → {source}")
-                total_updated += 1
+                updated += 1
             elif result == SymlinkResult.SKIPPED:
                 console.print(f"  [yellow]○[/yellow] {target} [dim](skipped)[/dim]")
-                total_skipped += 1
+                skipped += 1
             elif result == SymlinkResult.ERROR:
                 console.print(f"  [red]✗[/red] {target}: {message}")
-                total_errors += 1
+                errors += 1
+
+    return {
+        "created": created,
+        "updated": updated,
+        "skipped": skipped,
+        "excluded": excluded,
+        "errors": errors,
+    }
+
+
+def install_project_symlinks(
+    selected_agents: List[Agent],
+    selected_projects: Dict[str, ProjectConfig],
+    config: Config,
+    repo_root: Path,
+    force: bool,
+    dry_run: bool,
+) -> Dict[str, int]:
+    """Install project-level symlinks for all selected projects.
+
+    Returns dict with keys: created, updated, skipped, excluded, errors
+    """
+    created = updated = skipped = excluded = errors = 0
+
+    if not selected_projects:
+        return {"created": 0, "updated": 0, "skipped": 0, "excluded": 0, "errors": 0}
+
+    console.print("\n[bold cyan]Project-Level Configurations[/bold cyan]")
+
+    for project_name, project in selected_projects.items():
+        console.print(f"\n[bold]{project_name}[/bold] [dim]({project.path})[/dim]")
+
+        # Check if AGENTS.md exists for this project
+        project_agents_file = (
+            repo_root / "config" / "projects" / project_name / "AGENTS.md"
+        )
+        if not project_agents_file.exists():
+            console.print(
+                f"  [yellow]⚠[/yellow] No AGENTS.md found for project '{project_name}'\n"
+                f"    [dim]Create: config/projects/{project_name}/AGENTS.md[/dim]"
+            )
+            continue
+
+        for agent in selected_agents:
+            all_project_symlinks = agent.get_project_symlinks(project)
+            filtered_project_symlinks = get_filtered_project_symlinks(
+                agent, project, config, project_name
+            )
+            excluded_count = len(all_project_symlinks) - len(filtered_project_symlinks)
+
+            if excluded_count > 0:
+                excluded += excluded_count
+
+            agent_label = f"[{agent.agent_id}]"
+            for target, source in filtered_project_symlinks:
+                effective_force = force or not dry_run
+                result, message = create_symlink(
+                    target, source, effective_force, dry_run
+                )
+
+                if result == SymlinkResult.CREATED:
+                    console.print(
+                        f"  [green]✓[/green] {agent_label} {target.name} → {source}"
+                    )
+                    created += 1
+                elif result == SymlinkResult.ALREADY_CORRECT:
+                    console.print(
+                        f"  [dim]•[/dim] {agent_label} {target.name} [dim](already correct)[/dim]"
+                    )
+                elif result == SymlinkResult.UPDATED:
+                    console.print(
+                        f"  [yellow]↻[/yellow] {agent_label} {target.name} → {source}"
+                    )
+                    updated += 1
+                elif result == SymlinkResult.SKIPPED:
+                    console.print(
+                        f"  [yellow]○[/yellow] {agent_label} {target.name} [dim](skipped)[/dim]"
+                    )
+                    skipped += 1
+                elif result == SymlinkResult.ERROR:
+                    console.print(
+                        f"  [red]✗[/red] {agent_label} {target.name}: {message}"
+                    )
+                    errors += 1
+
+            if excluded_count > 0:
+                console.print(
+                    f"  [dim]{agent_label} ({excluded_count} symlink(s) excluded by config)[/dim]"
+                )
+
+    return {
+        "created": created,
+        "updated": updated,
+        "skipped": skipped,
+        "excluded": excluded,
+        "errors": errors,
+    }
+
+
+@main.command()
+@click.option("--force", is_flag=True, help="Skip all confirmations")
+@click.option("--dry-run", is_flag=True, help="Preview changes without applying")
+@click.option(
+    "--agents",
+    help="Comma-separated list of agents to install (default: all)",
+)
+@click.option(
+    "--projects",
+    help="Comma-separated list of projects to install (default: all projects)",
+)
+@click.option(
+    "--user-only",
+    is_flag=True,
+    help="Install only user-level configs, skip all projects",
+)
+def install(
+    force: bool,
+    dry_run: bool,
+    agents: Optional[str],
+    projects: Optional[str],
+    user_only: bool,
+):
+    """Install AI agent configs via symlinks."""
+    repo_root = get_repo_root()
+    config = Config.load(repo_root)
+    all_agents = get_agents(repo_root, config)
+    selected_agents = select_agents(all_agents, agents)
+
+    # Validate project configurations if not user_only
+    if not user_only:
+        validation_errors = config.validate_projects()
+        if validation_errors:
+            console.print("[red]Error:[/red] Project validation failed:\n")
+            for error in validation_errors:
+                console.print(f"  • {error}")
+            console.print(
+                "\n[dim]Fix these issues or use --user-only to skip projects[/dim]"
+            )
+            sys.exit(1)
+
+    # Filter projects if specified
+    selected_projects = filter_selected_projects(config, projects, user_only)
+
+    if not dry_run and not check_first_run(selected_agents, force):
+        console.print("[yellow]Installation cancelled[/yellow]")
+        sys.exit(0)
+
+    if dry_run:
+        console.print("[bold]Dry run mode - no changes will be made[/bold]\n")
+
+    # Install user-level symlinks
+    user_results = install_user_symlinks(selected_agents, force, dry_run)
+
+    # Install project-level symlinks
+    project_results = install_project_symlinks(
+        selected_agents, selected_projects, config, repo_root, force, dry_run
+    )
+
+    # Combine results
+    total_created = user_results["created"] + project_results["created"]
+    total_updated = user_results["updated"] + project_results["updated"]
+    total_skipped = user_results["skipped"] + project_results["skipped"]
+    total_excluded = user_results["excluded"] + project_results["excluded"]
+    total_errors = user_results["errors"] + project_results["errors"]
 
     format_summary(
         dry_run,
@@ -219,7 +426,16 @@ def install(force: bool, dry_run: bool, agents: Optional[str]):
     "--agents",
     help="Comma-separated list of agents to check (default: all)",
 )
-def status(agents: Optional[str]):
+@click.option(
+    "--projects",
+    help="Comma-separated list of projects to check (default: all projects)",
+)
+@click.option(
+    "--user-only",
+    is_flag=True,
+    help="Check only user-level configs, skip all projects",
+)
+def status(agents: Optional[str], projects: Optional[str], user_only: bool):
     """Check status of AI agent symlinks."""
     repo_root = get_repo_root()
     config = Config.load(repo_root)
@@ -230,6 +446,8 @@ def status(agents: Optional[str]):
 
     all_correct = True
 
+    # User-level status
+    console.print("[bold cyan]User-Level Configuration[/bold cyan]\n")
     for agent in selected_agents:
         console.print(f"[bold]{agent.name}:[/bold]")
 
@@ -264,6 +482,72 @@ def status(agents: Optional[str]):
 
         console.print()
 
+    # Project-level status
+    if not user_only and config.projects:
+        # Filter projects if specified
+        selected_projects = filter_selected_projects(config, projects, user_only=False)
+
+        if selected_projects:
+            console.print("[bold cyan]Project-Level Configurations[/bold cyan]\n")
+            for project_name, project in selected_projects.items():
+                console.print(
+                    f"[bold]{project_name}[/bold] [dim]({project.path})[/dim]"
+                )
+
+                # Check if project path exists
+                if not project.path.exists():
+                    console.print("  [red]✗[/red] Project path does not exist")
+                    all_correct = False
+                    console.print()
+                    continue
+
+                for agent in selected_agents:
+                    all_project_symlinks = agent.get_project_symlinks(project)
+                    filtered_project_symlinks = get_filtered_project_symlinks(
+                        agent, project, config, project_name
+                    )
+                    excluded_symlinks = [
+                        (t, s)
+                        for t, s in all_project_symlinks
+                        if (t, s) not in filtered_project_symlinks
+                    ]
+
+                    agent_label = f"[{agent.agent_id}]"
+                    for target, source in filtered_project_symlinks:
+                        status_code, message = check_symlink(target, source)
+
+                        if status_code == "correct":
+                            console.print(
+                                f"  [green]✓[/green] {agent_label} {target.name}"
+                            )
+                        elif status_code == "missing":
+                            console.print(
+                                f"  [red]✗[/red] {agent_label} {target.name} [dim](not installed)[/dim]"
+                            )
+                            all_correct = False
+                        elif status_code == "broken":
+                            console.print(
+                                f"  [red]✗[/red] {agent_label} {target.name} [dim](broken symlink)[/dim]"
+                            )
+                            all_correct = False
+                        elif status_code == "wrong_target":
+                            console.print(
+                                f"  [yellow]⚠[/yellow] {agent_label} {target.name} [dim]({message})[/dim]"
+                            )
+                            all_correct = False
+                        elif status_code == "not_symlink":
+                            console.print(
+                                f"  [yellow]⚠[/yellow] {agent_label} {target.name} [dim](not a symlink)[/dim]"
+                            )
+                            all_correct = False
+
+                    for target, _ in excluded_symlinks:
+                        console.print(
+                            f"  [dim]○[/dim] {agent_label} {target.name} [dim](excluded by config)[/dim]"
+                        )
+
+                console.print()
+
     if not all_correct:
         console.print("[yellow]💡 Run 'ai-rules install' to fix issues[/yellow]")
         sys.exit(1)
@@ -277,17 +561,36 @@ def status(agents: Optional[str]):
     "--agents",
     help="Comma-separated list of agents to uninstall (default: all)",
 )
-def uninstall(force: bool, agents: Optional[str]):
+@click.option(
+    "--projects",
+    help="Comma-separated list of projects to uninstall (default: all projects)",
+)
+@click.option(
+    "--user-only",
+    is_flag=True,
+    help="Uninstall only user-level configs, skip all projects",
+)
+def uninstall(
+    force: bool, agents: Optional[str], projects: Optional[str], user_only: bool
+):
     """Remove AI agent symlinks."""
     repo_root = get_repo_root()
     config = Config.load(repo_root)
     all_agents = get_agents(repo_root, config)
     selected_agents = select_agents(all_agents, agents)
 
+    # Filter projects if specified
+    selected_projects = filter_selected_projects(config, projects, user_only)
+
     if not force:
         console.print("[yellow]Warning:[/yellow] This will remove symlinks for:\n")
+        console.print("[bold]Agents:[/bold]")
         for agent in selected_agents:
             console.print(f"  • {agent.name}")
+        if selected_projects:
+            console.print("\n[bold]Projects:[/bold]")
+            for project_name in selected_projects:
+                console.print(f"  • {project_name}")
         console.print()
         response = console.input("[yellow]?[/yellow] Continue? (y/N): ")
         if response.lower() != "y":
@@ -297,6 +600,8 @@ def uninstall(force: bool, agents: Optional[str]):
     total_removed = 0
     total_skipped = 0
 
+    # Remove user-level symlinks
+    console.print("\n[bold cyan]User-Level Configuration[/bold cyan]")
     for agent in selected_agents:
         console.print(f"\n[bold]{agent.name}[/bold]")
 
@@ -312,9 +617,177 @@ def uninstall(force: bool, agents: Optional[str]):
                 console.print(f"  [yellow]○[/yellow] {target} [dim]({message})[/dim]")
                 total_skipped += 1
 
+    # Remove project-level symlinks
+    if selected_projects:
+        console.print("\n[bold cyan]Project-Level Configurations[/bold cyan]")
+        for project_name, project in selected_projects.items():
+            console.print(f"\n[bold]{project_name}[/bold] [dim]({project.path})[/dim]")
+
+            for agent in selected_agents:
+                filtered_project_symlinks = get_filtered_project_symlinks(
+                    agent, project, config, project_name
+                )
+
+                agent_label = f"[{agent.agent_id}]"
+                for target, _ in filtered_project_symlinks:
+                    success, message = remove_symlink(target, force)
+
+                    if success:
+                        console.print(
+                            f"  [green]✓[/green] {agent_label} {target.name} removed"
+                        )
+                        total_removed += 1
+                    elif "Does not exist" in message:
+                        console.print(
+                            f"  [dim]•[/dim] {agent_label} {target.name} [dim](not installed)[/dim]"
+                        )
+                    else:
+                        console.print(
+                            f"  [yellow]○[/yellow] {agent_label} {target.name} [dim]({message})[/dim]"
+                        )
+                        total_skipped += 1
+
     console.print(
         f"\n[bold]Summary:[/bold] Removed {total_removed}, skipped {total_skipped}"
     )
+
+
+@main.command("list-projects")
+def list_projects_cmd():
+    """List configured projects."""
+    repo_root = get_repo_root()
+    config = Config.load(repo_root)
+
+    if not config.projects:
+        console.print("[yellow]No projects configured[/yellow]")
+        console.print(
+            "\n[dim]Add projects to ~/.ai-rules-config.yaml or run 'ai-rules add-project'[/dim]"
+        )
+        return
+
+    table = Table(title="Configured Projects", show_header=True)
+    table.add_column("Name", style="cyan")
+    table.add_column("Path", style="bold")
+    table.add_column("Exclusions", justify="right")
+    table.add_column("Status")
+
+    for project_name, project in config.projects.items():
+        path_str = str(project.path)
+        exclusions = len(project.exclude_symlinks)
+        exclusions_str = str(exclusions) if exclusions > 0 else "-"
+
+        if project.path.exists():
+            status = "[green]✓ Exists[/green]"
+        else:
+            status = "[red]✗ Missing[/red]"
+
+        table.add_row(project_name, path_str, exclusions_str, status)
+
+    console.print(table)
+
+
+@main.command("add-project")
+@click.argument("name")
+@click.argument("path")
+def add_project_cmd(name: str, path: str):
+    """Add a new project configuration."""
+    from pathlib import Path as PathLib
+
+    config_path = PathLib.home() / ".ai-rules-config.yaml"
+
+    # Resolve the project path
+    project_path = PathLib(path).expanduser().resolve()
+
+    # Check if path exists
+    if not project_path.exists():
+        console.print(f"[red]Error:[/red] Path does not exist: {project_path}")
+        console.print("[dim]Create the directory first, or check the path[/dim]")
+        sys.exit(1)
+
+    if not project_path.is_dir():
+        console.print(f"[red]Error:[/red] Path is not a directory: {project_path}")
+        sys.exit(1)
+
+    # Load existing config
+    existing_config = {}
+    if config_path.exists():
+        with open(config_path, "r") as f:
+            existing_config = yaml.safe_load(f) or {}
+
+    # Check if project already exists
+    projects = existing_config.get("projects", {})
+    if name in projects:
+        console.print(f"[yellow]Warning:[/yellow] Project '{name}' already exists")
+        response = console.input("[yellow]?[/yellow] Overwrite? (y/N): ")
+        if response.lower() != "y":
+            console.print("[yellow]Cancelled[/yellow]")
+            sys.exit(0)
+
+    # Add the new project
+    projects[name] = {"path": str(project_path), "exclude_symlinks": []}
+    existing_config["projects"] = projects
+
+    # Write back the config
+    with open(config_path, "w") as f:
+        yaml.safe_dump(existing_config, f, default_flow_style=False, sort_keys=False)
+
+    console.print(f"[green]✓[/green] Added project '{name}' at {project_path}")
+    console.print(
+        f"\n[dim]Next steps:[/dim]\n"
+        f"  1. Create project config: mkdir -p config/projects/{name}\n"
+        f"  2. Add rules: edit config/projects/{name}/AGENTS.md\n"
+        f"  3. Install: ai-rules install --projects {name}"
+    )
+
+
+@main.command("remove-project")
+@click.argument("name")
+@click.option("--force", is_flag=True, help="Skip confirmation")
+def remove_project_cmd(name: str, force: bool):
+    """Remove a project configuration."""
+    from pathlib import Path as PathLib
+
+    config_path = PathLib.home() / ".ai-rules-config.yaml"
+
+    if not config_path.exists():
+        console.print("[yellow]No config file found[/yellow]")
+        sys.exit(1)
+
+    # Load existing config
+    with open(config_path, "r") as f:
+        existing_config = yaml.safe_load(f) or {}
+
+    projects = existing_config.get("projects", {})
+    if name not in projects:
+        console.print(f"[red]Error:[/red] Project '{name}' not found")
+        console.print(
+            f"[dim]Available projects: {', '.join(projects.keys()) or 'none'}[/dim]"
+        )
+        sys.exit(1)
+
+    if not force:
+        console.print(f"[yellow]Warning:[/yellow] Remove project '{name}'?")
+        console.print(f"  Path: {projects[name].get('path', 'unknown')}")
+        console.print(
+            "\n[dim]This will not remove the project directory or symlinks[/dim]"
+        )
+        console.print(
+            "[dim]Run 'ai-rules uninstall --projects {name}' first to remove symlinks[/dim]\n"
+        )
+        response = console.input("[yellow]?[/yellow] Continue? (y/N): ")
+        if response.lower() != "y":
+            console.print("[yellow]Cancelled[/yellow]")
+            sys.exit(0)
+
+    # Remove the project
+    del projects[name]
+    existing_config["projects"] = projects
+
+    # Write back the config
+    with open(config_path, "w") as f:
+        yaml.safe_dump(existing_config, f, default_flow_style=False, sort_keys=False)
+
+    console.print(f"[green]✓[/green] Removed project '{name}' from configuration")
 
 
 @main.command("list-agents")

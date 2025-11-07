@@ -30,7 +30,7 @@ class TestUninstallSafety:
             assert not target_path.exists()
 
     def test_uninstall_never_removes_real_files(self, test_repo, mock_home):
-        important_file = mock_home / ".CLAUDE.md"
+        important_file = mock_home / "CLAUDE.md"
         important_file.parent.mkdir(parents=True, exist_ok=True)
         important_file.write_text("IMPORTANT USER DATA")
 
@@ -42,7 +42,7 @@ class TestUninstallSafety:
         assert not important_file.is_symlink()
 
     def test_uninstall_force_still_protects_real_files(self, test_repo, mock_home):
-        important_file = mock_home / ".CLAUDE.md"
+        important_file = mock_home / "CLAUDE.md"
         important_file.parent.mkdir(parents=True, exist_ok=True)
         important_file.write_text("IMPORTANT USER DATA")
 
@@ -53,7 +53,7 @@ class TestUninstallSafety:
         assert important_file.read_text() == "IMPORTANT USER DATA"
 
     def test_uninstall_removes_broken_symlinks(self, test_repo, mock_home):
-        target_path = mock_home / ".CLAUDE.md"
+        target_path = mock_home / "CLAUDE.md"
         target_path.parent.mkdir(parents=True, exist_ok=True)
         nonexistent = test_repo / "nonexistent.md"
         target_path.symlink_to(nonexistent)
@@ -64,7 +64,7 @@ class TestUninstallSafety:
         assert not target_path.exists()
 
     def test_uninstall_handles_missing_targets_gracefully(self, test_repo, mock_home):
-        target_path = mock_home / ".CLAUDE.md"
+        target_path = mock_home / "CLAUDE.md"
 
         success, message = remove_symlink(target_path, force=True)
 
@@ -81,7 +81,7 @@ class TestUninstallSafety:
                 create_symlink(target_path, source, force=False, dry_run=False)
 
         claude_files = [
-            mock_home / ".CLAUDE.md",
+            mock_home / "CLAUDE.md",
             mock_home / ".claude" / "settings.json",
             mock_home / ".claude" / "agents" / "test-agent.md",
             mock_home / ".claude" / "commands" / "test-command.md",
