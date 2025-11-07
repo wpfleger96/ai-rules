@@ -32,7 +32,7 @@ class Agent(ABC):
 
         Returns:
             List of tuples where:
-            - target_path: Where symlink should be created (e.g., ~/.CLAUDE.md)
+            - target_path: Where symlink should be created (e.g., ~/CLAUDE.md)
             - source_path: What symlink should point to (e.g., repo/config/AGENTS.md)
         """
         pass

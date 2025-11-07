@@ -42,7 +42,7 @@ def create_symlink(
     """Create a symlink with safety checks.
 
     Args:
-        target_path: Where the symlink should be created (e.g., ~/.CLAUDE.md)
+        target_path: Where the symlink should be created (e.g., ~/CLAUDE.md)
         source_path: What the symlink should point to (e.g., repo/config/AGENTS.md)
         force: Skip confirmations
         dry_run: Don't actually create symlinks

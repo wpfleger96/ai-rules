@@ -65,7 +65,7 @@ Optional: Add `.ai-rules-config.yaml` in repo for defaults. User config takes pr
 
 ```
 config/
-├── AGENTS.md              # Shared rules → ~/.AGENTS.md, ~/.CLAUDE.md, ~/.config/goose/.goosehints
+├── AGENTS.md              # Shared rules → ~/.AGENTS.md, ~/CLAUDE.md, ~/.config/goose/.goosehints
 ├── claude/
 │   ├── settings.json      # → ~/.claude/settings.json
 │   ├── agents/*.md        # → ~/.claude/agents/*.md (dynamic)
@@ -120,8 +120,8 @@ uv run pytest -m integration
 
 **Restore backup:**
 ```bash
-ls -la ~/.CLAUDE.md.ai-rules-backup.*
-mv ~/.CLAUDE.md.ai-rules-backup.20250104-143022 ~/.CLAUDE.md
+ls -la ~/CLAUDE.md.ai-rules-backup.*
+mv ~/CLAUDE.md.ai-rules-backup.20250104-143022 ~/CLAUDE.md
 ```
 
 **Disable symlink:** Add to `~/.ai-rules-config.yaml` then run `ai-rules update`
