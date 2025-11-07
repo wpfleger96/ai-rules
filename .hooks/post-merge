@@ -1,0 +1,19 @@
+#!/bin/bash
+
+# Check if any new files were added to config/ during the merge
+new_config_files=$(git diff --name-status --diff-filter=A ORIG_HEAD HEAD -- config/ 2>/dev/null | grep '^A')
+
+if [ -n "$new_config_files" ]; then
+    echo ""
+    echo "╔════════════════════════════════════════════════════════════════╗"
+    echo "║  New config files detected!                                    ║"
+    echo "║                                                                ║"
+    echo "║  Run 'uv run ai-rules install' to update your symlinks        ║"
+    echo "╚════════════════════════════════════════════════════════════════╝"
+    echo ""
+    echo "New files added:"
+    echo "$new_config_files" | sed 's/^A[[:space:]]*/  - /'
+    echo ""
+fi
+
+exit 0

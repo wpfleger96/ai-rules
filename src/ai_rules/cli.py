@@ -410,6 +410,26 @@ def install(
     total_excluded = user_results["excluded"] + project_results["excluded"]
     total_errors = user_results["errors"] + project_results["errors"]
 
+    # Configure git hooks if we're in the ai-rules repo
+    if not dry_run:
+        hooks_dir = repo_root / ".hooks"
+        post_merge_hook = hooks_dir / "post-merge"
+        git_dir = repo_root / ".git"
+
+        if post_merge_hook.exists() and git_dir.is_dir():
+            import subprocess
+
+            try:
+                subprocess.run(
+                    ["git", "config", "core.hooksPath", ".hooks"],
+                    cwd=repo_root,
+                    check=True,
+                    capture_output=True,
+                )
+                console.print("\n[dim]✓ Configured git hooks[/dim]")
+            except subprocess.CalledProcessError:
+                pass
+
     format_summary(
         dry_run,
         total_created,
@@ -549,6 +569,42 @@ def status(agents: Optional[str], projects: Optional[str], user_only: bool):
                         )
 
                 console.print()
+
+    # Check git hooks configuration
+    console.print("[bold cyan]Git Hooks Configuration[/bold cyan]\n")
+    hooks_dir = repo_root / ".hooks"
+    post_merge_hook = hooks_dir / "post-merge"
+
+    if post_merge_hook.exists() and (repo_root / ".git").is_dir():
+        import subprocess
+
+        try:
+            result = subprocess.run(
+                ["git", "config", "--get", "core.hooksPath"],
+                cwd=repo_root,
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+            configured_path = result.stdout.strip()
+            if configured_path == ".hooks":
+                console.print("  [green]✓[/green] Post-merge hook configured")
+            else:
+                console.print(
+                    "  [red]✗[/red] Post-merge hook not configured\n"
+                    "    [dim]Run 'uv run ai-rules install' to enable automatic reminders[/dim]"
+                )
+                all_correct = False
+        except Exception:
+            console.print(
+                "  [red]✗[/red] Post-merge hook not configured\n"
+                "    [dim]Run 'uv run ai-rules install' to enable automatic reminders[/dim]"
+            )
+            all_correct = False
+    else:
+        console.print("  [dim]○[/dim] Post-merge hook not available in this repository")
+
+    console.print()
 
     if not all_correct:
         console.print("[yellow]💡 Run 'ai-rules install' to fix issues[/yellow]")
