@@ -14,7 +14,7 @@ Consolidates config files for AI coding agents (Claude Code, Goose) into a singl
 - Exclude specific files (e.g., company-managed)
 - Per-agent customizations
 
-**Supported:** Claude Code (settings, agents, commands), Goose (hints, config)
+**Supported:** Claude Code (settings, agents, commands), Goose (hints, config), Shared (AGENTS.md)
 
 ## Getting Started
 
@@ -117,6 +117,7 @@ Optional: Add `.ai-rules-config.yaml` in repo for defaults. User config takes pr
    ```
 
 The system will create symlinks in your project:
+- `<project>/AGENTS.md` → `config/projects/<name>/AGENTS.md`
 - `<project>/CLAUDE.md` → `config/projects/<name>/AGENTS.md`
 - `<project>/.goosehints` → `config/projects/<name>/AGENTS.md`
 
@@ -131,12 +132,12 @@ Exclusions are additive:
 
 ```
 config/
-├── AGENTS.md              # User-level rules → ~/.CLAUDE.md, ~/.config/goose/.goosehints
+├── AGENTS.md              # User-level rules → ~/AGENTS.md, ~/.CLAUDE.md, ~/.config/goose/.goosehints
 ├── projects/              # Project-level configurations
 │   ├── my-api/
-│   │   └── AGENTS.md      # → <project>/CLAUDE.md, <project>/.goosehints
+│   │   └── AGENTS.md      # → <project>/AGENTS.md, <project>/CLAUDE.md, <project>/.goosehints
 │   └── my-blog/
-│       └── AGENTS.md      # → <project>/CLAUDE.md, <project>/.goosehints
+│       └── AGENTS.md      # → <project>/AGENTS.md, <project>/CLAUDE.md, <project>/.goosehints
 ├── claude/
 │   ├── settings.json      # → ~/.claude/settings.json
 │   ├── agents/*.md        # → ~/.claude/agents/*.md (dynamic)

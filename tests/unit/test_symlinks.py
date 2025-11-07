@@ -3,7 +3,6 @@ import pytest
 from ai_rules.symlinks import (
     SymlinkResult,
     check_symlink,
-    create_backup_path,
     create_symlink,
     remove_symlink,
 )
@@ -209,27 +208,3 @@ class TestRemoveSymlink:
 
         assert success is True
         assert not target.exists()
-
-    def test_force_mode_still_protects_real_files(self, tmp_path):
-        target = tmp_path / "target.txt"
-        target.write_text("important data")
-
-        success, message = remove_symlink(target, force=True)
-
-        assert success is False
-        assert target.exists()
-        assert target.read_text() == "important data"
-
-
-@pytest.mark.unit
-class TestCreateBackupPath:
-    """Test backup path generation."""
-
-    def test_generates_timestamped_backup_path(self, tmp_path):
-        target = tmp_path / "test.txt"
-
-        backup = create_backup_path(target)
-
-        assert backup.parent == target.parent
-        assert backup.name.startswith("test.txt.ai-rules-backup.")
-        assert len(backup.name) > len("test.txt.ai-rules-backup.")

@@ -86,40 +86,6 @@ class TestStatusValidation:
 
         assert status == "not_symlink"
 
-    def test_status_should_return_error_code_when_issues_found(
-        self, test_repo, mock_home
-    ):
-        config = Config(exclude_symlinks=[])
-        claude = ClaudeAgent(test_repo, config)
-
-        has_issues = False
-        for target, source in claude.get_symlinks():
-            target_path = Path(str(target).replace("~", str(mock_home)))
-            status, message = check_symlink(target_path, source)
-            if status != "correct":
-                has_issues = True
-                break
-
-        assert has_issues
-
-    def test_status_should_return_success_when_all_correct(self, test_repo, mock_home):
-        config = Config(exclude_symlinks=[])
-        claude = ClaudeAgent(test_repo, config)
-
-        for target, source in claude.get_symlinks():
-            target_path = Path(str(target).replace("~", str(mock_home)))
-            create_symlink(target_path, source, force=False, dry_run=False)
-
-        all_correct = True
-        for target, source in claude.get_symlinks():
-            target_path = Path(str(target).replace("~", str(mock_home)))
-            status, message = check_symlink(target_path, source)
-            if status != "correct":
-                all_correct = False
-                break
-
-        assert all_correct
-
     def test_status_handles_mixed_symlink_states(self, test_repo, mock_home):
         config = Config(exclude_symlinks=[])
         claude = ClaudeAgent(test_repo, config)

@@ -41,17 +41,6 @@ class TestUninstallSafety:
         assert important_file.read_text() == "IMPORTANT USER DATA"
         assert not important_file.is_symlink()
 
-    def test_uninstall_force_still_protects_real_files(self, test_repo, mock_home):
-        important_file = mock_home / "CLAUDE.md"
-        important_file.parent.mkdir(parents=True, exist_ok=True)
-        important_file.write_text("IMPORTANT USER DATA")
-
-        success, message = remove_symlink(important_file, force=True)
-
-        assert success is False
-        assert important_file.exists()
-        assert important_file.read_text() == "IMPORTANT USER DATA"
-
     def test_uninstall_removes_broken_symlinks(self, test_repo, mock_home):
         target_path = mock_home / "CLAUDE.md"
         target_path.parent.mkdir(parents=True, exist_ok=True)

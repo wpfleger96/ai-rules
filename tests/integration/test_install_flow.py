@@ -4,6 +4,7 @@ import pytest
 
 from ai_rules.agents.claude import ClaudeAgent
 from ai_rules.agents.goose import GooseAgent
+from ai_rules.agents.shared import SharedAgent
 from ai_rules.config import Config
 from ai_rules.symlinks import create_symlink
 
@@ -16,8 +17,9 @@ class TestInstallFlow:
         config = Config(exclude_symlinks=[])
         claude = ClaudeAgent(test_repo, config)
         goose = GooseAgent(test_repo, config)
+        shared = SharedAgent(test_repo, config)
 
-        for agent in [claude, goose]:
+        for agent in [claude, goose, shared]:
             for target, source in agent.get_symlinks():
                 target_path = Path(str(target).replace("~", str(mock_home)))
                 create_symlink(target_path, source, dry_run=False, force=False)
@@ -41,6 +43,10 @@ class TestInstallFlow:
 
         goose_config = mock_home / ".config" / "goose" / "config.yaml"
         assert goose_config.is_symlink()
+
+        agents_md = mock_home / "AGENTS.md"
+        assert agents_md.is_symlink()
+        assert agents_md.resolve() == (test_repo / "config" / "AGENTS.md").resolve()
 
     def test_install_creates_backups_for_existing_files(self, test_repo, mock_home):
         existing_file = mock_home / "CLAUDE.md"
@@ -149,3 +155,14 @@ class TestInstallFlow:
         new_mtime = target_path.lstat().st_mtime
         assert result.name == "ALREADY_CORRECT"
         assert original_mtime == new_mtime
+
+    def test_shared_agent_excluded_symlinks_are_skipped(self, test_repo, mock_home):
+        config = Config(exclude_symlinks=["~/AGENTS.md"])
+        shared = SharedAgent(test_repo, config)
+
+        for target, source in shared.get_filtered_symlinks():
+            target_path = Path(str(target).replace("~", str(mock_home)))
+            create_symlink(target_path, source, dry_run=False, force=False)
+
+        agents_md = mock_home / "AGENTS.md"
+        assert not agents_md.exists()

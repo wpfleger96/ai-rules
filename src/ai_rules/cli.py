@@ -12,6 +12,7 @@ from rich.table import Table
 from ai_rules.agents.base import Agent
 from ai_rules.agents.claude import ClaudeAgent
 from ai_rules.agents.goose import GooseAgent
+from ai_rules.agents.shared import SharedAgent
 from ai_rules.config import Config, ProjectConfig
 from ai_rules.symlinks import (
     SymlinkResult,
@@ -33,6 +34,7 @@ def get_agents(repo_root: Path, config: Config) -> List[Agent]:
     return [
         ClaudeAgent(repo_root, config),
         GooseAgent(repo_root, config),
+        SharedAgent(repo_root, config),
     ]
 
 
