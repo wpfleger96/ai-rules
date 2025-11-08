@@ -2,7 +2,10 @@
 
 This file defines mandatory rules that all LLMs must follow when interacting with code on this system. This is a user-level configuration file that applies to all projects on this computer.
 
-## Core Requirements
+## Core Workflow Requirements
+- You MUST create a TODO list before you begin working on a task and you MUST keep it updated as you complete tasks during your workflow.
+
+## Core Development Requirements
 - You MUST read the repository's `README` and any other repository documentation before performing any actions
 - You MUST follow best practices in software engineering and development when writing code, such as: readability, maintainability, and the DRY principle
 - You MUST use project-specific run/build/test commands when available, for example if a project has a Makefile or Justfile, you MUST use the appropriate `make` or `just` command to run/build/test the project. This may be different for each repository.
