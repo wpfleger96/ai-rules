@@ -64,6 +64,11 @@ ai-rules config show                # Show raw config files
 ai-rules config show --merged       # Show merged settings with overrides
 ai-rules config show --agent claude # Show config for specific agent
 ai-rules config edit                # Edit user config in $EDITOR
+ai-rules config keys                # List all available configuration keys
+ai-rules config keys --agent claude # List keys for specific agent
+ai-rules config keys --json-output  # Output as JSON for scripting
+ai-rules config clear-cache         # Clear cached merged settings
+ai-rules config clear-cache --agent claude  # Clear cache for specific agent
 
 # Manage exclusions
 ai-rules exclude add "~/.claude/*.json"      # Add exclusion pattern (supports globs)
@@ -74,6 +79,7 @@ ai-rules exclude list                        # List all exclusions
 ai-rules override set claude.model "claude-sonnet-4-5-20250929"  # Set override
 ai-rules override unset claude.model         # Remove override
 ai-rules override list                       # List all overrides
+ai-rules override show claude.model          # Show value and source of a specific key
 ```
 
 ### Project-Level Configuration
@@ -174,12 +180,33 @@ Both machines sync the same `config/claude/settings.json` via git, but each has 
 
 1. **Base settings** from `config/claude/settings.json` (git-tracked)
 2. **Merged with** overrides from `~/.ai-rules-config.yaml` (local only)
-3. **Cached** in `~/.ai-rules/cache/claude/settings.json`
+3. **Cached** in `~/.ai-rules/cache/<agent>/<repo-hash>/settings.json`
 4. **Symlinked** to `~/.claude/settings.json`
+
+**Cache Management:**
+- Cache is automatically built/updated during `ai-rules install`
+- Cache is invalidated when base settings or overrides are modified
+- Cache location: `~/.ai-rules/cache/<agent>/<repo-hash>/`
+- Each repository has its own cache directory (prevents conflicts when using multiple repos)
+
+**Discovering Available Keys:**
+```bash
+# See all available configuration keys that can be overridden
+ai-rules config keys
+
+# See keys for a specific agent
+ai-rules config keys --agent claude
+
+# Check a specific key's value and source
+ai-rules override show claude.model
+```
 
 After changing overrides, run:
 ```bash
-ai-rules install --rebuild-cache
+ai-rules install --rebuild-cache  # Force rebuild cache
+# OR
+ai-rules config clear-cache       # Clear all cached settings
+ai-rules install                  # Rebuild on next install
 ```
 
 ### Project-Level Rules

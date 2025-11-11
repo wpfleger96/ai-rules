@@ -205,7 +205,9 @@ settings_overrides:
         config = Config.load(tmp_path)
 
         assert "claude" in config.settings_overrides
-        assert config.settings_overrides["claude"]["model"] == "claude-sonnet-4-5-20250929"
+        assert (
+            config.settings_overrides["claude"]["model"] == "claude-sonnet-4-5-20250929"
+        )
         assert config.settings_overrides["claude"]["theme"] == "dark"
 
     def test_settings_overrides_not_in_repo_config(self, tmp_path, monkeypatch):
@@ -302,12 +304,15 @@ settings_overrides:
             }
         )
 
-        cache_path = config.build_merged_settings("claude", base_settings_path, tmp_path)
+        cache_path = config.build_merged_settings(
+            "claude", base_settings_path, tmp_path
+        )
 
         assert cache_path is not None
         assert cache_path.exists()
 
         import json
+
         with open(cache_path, "r") as f:
             cached = json.load(f)
 
@@ -320,7 +325,9 @@ settings_overrides:
 
         config = Config(settings_overrides={})
 
-        cache_path = config.build_merged_settings("claude", base_settings_path, tmp_path)
+        cache_path = config.build_merged_settings(
+            "claude", base_settings_path, tmp_path
+        )
 
         assert cache_path is None
 
@@ -334,9 +341,7 @@ settings_overrides:
         base_settings_path.write_text('{"model": "claude-opus-4-20250514"}')
 
         config = Config(
-            settings_overrides={
-                "claude": {"model": "claude-sonnet-4-5-20250929"}
-            }
+            settings_overrides={"claude": {"model": "claude-sonnet-4-5-20250929"}}
         )
 
         assert config.is_cache_stale("claude", base_settings_path, tmp_path)
@@ -344,6 +349,7 @@ settings_overrides:
     def test_is_cache_fresh_when_no_changes(self, tmp_path, monkeypatch):
         """Test that cache is fresh when nothing has changed."""
         import time
+
         home = tmp_path / "home"
         home.mkdir()
         monkeypatch.setenv("HOME", str(home))
@@ -355,13 +361,13 @@ settings_overrides:
         user_config.write_text("version: 1\n")
 
         config = Config(
-            settings_overrides={
-                "claude": {"model": "claude-sonnet-4-5-20250929"}
-            }
+            settings_overrides={"claude": {"model": "claude-sonnet-4-5-20250929"}}
         )
 
         # Build cache
-        cache_path = config.build_merged_settings("claude", base_settings_path, tmp_path)
+        _cache_path = config.build_merged_settings(
+            "claude", base_settings_path, tmp_path
+        )
 
         # Wait a moment to ensure different timestamps
         time.sleep(0.01)
@@ -372,6 +378,7 @@ settings_overrides:
     def test_is_cache_stale_when_base_settings_updated(self, tmp_path, monkeypatch):
         """Test that cache is stale when base settings are modified."""
         import time
+
         home = tmp_path / "home"
         home.mkdir()
         monkeypatch.setenv("HOME", str(home))
@@ -380,26 +387,31 @@ settings_overrides:
         base_settings_path.write_text('{"model": "claude-opus-4-20250514"}')
 
         config = Config(
-            settings_overrides={
-                "claude": {"model": "claude-sonnet-4-5-20250929"}
-            }
+            settings_overrides={"claude": {"model": "claude-sonnet-4-5-20250929"}}
         )
 
         # Build cache
-        cache_path = config.build_merged_settings("claude", base_settings_path, tmp_path)
+        _cache_path = config.build_merged_settings(
+            "claude", base_settings_path, tmp_path
+        )
 
         # Wait to ensure different timestamp
         time.sleep(0.01)
 
         # Modify base settings
-        base_settings_path.write_text('{"model": "claude-opus-4-20250514", "new": "value"}')
+        base_settings_path.write_text(
+            '{"model": "claude-opus-4-20250514", "new": "value"}'
+        )
 
         # Cache should now be stale
         assert config.is_cache_stale("claude", base_settings_path, tmp_path)
 
-    def test_build_merged_settings_skips_rebuild_when_fresh(self, tmp_path, monkeypatch):
+    def test_build_merged_settings_skips_rebuild_when_fresh(
+        self, tmp_path, monkeypatch
+    ):
         """Test that cache rebuild is skipped when cache is fresh."""
         import time
+
         home = tmp_path / "home"
         home.mkdir()
         monkeypatch.setenv("HOME", str(home))
@@ -408,20 +420,22 @@ settings_overrides:
         base_settings_path.write_text('{"model": "claude-opus-4-20250514"}')
 
         config = Config(
-            settings_overrides={
-                "claude": {"model": "claude-sonnet-4-5-20250929"}
-            }
+            settings_overrides={"claude": {"model": "claude-sonnet-4-5-20250929"}}
         )
 
         # Build cache first time
-        cache_path1 = config.build_merged_settings("claude", base_settings_path, tmp_path)
+        cache_path1 = config.build_merged_settings(
+            "claude", base_settings_path, tmp_path
+        )
         mtime1 = cache_path1.stat().st_mtime
 
         # Wait a moment
         time.sleep(0.01)
 
         # Build again - should use existing cache
-        cache_path2 = config.build_merged_settings("claude", base_settings_path, tmp_path)
+        cache_path2 = config.build_merged_settings(
+            "claude", base_settings_path, tmp_path
+        )
         mtime2 = cache_path2.stat().st_mtime
 
         # Cache file should not have been modified (same timestamp)
@@ -430,6 +444,7 @@ settings_overrides:
     def test_build_merged_settings_rebuilds_when_forced(self, tmp_path, monkeypatch):
         """Test that cache rebuild happens when forced."""
         import time
+
         home = tmp_path / "home"
         home.mkdir()
         monkeypatch.setenv("HOME", str(home))
@@ -438,26 +453,30 @@ settings_overrides:
         base_settings_path.write_text('{"model": "claude-opus-4-20250514"}')
 
         config = Config(
-            settings_overrides={
-                "claude": {"model": "claude-sonnet-4-5-20250929"}
-            }
+            settings_overrides={"claude": {"model": "claude-sonnet-4-5-20250929"}}
         )
 
         # Build cache first time
-        cache_path1 = config.build_merged_settings("claude", base_settings_path, tmp_path)
+        cache_path1 = config.build_merged_settings(
+            "claude", base_settings_path, tmp_path
+        )
         mtime1 = cache_path1.stat().st_mtime
 
         # Wait a moment
         time.sleep(0.01)
 
         # Build again with force_rebuild
-        cache_path2 = config.build_merged_settings("claude", base_settings_path, tmp_path, force_rebuild=True)
+        cache_path2 = config.build_merged_settings(
+            "claude", base_settings_path, tmp_path, force_rebuild=True
+        )
         mtime2 = cache_path2.stat().st_mtime
 
         # Cache file should have been rebuilt (different timestamp)
         assert mtime2 > mtime1
 
-    def test_get_settings_file_for_symlink_returns_cache_when_exists(self, tmp_path, monkeypatch):
+    def test_get_settings_file_for_symlink_returns_cache_when_exists(
+        self, tmp_path, monkeypatch
+    ):
         """Test that get_settings_file_for_symlink returns cached file when it exists."""
         home = tmp_path / "home"
         home.mkdir()
@@ -467,19 +486,23 @@ settings_overrides:
         base_settings_path.write_text('{"model": "claude-opus-4-20250514"}')
 
         config = Config(
-            settings_overrides={
-                "claude": {"model": "claude-sonnet-4-5-20250929"}
-            }
+            settings_overrides={"claude": {"model": "claude-sonnet-4-5-20250929"}}
         )
 
         # Build cache
-        cache_path = config.build_merged_settings("claude", base_settings_path, tmp_path)
+        cache_path = config.build_merged_settings(
+            "claude", base_settings_path, tmp_path
+        )
 
         # get_settings_file_for_symlink should return cache path
-        result = config.get_settings_file_for_symlink("claude", base_settings_path, tmp_path)
+        result = config.get_settings_file_for_symlink(
+            "claude", base_settings_path, tmp_path
+        )
         assert result == cache_path
 
-    def test_get_settings_file_for_symlink_returns_base_when_no_cache(self, tmp_path, monkeypatch):
+    def test_get_settings_file_for_symlink_returns_base_when_no_cache(
+        self, tmp_path, monkeypatch
+    ):
         """Test that get_settings_file_for_symlink returns base file when cache doesn't exist."""
         home = tmp_path / "home"
         home.mkdir()
@@ -489,11 +512,54 @@ settings_overrides:
         base_settings_path.write_text('{"model": "claude-opus-4-20250514"}')
 
         config = Config(
-            settings_overrides={
-                "claude": {"model": "claude-sonnet-4-5-20250929"}
-            }
+            settings_overrides={"claude": {"model": "claude-sonnet-4-5-20250929"}}
         )
 
         # Don't build cache, just check what file would be used
-        result = config.get_settings_file_for_symlink("claude", base_settings_path, tmp_path)
+        result = config.get_settings_file_for_symlink(
+            "claude", base_settings_path, tmp_path
+        )
         assert result == base_settings_path
+
+    def test_different_repos_use_different_cache_paths(self, tmp_path, monkeypatch):
+        """Test that different repos have separate cache directories to prevent collision."""
+        home = tmp_path / "home"
+        home.mkdir()
+        monkeypatch.setenv("HOME", str(home))
+
+        repo1_path = tmp_path / "repo1"
+        repo1_path.mkdir()
+        repo2_path = tmp_path / "repo2"
+        repo2_path.mkdir()
+
+        config = Config(
+            settings_overrides={"claude": {"model": "claude-sonnet-4-5-20250929"}}
+        )
+
+        cache_path1 = config.get_merged_settings_path("claude", repo1_path)
+        cache_path2 = config.get_merged_settings_path("claude", repo2_path)
+
+        assert cache_path1 != cache_path2
+        assert "claude" in str(cache_path1)
+        assert "claude" in str(cache_path2)
+        assert cache_path1.name == "settings.json"
+        assert cache_path2.name == "settings.json"
+
+    def test_build_merged_settings_handles_invalid_json(self, tmp_path, monkeypatch):
+        """Test that build_merged_settings raises helpful error for invalid JSON."""
+        home = tmp_path / "home"
+        home.mkdir()
+        monkeypatch.setenv("HOME", str(home))
+
+        base_settings_path = tmp_path / "settings.json"
+        base_settings_path.write_text('{"model": "invalid", "bad": }')
+
+        config = Config(
+            settings_overrides={"claude": {"model": "claude-sonnet-4-5-20250929"}}
+        )
+
+        with pytest.raises(ValueError) as exc_info:
+            config.build_merged_settings("claude", base_settings_path, tmp_path)
+
+        assert "Invalid JSON" in str(exc_info.value)
+        assert str(base_settings_path) in str(exc_info.value)

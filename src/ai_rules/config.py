@@ -3,6 +3,7 @@
 from pathlib import Path
 from typing import Dict, List, Optional, Any
 import copy
+import hashlib
 import json
 import yaml
 from fnmatch import fnmatch
@@ -194,7 +195,8 @@ class Config:
         if agent not in self.settings_overrides:
             return None
 
-        cache_dir = self.get_cache_dir() / agent
+        repo_hash = hashlib.md5(str(repo_root).encode()).hexdigest()[:8]
+        cache_dir = self.get_cache_dir() / agent / repo_hash
         cache_dir.mkdir(parents=True, exist_ok=True)
         return cache_dir / "settings.json"
 
@@ -269,7 +271,11 @@ class Config:
         return False
 
     def build_merged_settings(
-        self, agent: str, base_settings_path: Path, repo_root: Path, force_rebuild: bool = False
+        self,
+        agent: str,
+        base_settings_path: Path,
+        repo_root: Path,
+        force_rebuild: bool = False,
     ) -> Optional[Path]:
         """Build merged settings file in cache if overrides exist.
 
@@ -301,8 +307,13 @@ class Config:
             # No base settings, just create from overrides
             base_settings = {}
         else:
-            with open(base_settings_path, "r") as f:
-                base_settings = json.load(f)
+            try:
+                with open(base_settings_path, "r") as f:
+                    base_settings = json.load(f)
+            except json.JSONDecodeError as e:
+                raise ValueError(
+                    f"Invalid JSON in settings file {base_settings_path}: {e.msg} at line {e.lineno}, column {e.colno}"
+                )
 
         # Merge with overrides
         merged = self.merge_settings(agent, base_settings)

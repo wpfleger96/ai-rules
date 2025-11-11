@@ -29,9 +29,13 @@ exclude_symlinks:
   # - "~/.claude/settings.json"
 
   # Glob pattern exclusions
-  # - "~/.claude/*.log"              # Exclude all log files
-  # - "~/.claude/agents/debug-*.md"  # Exclude debug agents
+  # - "~/.claude/*.log"              # Exclude all log files in directory
+  # - "~/.claude/agents/debug-*.md"  # Exclude files matching prefix pattern
+  # - "~/.claude/agents/*-test.md"   # Exclude files matching suffix pattern
   # - "~/.config/**/*.yaml"          # Exclude all YAML files recursively
+  # - "~/.config/**/*.json"          # Exclude all JSON files recursively
+  # - "~/.claude/agents/temp*"       # Exclude files starting with 'temp'
+  # - "~/.config/goose/.goosehints*" # Exclude .goosehints and any variants
 
 # ============================================================================
 # SETTINGS OVERRIDES (User config only)
@@ -48,10 +52,14 @@ exclude_symlinks:
 # Use case: Different model access on work vs personal laptop
 #
 # CLI commands:
+#   ai-rules config keys                      # List all available config keys
+#   ai-rules config keys --agent claude       # List keys for specific agent
+#   ai-rules override show claude.model       # Show value and source of a key
 #   ai-rules override set claude.model "claude-sonnet-4-5-20250929"
 #   ai-rules override unset claude.model
-#   ai-rules override list
-#   ai-rules config show --merged
+#   ai-rules override list                    # List all configured overrides
+#   ai-rules config show --merged             # Show merged settings
+#   ai-rules config clear-cache               # Clear all cached settings
 #
 # After changing overrides: ai-rules install --rebuild-cache
 settings_overrides:

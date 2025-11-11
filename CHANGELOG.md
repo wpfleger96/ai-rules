@@ -19,13 +19,29 @@
   - `ai-rules config init` - Interactive configuration wizard for first-time setup
   - `ai-rules config show` - View raw config or merged settings with overrides
   - `ai-rules config edit` - Edit user config in $EDITOR
+  - `ai-rules config keys` - Discover all available configuration keys that can be overridden
+  - `ai-rules config clear-cache` - Clear cached merged settings
   - `ai-rules exclude add/remove/list` - Manage exclusions without touching YAML
-  - `ai-rules override set/unset/list` - Manage settings overrides via CLI
+  - `ai-rules override set/unset/list/show` - Manage and inspect settings overrides via CLI
 
 - **Install Enhancements**:
   - `--rebuild-cache` flag to rebuild merged settings cache
   - Automatic settings merging during install
   - Cache management for merged configurations
+  - Progress indication during cache building
+  - Automatic config backup before overwriting in `config init`
+
+- **Discoverability Features**:
+  - Configuration keys are now discoverable via `config keys` command
+  - Override validation warns when setting unknown keys
+  - Value diff display shows base, current, and new values when setting overrides
+  - Helpful suggestions in error messages
+
+### Bug Fixes
+
+- **Cache Path Collision**: Fixed cache collision when using multiple ai-rules repos
+  - Each repository now has its own cache directory using a repo path hash
+  - Prevents settings from one repo affecting another repo
 
 ### Documentation
 
@@ -39,7 +55,9 @@
 - Added comprehensive test suite for glob pattern matching
 - Added tests for settings override loading and merging
 - Added tests for cache creation and management
-- All 23+ tests passing
+- Added tests for cache path collision prevention
+- Added tests for JSON parsing error handling
+- All 88 tests passing
 
 
 ## v0.2.0 (2025-11-07)
