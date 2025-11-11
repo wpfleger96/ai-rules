@@ -409,6 +409,17 @@ def install(
     if dry_run:
         console.print("[bold]Dry run mode - no changes will be made[/bold]\n")
 
+    # Build merged settings cache if needed (not in dry-run mode)
+    if not dry_run:
+        for agent in selected_agents:
+            if agent.agent_id in ["claude", "goose"]:
+                settings_file = repo_root / "config" / agent.agent_id / "settings.json"
+                if settings_file.exists():
+                    # Build cache with force_rebuild if --rebuild-cache was specified
+                    config.build_merged_settings(
+                        agent.agent_id, settings_file, repo_root, force_rebuild=rebuild_cache
+                    )
+
     # Install user-level symlinks
     user_results = install_user_symlinks(selected_agents, force, dry_run)
 
@@ -1222,6 +1233,7 @@ def override_unset(key: str):
     """Remove a settings override.
 
     KEY should be in format 'agent.setting' (e.g., 'claude.model')
+    Supports nested keys like 'agent.nested.key'
     """
     user_config_path = Path.home() / ".ai-rules-config.yaml"
 
@@ -1243,12 +1255,46 @@ def override_unset(key: str):
     if (
         "settings_overrides" not in data
         or agent not in data["settings_overrides"]
-        or setting not in data["settings_overrides"][agent]
     ):
         console.print(f"[yellow]Override not found:[/yellow] {key}")
         sys.exit(1)
 
-    del data["settings_overrides"][agent][setting]
+    # Support nested keys (e.g., claude.foo.bar)
+    setting_parts = setting.split(".")
+    current = data["settings_overrides"][agent]
+
+    # Navigate to parent of the key to delete
+    for part in setting_parts[:-1]:
+        if not isinstance(current, dict) or part not in current:
+            console.print(f"[yellow]Override not found:[/yellow] {key}")
+            sys.exit(1)
+        current = current[part]
+
+    # Check if final key exists
+    final_key = setting_parts[-1]
+    if not isinstance(current, dict) or final_key not in current:
+        console.print(f"[yellow]Override not found:[/yellow] {key}")
+        sys.exit(1)
+
+    # Delete the key
+    del current[final_key]
+
+    # Clean up empty nested dicts
+    setting_parts_reversed = setting_parts[:-1][::-1]
+    current = data["settings_overrides"][agent]
+    path = []
+
+    # Rebuild path to check for empty dicts
+    for part in setting_parts[:-1]:
+        path.append((current, part))
+        current = current[part]
+
+    # Remove empty nested dicts from innermost to outermost
+    for parent, key in reversed(path):
+        if isinstance(parent[key], dict) and not parent[key]:
+            del parent[key]
+        else:
+            break
 
     # Clean up empty agent entries
     if not data["settings_overrides"][agent]:

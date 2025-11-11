@@ -2,6 +2,7 @@
 
 from pathlib import Path
 from typing import Dict, List, Optional, Any
+import copy
 import json
 import yaml
 from fnmatch import fnmatch
@@ -145,8 +146,11 @@ class Config:
 
     @staticmethod
     def _deep_merge(base: Dict[str, Any], override: Dict[str, Any]) -> Dict[str, Any]:
-        """Deep merge two dictionaries, with override values taking precedence."""
-        result = base.copy()
+        """Deep merge two dictionaries, with override values taking precedence.
+
+        Uses deep copy to prevent mutation of the base dictionary.
+        """
+        result = copy.deepcopy(base)
         for key, value in override.items():
             if (
                 key in result
@@ -194,10 +198,15 @@ class Config:
         cache_dir.mkdir(parents=True, exist_ok=True)
         return cache_dir / "settings.json"
 
-    def build_merged_settings(
+    def get_settings_file_for_symlink(
         self, agent: str, base_settings_path: Path, repo_root: Path
-    ) -> Optional[Path]:
-        """Build merged settings file in cache if overrides exist.
+    ) -> Path:
+        """Get the appropriate settings file to use for symlinking.
+
+        Returns cached merged settings if overrides exist and cache is valid,
+        otherwise returns the base settings file.
+
+        This method does NOT build the cache - use build_merged_settings for that.
 
         Args:
             agent: Agent name (e.g., 'claude', 'goose')
@@ -205,10 +214,87 @@ class Config:
             repo_root: Repository root path
 
         Returns:
+            Path to settings file to use (either cached or base)
+        """
+        if agent not in self.settings_overrides:
+            return base_settings_path
+
+        cache_path = self.get_merged_settings_path(agent, repo_root)
+        if cache_path and cache_path.exists():
+            # Use cached version if it exists
+            return cache_path
+
+        # No cache exists, use base file
+        # Note: Cache will be built during install operations
+        return base_settings_path
+
+    def is_cache_stale(
+        self, agent: str, base_settings_path: Path, repo_root: Path
+    ) -> bool:
+        """Check if cached merged settings are stale.
+
+        Cache is considered stale if:
+        - Cache file doesn't exist
+        - Base settings file is newer than cache
+        - User config is newer than cache (overrides changed)
+
+        Args:
+            agent: Agent name (e.g., 'claude', 'goose')
+            base_settings_path: Path to base settings.json in repo
+            repo_root: Repository root path
+
+        Returns:
+            True if cache needs rebuilding, False otherwise
+        """
+        if agent not in self.settings_overrides:
+            return False
+
+        cache_path = self.get_merged_settings_path(agent, repo_root)
+        if not cache_path or not cache_path.exists():
+            return True
+
+        cache_mtime = cache_path.stat().st_mtime
+
+        # Check if base settings are newer
+        if base_settings_path.exists():
+            if base_settings_path.stat().st_mtime > cache_mtime:
+                return True
+
+        # Check if user config is newer (overrides may have changed)
+        user_config_path = Path.home() / ".ai-rules-config.yaml"
+        if user_config_path.exists():
+            if user_config_path.stat().st_mtime > cache_mtime:
+                return True
+
+        return False
+
+    def build_merged_settings(
+        self, agent: str, base_settings_path: Path, repo_root: Path, force_rebuild: bool = False
+    ) -> Optional[Path]:
+        """Build merged settings file in cache if overrides exist.
+
+        Only rebuilds cache if:
+        - force_rebuild is True, OR
+        - Cache doesn't exist or is stale
+
+        Args:
+            agent: Agent name (e.g., 'claude', 'goose')
+            base_settings_path: Path to base settings.json in repo
+            repo_root: Repository root path
+            force_rebuild: Force rebuild even if cache exists and is fresh
+
+        Returns:
             Path to merged settings file, or None if no overrides exist
         """
         if agent not in self.settings_overrides:
             return None
+
+        cache_path = self.get_merged_settings_path(agent, repo_root)
+
+        # Skip rebuild if cache is fresh and not forced
+        if not force_rebuild and cache_path and cache_path.exists():
+            if not self.is_cache_stale(agent, base_settings_path, repo_root):
+                return cache_path
 
         # Read base settings
         if not base_settings_path.exists():
@@ -222,7 +308,6 @@ class Config:
         merged = self.merge_settings(agent, base_settings)
 
         # Write to cache
-        cache_path = self.get_merged_settings_path(agent, repo_root)
         if cache_path:
             with open(cache_path, "w") as f:
                 json.dump(merged, f, indent=2)

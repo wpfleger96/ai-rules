@@ -25,11 +25,11 @@ class ClaudeAgent(Agent):
 
         settings_file = self.config_dir / "claude" / "settings.json"
         if settings_file.exists():
-            # Check if we have overrides - if so, use merged settings from cache
-            merged_path = self.config.build_merged_settings(
+            # Get appropriate settings file (cached merged or base)
+            # Cache is built during install operations, not during enumeration
+            target_file = self.config.get_settings_file_for_symlink(
                 "claude", settings_file, self.repo_root
             )
-            target_file = merged_path if merged_path else settings_file
             symlinks.append((Path("~/.claude/settings.json"), target_file))
 
         agents_dir = self.config_dir / "claude" / "agents"
