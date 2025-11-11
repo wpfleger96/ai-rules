@@ -1,22 +1,81 @@
 # Example AI Rules configuration file
 #
 # This file can be placed in two locations:
-#   1. ~/.ai-rules-config.yaml (user-specific preferences)
-#   2. <repo>/.ai-rules-config.yaml (repo default)
+#   1. ~/.ai-rules-config.yaml (user-specific: exclusions, overrides, projects)
+#   2. <repo>/.ai-rules-config.yaml (repo defaults: exclusions only)
 #
-# User-specific config takes precedence and both are merged.
+# Quick setup: Run `ai-rules config init` for an interactive wizard
+#
+# Config merging:
+#   - Exclusions: user + repo exclusions are combined (additive)
+#   - Overrides: only loaded from user config (machine-specific, not in git)
+#   - Projects: only loaded from user config
 
 version: 1
 
+# ============================================================================
+# EXCLUSIONS
+# ============================================================================
 # List of symlinks to exclude from installation
-# Use this to skip symlinks that you want to manage manually
-# or that are managed by another system (e.g., company IT)
+# Supports glob patterns: *.json, **/*.yaml, etc.
+#
+# CLI commands:
+#   ai-rules exclude add "~/.claude/*.log"
+#   ai-rules exclude remove "~/.claude/settings.json"
+#   ai-rules exclude list
 exclude_symlinks:
-  # Example: Skip Goose config if managed by IT
+  # Exact path exclusions
   # - "~/.config/goose/config.yaml"
-
-  # Example: Skip Claude settings if you have custom local settings
   # - "~/.claude/settings.json"
 
-  # Example: Skip specific Claude agent
-  # - "~/.claude/agents/pr-creator.md"
+  # Glob pattern exclusions
+  # - "~/.claude/*.log"              # Exclude all log files
+  # - "~/.claude/agents/debug-*.md"  # Exclude debug agents
+  # - "~/.config/**/*.yaml"          # Exclude all YAML files recursively
+
+# ============================================================================
+# SETTINGS OVERRIDES (User config only)
+# ============================================================================
+# Machine-specific overrides for agent settings
+# Allows syncing base settings.json via git while overriding locally
+#
+# How it works:
+#   1. Base settings from config/claude/settings.json (git-tracked)
+#   2. Merged with overrides below (local only, not in git)
+#   3. Result cached in ~/.ai-rules/cache/claude/settings.json
+#   4. Symlinked to ~/.claude/settings.json
+#
+# Use case: Different model access on work vs personal laptop
+#
+# CLI commands:
+#   ai-rules override set claude.model "claude-sonnet-4-5-20250929"
+#   ai-rules override unset claude.model
+#   ai-rules override list
+#   ai-rules config show --merged
+#
+# After changing overrides: ai-rules install --rebuild-cache
+settings_overrides:
+  # claude:
+  #   model: "claude-sonnet-4-5-20250929"  # Override on personal laptop
+  #   theme: "dark"
+  # goose:
+  #   provider: "anthropic"
+
+# ============================================================================
+# PROJECTS (User config only)
+# ============================================================================
+# Map project names to directories for project-level rules
+#
+# CLI commands:
+#   ai-rules add-project my-api ~/Development/my-api
+#   ai-rules remove-project my-api
+#   ai-rules list-projects
+# projects:
+#   my-api:
+#     path: ~/Development/work/my-api
+#     exclude_symlinks:
+#       - ".goosehints"  # Don't use Goose for this project
+#
+#   personal-blog:
+#     path: ~/Projects/personal-blog
+#     exclude_symlinks: []  # Use all agents

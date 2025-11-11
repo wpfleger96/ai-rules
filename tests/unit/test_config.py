@@ -139,3 +139,187 @@ class TestExcludeSymlinks:
         config = Config(exclude_symlinks=[str(home / ".claude" / "settings.json")])
 
         assert config.is_excluded(home / ".claude" / "settings.json")
+
+    def test_glob_pattern_matching(self, tmp_path, monkeypatch):
+        """Test that glob patterns work for exclusions."""
+        home = tmp_path / "home"
+        home.mkdir()
+        monkeypatch.setenv("HOME", str(home))
+
+        config = Config(exclude_symlinks=["~/.claude/*.json"])
+
+        assert config.is_excluded(Path("~/.claude/settings.json"))
+        assert config.is_excluded(Path("~/.claude/debug.json"))
+        assert not config.is_excluded(Path("~/.claude/agents/test.md"))
+
+    def test_glob_pattern_with_recursive(self, tmp_path, monkeypatch):
+        """Test recursive glob patterns."""
+        home = tmp_path / "home"
+        home.mkdir()
+        monkeypatch.setenv("HOME", str(home))
+
+        config = Config(exclude_symlinks=["~/.config/**/*.yaml"])
+
+        assert config.is_excluded(Path("~/.config/goose/config.yaml"))
+        assert config.is_excluded(Path("~/.config/deep/nested/file.yaml"))
+        assert not config.is_excluded(Path("~/.config/goose/file.json"))
+
+    def test_exact_match_preferred_over_glob(self, tmp_path, monkeypatch):
+        """Test that exact matches still work when glob patterns are also present."""
+        home = tmp_path / "home"
+        home.mkdir()
+        monkeypatch.setenv("HOME", str(home))
+
+        config = Config(
+            exclude_symlinks=[
+                "~/.claude/settings.json",  # Exact
+                "~/.claude/*.md",  # Glob
+            ]
+        )
+
+        assert config.is_excluded(Path("~/.claude/settings.json"))
+        assert config.is_excluded(Path("~/.claude/readme.md"))
+
+
+@pytest.mark.unit
+@pytest.mark.config
+class TestSettingsOverrides:
+    """Test settings override loading and merging."""
+
+    def test_loads_settings_overrides(self, tmp_path, monkeypatch):
+        """Test that settings_overrides are loaded from user config."""
+        home = tmp_path / "home"
+        home.mkdir()
+        monkeypatch.setenv("HOME", str(home))
+
+        user_config = home / ".ai-rules-config.yaml"
+        user_config.write_text(
+            """version: 1
+settings_overrides:
+  claude:
+    model: claude-sonnet-4-5-20250929
+    theme: dark
+"""
+        )
+
+        config = Config.load(tmp_path)
+
+        assert "claude" in config.settings_overrides
+        assert config.settings_overrides["claude"]["model"] == "claude-sonnet-4-5-20250929"
+        assert config.settings_overrides["claude"]["theme"] == "dark"
+
+    def test_settings_overrides_not_in_repo_config(self, tmp_path, monkeypatch):
+        """Test that settings_overrides from repo config are ignored."""
+        monkeypatch.setenv("HOME", str(tmp_path / "home"))
+
+        repo_config = tmp_path / ".ai-rules-config.yaml"
+        repo_config.write_text(
+            """version: 1
+settings_overrides:
+  claude:
+    model: should-be-ignored
+"""
+        )
+
+        config = Config.load(tmp_path)
+
+        assert len(config.settings_overrides) == 0
+
+    def test_merge_settings_with_overrides(self, tmp_path):
+        """Test deep merging of settings with overrides."""
+        config = Config(
+            settings_overrides={
+                "claude": {
+                    "model": "claude-sonnet-4-5-20250929",
+                    "theme": "dark",
+                }
+            }
+        )
+
+        base_settings = {
+            "model": "claude-opus-4-20250514",
+            "theme": "light",
+            "other": "value",
+        }
+
+        merged = config.merge_settings("claude", base_settings)
+
+        assert merged["model"] == "claude-sonnet-4-5-20250929"
+        assert merged["theme"] == "dark"
+        assert merged["other"] == "value"
+
+    def test_merge_settings_without_overrides(self, tmp_path):
+        """Test that settings without overrides are returned unchanged."""
+        config = Config(settings_overrides={})
+
+        base_settings = {"model": "claude-opus-4-20250514"}
+
+        merged = config.merge_settings("claude", base_settings)
+
+        assert merged == base_settings
+
+    def test_deep_merge_nested_dicts(self, tmp_path):
+        """Test that nested dictionaries are merged properly."""
+        config = Config(
+            settings_overrides={
+                "claude": {
+                    "nested": {
+                        "override": "new_value",
+                    }
+                }
+            }
+        )
+
+        base_settings = {
+            "nested": {
+                "override": "old_value",
+                "keep": "unchanged",
+            },
+            "top_level": "value",
+        }
+
+        merged = config.merge_settings("claude", base_settings)
+
+        assert merged["nested"]["override"] == "new_value"
+        assert merged["nested"]["keep"] == "unchanged"
+        assert merged["top_level"] == "value"
+
+    def test_build_merged_settings_creates_cache(self, tmp_path, monkeypatch):
+        """Test that merged settings are written to cache."""
+        home = tmp_path / "home"
+        home.mkdir()
+        monkeypatch.setenv("HOME", str(home))
+
+        # Create base settings
+        base_settings_path = tmp_path / "settings.json"
+        base_settings_path.write_text('{"model": "claude-opus-4-20250514"}')
+
+        config = Config(
+            settings_overrides={
+                "claude": {
+                    "model": "claude-sonnet-4-5-20250929",
+                }
+            }
+        )
+
+        cache_path = config.build_merged_settings("claude", base_settings_path, tmp_path)
+
+        assert cache_path is not None
+        assert cache_path.exists()
+
+        import json
+        with open(cache_path, "r") as f:
+            cached = json.load(f)
+
+        assert cached["model"] == "claude-sonnet-4-5-20250929"
+
+    def test_build_merged_settings_without_overrides_returns_none(self, tmp_path):
+        """Test that no cache is created when there are no overrides."""
+        base_settings_path = tmp_path / "settings.json"
+        base_settings_path.write_text('{"model": "claude-opus-4-20250514"}')
+
+        config = Config(settings_overrides={})
+
+        cache_path = config.build_merged_settings("claude", base_settings_path, tmp_path)
+
+        assert cache_path is None

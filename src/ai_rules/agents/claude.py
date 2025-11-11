@@ -25,7 +25,12 @@ class ClaudeAgent(Agent):
 
         settings_file = self.config_dir / "claude" / "settings.json"
         if settings_file.exists():
-            symlinks.append((Path("~/.claude/settings.json"), settings_file))
+            # Check if we have overrides - if so, use merged settings from cache
+            merged_path = self.config.build_merged_settings(
+                "claude", settings_file, self.repo_root
+            )
+            target_file = merged_path if merged_path else settings_file
+            symlinks.append((Path("~/.claude/settings.json"), target_file))
 
         agents_dir = self.config_dir / "claude" / "agents"
         if agents_dir.exists():

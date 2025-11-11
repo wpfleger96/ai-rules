@@ -41,6 +41,7 @@ ai-rules install --user-only        # Install only user-level configs
 ai-rules install --agents claude    # Install specific agents
 ai-rules install --dry-run          # Preview changes
 ai-rules install --force            # Skip confirmations
+ai-rules install --rebuild-cache    # Rebuild merged settings cache
 
 ai-rules status                     # Check symlink status (✓✗⚠○)
 ai-rules status --user-only         # Check only user-level configs
@@ -50,6 +51,29 @@ ai-rules update                     # Re-sync after adding files
 ai-rules uninstall                  # Remove all symlinks
 ai-rules uninstall --user-only      # Remove only user-level symlinks
 ai-rules list-agents                # Show available agents
+```
+
+### Configuration Management
+
+```bash
+# Interactive wizard for first-time setup
+ai-rules config init                # Start configuration wizard
+
+# View configuration
+ai-rules config show                # Show raw config files
+ai-rules config show --merged       # Show merged settings with overrides
+ai-rules config show --agent claude # Show config for specific agent
+ai-rules config edit                # Edit user config in $EDITOR
+
+# Manage exclusions
+ai-rules exclude add "~/.claude/*.json"      # Add exclusion pattern (supports globs)
+ai-rules exclude remove "~/.claude/*.json"   # Remove exclusion pattern
+ai-rules exclude list                        # List all exclusions
+
+# Manage settings overrides (for machine-specific settings)
+ai-rules override set claude.model "claude-sonnet-4-5-20250929"  # Set override
+ai-rules override unset claude.model         # Remove override
+ai-rules override list                       # List all overrides
 ```
 
 ### Project-Level Configuration
@@ -66,6 +90,20 @@ ai-rules uninstall --projects api   # Uninstall specific project
 
 ## Configuration
 
+### Quick Start with Config Wizard
+
+Run the interactive configuration wizard for guided setup:
+
+```bash
+ai-rules config init
+```
+
+This will walk you through:
+1. Selecting common exclusions
+2. Adding custom exclusion patterns (with glob support)
+3. Setting up machine-specific settings overrides
+4. Configuring projects
+
 ### User-Level Config
 
 Create `~/.ai-rules-config.yaml` for user-level settings and project mappings:
@@ -74,9 +112,20 @@ Create `~/.ai-rules-config.yaml` for user-level settings and project mappings:
 version: 1
 
 # Global exclusions (apply to all contexts)
+# Supports glob patterns: *.json, **/*.yaml, etc.
 exclude_symlinks:
   - "~/.config/goose/config.yaml"
-  - "~/.claude/settings.json"
+  - "~/.claude/*.log"              # Glob: exclude all log files
+  - "~/.claude/agents/debug-*.md"  # Glob: exclude debug agents
+
+# Machine-specific settings overrides
+# Keeps repo settings.json synced via git, but allows local overrides
+settings_overrides:
+  claude:
+    model: "claude-sonnet-4-5-20250929"  # Override model on personal laptop
+    # Other settings inherited from repo config/claude/settings.json
+  goose:
+    provider: "anthropic"
 
 # Project configurations
 projects:
@@ -95,7 +144,43 @@ projects:
       - "CLAUDE.md"  # Only use Goose
 ```
 
-Optional: Add `.ai-rules-config.yaml` in repo for defaults. User config takes precedence.
+**Config File Locations:**
+- `~/.ai-rules-config.yaml` - User-specific config (exclusions, overrides, projects)
+- `<repo>/.ai-rules-config.yaml` - Repo defaults (global exclusions only)
+
+**Config Precedence:**
+- User config exclusions + Repo config exclusions = Combined (additive)
+- Settings overrides only loaded from user config (machine-specific, not in git)
+
+### Settings Overrides - Syncing Configs Across Machines
+
+**Problem:** You want to sync your `settings.json` via git, but need different settings on different machines (e.g., different model access on work vs personal laptop).
+
+**Solution:** Use `settings_overrides` in your user config:
+
+```yaml
+# ~/.ai-rules-config.yaml on personal laptop
+settings_overrides:
+  claude:
+    model: "claude-sonnet-4-5-20250929"  # No Opus access
+
+# ~/.ai-rules-config.yaml on work laptop
+settings_overrides:
+  claude:
+    model: "claude-opus-4-20250514"  # Has Opus access
+```
+
+Both machines sync the same `config/claude/settings.json` via git, but each has different local overrides. The system merges them at install time:
+
+1. **Base settings** from `config/claude/settings.json` (git-tracked)
+2. **Merged with** overrides from `~/.ai-rules-config.yaml` (local only)
+3. **Cached** in `~/.ai-rules/cache/claude/settings.json`
+4. **Symlinked** to `~/.claude/settings.json`
+
+After changing overrides, run:
+```bash
+ai-rules install --rebuild-cache
+```
 
 ### Project-Level Rules
 
@@ -198,9 +283,21 @@ ls -la ~/.CLAUDE.md.ai-rules-backup.*
 mv ~/.CLAUDE.md.ai-rules-backup.20250104-143022 ~/.CLAUDE.md
 ```
 
-**Disable symlink:** Add to `~/.ai-rules-config.yaml` then run `ai-rules update`
-```yaml
-exclude_symlinks: ["~/.claude/settings.json"]
+**Disable symlink:** Use the exclude command or add to config manually:
+```bash
+ai-rules exclude add "~/.claude/settings.json"
+# Or edit manually: ai-rules config edit
+```
+
+**Override not applying:** Rebuild the merged settings cache:
+```bash
+ai-rules install --rebuild-cache
+```
+
+**View merged settings:** Check what's actually being applied:
+```bash
+ai-rules config show --merged
+ai-rules config show --merged --agent claude
 ```
 
 ## License

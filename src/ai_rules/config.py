@@ -1,8 +1,10 @@
 """Configuration loading and management."""
 
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Any
+import json
 import yaml
+from fnmatch import fnmatch
 
 
 class ProjectConfig:
@@ -16,12 +18,20 @@ class ProjectConfig:
         self.exclude_symlinks = set(exclude_symlinks or [])
 
     def is_excluded(self, symlink_target: str) -> bool:
-        """Check if a symlink target is excluded for this project."""
+        """Check if a symlink target is excluded for this project.
+
+        Supports both exact paths and glob patterns (e.g., ~/.claude/*.json).
+        """
         normalized = Path(symlink_target).expanduser().as_posix()
-        return any(
-            normalized == Path(excl).expanduser().as_posix()
-            for excl in self.exclude_symlinks
-        )
+        for excl in self.exclude_symlinks:
+            # Try exact match first (faster)
+            excl_normalized = Path(excl).expanduser().as_posix()
+            if normalized == excl_normalized:
+                return True
+            # Try glob pattern matching
+            if fnmatch(normalized, excl_normalized):
+                return True
+        return False
 
 
 class Config:
@@ -31,28 +41,31 @@ class Config:
         self,
         exclude_symlinks: Optional[List[str]] = None,
         projects: Optional[Dict[str, ProjectConfig]] = None,
+        settings_overrides: Optional[Dict[str, Dict[str, Any]]] = None,
     ):
         self.exclude_symlinks = set(exclude_symlinks or [])
         self.projects = projects or {}
+        self.settings_overrides = settings_overrides or {}
 
     @classmethod
     def load(cls, repo_root: Path) -> "Config":
         """Load configuration from available config files.
 
         Checks in order:
-        1. ~/.ai-rules-config.yaml (user-specific) - for projects and user exclusions
+        1. ~/.ai-rules-config.yaml (user-specific) - for projects, user exclusions, and settings overrides
         2. <repo_root>/.ai-rules-config.yaml (repo default) - for global exclusions
         3. Empty config if neither exists
 
-        Note: Projects are only loaded from user config, not repo config.
+        Note: Projects and settings_overrides are only loaded from user config, not repo config.
         """
         user_config_path = Path.home() / ".ai-rules-config.yaml"
         repo_config_path = repo_root / ".ai-rules-config.yaml"
 
         exclude_symlinks = []
         projects = {}
+        settings_overrides = {}
 
-        # Load user config (can contain projects and exclusions)
+        # Load user config (can contain projects, exclusions, and settings overrides)
         if user_config_path.exists():
             with open(user_config_path, "r") as f:
                 data = yaml.safe_load(f) or {}
@@ -76,21 +89,36 @@ class Config:
                             exclude_symlinks=project_exclusions,
                         )
 
-        # Load repo config (only for global exclusions, not projects)
+                # Load settings overrides
+                settings_overrides = data.get("settings_overrides", {})
+
+        # Load repo config (only for global exclusions, not projects or overrides)
         if repo_config_path.exists():
             with open(repo_config_path, "r") as f:
                 data = yaml.safe_load(f) or {}
                 exclude_symlinks.extend(data.get("exclude_symlinks", []))
 
-        return cls(exclude_symlinks=exclude_symlinks, projects=projects)
+        return cls(
+            exclude_symlinks=exclude_symlinks,
+            projects=projects,
+            settings_overrides=settings_overrides,
+        )
 
     def is_excluded(self, symlink_target: str) -> bool:
-        """Check if a symlink target is globally excluded."""
+        """Check if a symlink target is globally excluded.
+
+        Supports both exact paths and glob patterns (e.g., ~/.claude/*.json).
+        """
         normalized = Path(symlink_target).expanduser().as_posix()
-        return any(
-            normalized == Path(excl).expanduser().as_posix()
-            for excl in self.exclude_symlinks
-        )
+        for excl in self.exclude_symlinks:
+            # Try exact match first (faster)
+            excl_normalized = Path(excl).expanduser().as_posix()
+            if normalized == excl_normalized:
+                return True
+            # Try glob pattern matching
+            if fnmatch(normalized, excl_normalized):
+                return True
+        return False
 
     def is_project_excluded(self, project_name: str, symlink_target: str) -> bool:
         """Check if a symlink target is excluded for a specific project.
@@ -107,6 +135,99 @@ class Config:
             return project.is_excluded(symlink_target)
 
         return False
+
+    @staticmethod
+    def get_cache_dir() -> Path:
+        """Get the cache directory for merged settings."""
+        cache_dir = Path.home() / ".ai-rules" / "cache"
+        cache_dir.mkdir(parents=True, exist_ok=True)
+        return cache_dir
+
+    @staticmethod
+    def _deep_merge(base: Dict[str, Any], override: Dict[str, Any]) -> Dict[str, Any]:
+        """Deep merge two dictionaries, with override values taking precedence."""
+        result = base.copy()
+        for key, value in override.items():
+            if (
+                key in result
+                and isinstance(result[key], dict)
+                and isinstance(value, dict)
+            ):
+                result[key] = Config._deep_merge(result[key], value)
+            else:
+                result[key] = value
+        return result
+
+    def merge_settings(
+        self, agent: str, base_settings: Dict[str, Any]
+    ) -> Dict[str, Any]:
+        """Merge base settings with overrides for a specific agent.
+
+        Args:
+            agent: Agent name (e.g., 'claude', 'goose')
+            base_settings: Base settings dictionary from repo
+
+        Returns:
+            Merged settings dictionary with overrides applied
+        """
+        if agent not in self.settings_overrides:
+            return base_settings
+
+        return self._deep_merge(base_settings, self.settings_overrides[agent])
+
+    def get_merged_settings_path(self, agent: str, repo_root: Path) -> Optional[Path]:
+        """Get the path to cached merged settings for an agent.
+
+        Returns None if agent has no overrides (should use repo file directly).
+
+        Args:
+            agent: Agent name (e.g., 'claude', 'goose')
+            repo_root: Repository root path
+
+        Returns:
+            Path to cached merged settings file, or None if no overrides exist
+        """
+        if agent not in self.settings_overrides:
+            return None
+
+        cache_dir = self.get_cache_dir() / agent
+        cache_dir.mkdir(parents=True, exist_ok=True)
+        return cache_dir / "settings.json"
+
+    def build_merged_settings(
+        self, agent: str, base_settings_path: Path, repo_root: Path
+    ) -> Optional[Path]:
+        """Build merged settings file in cache if overrides exist.
+
+        Args:
+            agent: Agent name (e.g., 'claude', 'goose')
+            base_settings_path: Path to base settings.json in repo
+            repo_root: Repository root path
+
+        Returns:
+            Path to merged settings file, or None if no overrides exist
+        """
+        if agent not in self.settings_overrides:
+            return None
+
+        # Read base settings
+        if not base_settings_path.exists():
+            # No base settings, just create from overrides
+            base_settings = {}
+        else:
+            with open(base_settings_path, "r") as f:
+                base_settings = json.load(f)
+
+        # Merge with overrides
+        merged = self.merge_settings(agent, base_settings)
+
+        # Write to cache
+        cache_path = self.get_merged_settings_path(agent, repo_root)
+        if cache_path:
+            with open(cache_path, "w") as f:
+                json.dump(merged, f, indent=2)
+
+        return cache_path
 
     def validate_projects(self) -> List[str]:
         """Validate all project configurations.

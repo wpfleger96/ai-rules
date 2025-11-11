@@ -1,6 +1,47 @@
 # CHANGELOG
 
 
+## Unreleased
+
+### Features
+
+- **Glob Pattern Support**: Exclusion patterns now support glob matching (e.g., `~/.claude/*.json`, `**/*.yaml`)
+  - Enables flexible exclusions without listing every file
+  - Works with both exact paths and glob patterns
+
+- **Settings Overrides**: New machine-specific settings override system
+  - Sync base `settings.json` via git while maintaining local overrides
+  - Perfect for different model access across work/personal laptops
+  - Deep merge support for nested settings
+  - Cached merged settings in `~/.ai-rules/cache/`
+
+- **Improved CLI UX**: New command groups for easier configuration management
+  - `ai-rules config init` - Interactive configuration wizard for first-time setup
+  - `ai-rules config show` - View raw config or merged settings with overrides
+  - `ai-rules config edit` - Edit user config in $EDITOR
+  - `ai-rules exclude add/remove/list` - Manage exclusions without touching YAML
+  - `ai-rules override set/unset/list` - Manage settings overrides via CLI
+
+- **Install Enhancements**:
+  - `--rebuild-cache` flag to rebuild merged settings cache
+  - Automatic settings merging during install
+  - Cache management for merged configurations
+
+### Documentation
+
+- Comprehensive README updates with new command documentation
+- Updated example config file with detailed comments and use cases
+- Added troubleshooting section for common override scenarios
+- Documented config file precedence and merging behavior
+
+### Tests
+
+- Added comprehensive test suite for glob pattern matching
+- Added tests for settings override loading and merging
+- Added tests for cache creation and management
+- All 23+ tests passing
+
+
 ## v0.2.0 (2025-11-07)
 
 ### Features
