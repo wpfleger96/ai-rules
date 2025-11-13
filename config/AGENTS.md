@@ -40,3 +40,6 @@ This file defines mandatory rules that all LLMs must follow when interacting wit
 - You MUST use `uv` to manage Python dependencies and run commands
 - You MUST use `ruff` to lint and format code
 - You MUST use `pytest` to run tests
+
+## Tool Requirements
+- You MUST use `gh` CLI commands to interact with GitHub
