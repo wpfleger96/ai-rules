@@ -17,6 +17,14 @@ class ClaudeAgent(Agent):
     def agent_id(self) -> str:
         return "claude"
 
+    @property
+    def config_file_name(self) -> str:
+        return "settings.json"
+
+    @property
+    def config_file_format(self) -> str:
+        return "json"
+
     def get_symlinks(self) -> List[Tuple[Path, Path]]:
         """Get all Claude Code symlinks including dynamic agents/commands."""
         symlinks = []

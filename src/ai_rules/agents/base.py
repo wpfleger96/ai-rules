@@ -26,6 +26,18 @@ class Agent(ABC):
         """Short identifier for the agent (e.g., 'claude', 'goose')."""
         pass
 
+    @property
+    @abstractmethod
+    def config_file_name(self) -> str:
+        """Config file name for the agent (e.g., 'settings.json', 'config.yaml')."""
+        pass
+
+    @property
+    @abstractmethod
+    def config_file_format(self) -> str:
+        """Config file format ('json' or 'yaml')."""
+        pass
+
     @abstractmethod
     def get_symlinks(self) -> List[Tuple[Path, Path]]:
         """Get list of (target_path, source_path) tuples for symlinks.

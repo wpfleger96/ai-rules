@@ -419,7 +419,9 @@ def install(
     if not dry_run:
         for agent in selected_agents:
             if agent.agent_id in ["claude", "goose"]:
-                settings_file = repo_root / "config" / agent.agent_id / "settings.json"
+                settings_file = (
+                    repo_root / "config" / agent.agent_id / agent.config_file_name
+                )
                 if settings_file.exists():
                     # Build cache with force_rebuild if --rebuild-cache was specified
                     config.build_merged_settings(
@@ -1193,20 +1195,27 @@ def override_set(key: str, value: str):
     parts = key.split(".", 1)
     if len(parts) != 2:
         console.print("[red]Error:[/red] Key must be in format 'agent.setting'")
-        console.print("[dim]Example: claude.model or claude.hooks.SubagentStop[0].command[/dim]")
+        console.print(
+            "[dim]Example: claude.model or claude.hooks.SubagentStop[0].command[/dim]"
+        )
         sys.exit(1)
 
     agent, setting = parts
 
-    is_valid, error_msg, suggestions = validate_override_path(
+    is_valid, error_msg, warning_msg, suggestions = validate_override_path(
         agent, setting, repo_root
     )
 
     if not is_valid:
         console.print(f"[red]Error:[/red] {error_msg}")
         if suggestions:
-            console.print(f"[dim]Available options: {', '.join(suggestions[:10])}[/dim]")
+            console.print(
+                f"[dim]Available options: {', '.join(suggestions[:10])}[/dim]"
+            )
         sys.exit(1)
+
+    if warning_msg:
+        console.print(f"[yellow]Warning:[/yellow] {warning_msg}")
 
     import json
 
@@ -1245,7 +1254,9 @@ def override_set(key: str, value: str):
             current = current[component]
         else:
             if component not in current:
-                next_component = path_components[i + 1] if i + 1 < len(path_components) else None
+                next_component = (
+                    path_components[i + 1] if i + 1 < len(path_components) else None
+                )
                 if isinstance(next_component, int):
                     current[component] = []
                 else:
@@ -1407,12 +1418,24 @@ def config_show(merged: bool, agent: Optional[str]):
             console.print(f"[bold]{agent_name}:[/bold]")
 
             # Try to load base settings
-            base_path = repo_root / "config" / agent_name / "settings.json"
+            from ai_rules.config import AGENT_CONFIG_METADATA
+
+            agent_config = AGENT_CONFIG_METADATA.get(agent_name)
+            if not agent_config:
+                console.print(f"  [red]✗[/red] Unknown agent: {agent_name}")
+                console.print()
+                continue
+
+            base_path = repo_root / "config" / agent_name / agent_config["config_file"]
             if base_path.exists():
                 with open(base_path, "r") as f:
                     import json
+                    import yaml
 
-                    base_settings = json.load(f)
+                    if agent_config["format"] == "json":
+                        base_settings = json.load(f)
+                    else:
+                        base_settings = yaml.safe_load(f)
 
                 merged_settings = cfg.merge_settings(agent_name, base_settings)
 

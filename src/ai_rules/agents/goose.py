@@ -17,6 +17,14 @@ class GooseAgent(Agent):
     def agent_id(self) -> str:
         return "goose"
 
+    @property
+    def config_file_name(self) -> str:
+        return "config.yaml"
+
+    @property
+    def config_file_format(self) -> str:
+        return "yaml"
+
     def get_symlinks(self) -> List[Tuple[Path, Path]]:
         """Get all Goose symlinks."""
         symlinks = []
@@ -27,7 +35,12 @@ class GooseAgent(Agent):
 
         config_file = self.config_dir / "goose" / "config.yaml"
         if config_file.exists():
-            symlinks.append((Path("~/.config/goose/config.yaml"), config_file))
+            # Get appropriate settings file (cached merged or base)
+            # Cache is built during install operations, not during enumeration
+            target_file = self.config.get_settings_file_for_symlink(
+                "goose", config_file, self.repo_root
+            )
+            symlinks.append((Path("~/.config/goose/config.yaml"), target_file))
 
         return symlinks
 

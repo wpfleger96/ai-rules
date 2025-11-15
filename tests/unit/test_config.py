@@ -2,7 +2,12 @@ from pathlib import Path
 
 import pytest
 
-from ai_rules.config import Config, parse_setting_path, navigate_path, validate_override_path
+from ai_rules.config import (
+    Config,
+    parse_setting_path,
+    navigate_path,
+    validate_override_path,
+)
 
 
 @pytest.mark.unit
@@ -618,7 +623,7 @@ class TestPathValidation:
 
     def test_validate_invalid_agent_fails(self, tmp_path):
         """Test that invalid agent name fails validation."""
-        is_valid, error, suggestions = validate_override_path(
+        is_valid, error, warning, suggestions = validate_override_path(
             "invalid", "model", tmp_path
         )
         assert not is_valid
@@ -628,7 +633,7 @@ class TestPathValidation:
 
     def test_validate_missing_settings_file_fails(self, tmp_path):
         """Test that missing settings file fails validation."""
-        is_valid, error, suggestions = validate_override_path(
+        is_valid, error, warning, suggestions = validate_override_path(
             "claude", "model", tmp_path
         )
         assert not is_valid
@@ -640,11 +645,12 @@ class TestPathValidation:
         settings_file.parent.mkdir(parents=True)
         settings_file.write_text('{"model": "sonnet"}')
 
-        is_valid, error, suggestions = validate_override_path(
+        is_valid, error, warning, suggestions = validate_override_path(
             "claude", "model", tmp_path
         )
         assert is_valid
         assert error == ""
+        assert warning == ""
         assert suggestions == []
 
     def test_validate_valid_nested_path_succeeds(self, tmp_path):
@@ -653,10 +659,11 @@ class TestPathValidation:
         settings_file.parent.mkdir(parents=True)
         settings_file.write_text('{"env": {"VAR": "value"}}')
 
-        is_valid, error, suggestions = validate_override_path(
+        is_valid, error, warning, suggestions = validate_override_path(
             "claude", "env.VAR", tmp_path
         )
         assert is_valid
+        assert warning == ""
 
     def test_validate_valid_array_path_succeeds(self, tmp_path):
         """Test that valid array path succeeds."""
@@ -664,22 +671,24 @@ class TestPathValidation:
         settings_file.parent.mkdir(parents=True)
         settings_file.write_text('{"items": ["first", "second"]}')
 
-        is_valid, error, suggestions = validate_override_path(
+        is_valid, error, warning, suggestions = validate_override_path(
             "claude", "items[0]", tmp_path
         )
         assert is_valid
+        assert warning == ""
 
     def test_validate_invalid_path_provides_suggestions(self, tmp_path):
-        """Test that invalid path provides suggestions."""
+        """Test that invalid path provides suggestions (as warning)."""
         settings_file = tmp_path / "config" / "claude" / "settings.json"
         settings_file.parent.mkdir(parents=True)
         settings_file.write_text('{"model": "sonnet", "theme": "dark"}')
 
-        is_valid, error, suggestions = validate_override_path(
+        is_valid, error, warning, suggestions = validate_override_path(
             "claude", "invalid", tmp_path
         )
-        assert not is_valid
-        assert "not found" in error.lower()
+        assert is_valid
+        assert error == ""
+        assert "not found" in warning.lower()
         assert "model" in suggestions
         assert "theme" in suggestions
 
@@ -689,7 +698,7 @@ class TestPathValidation:
         settings_file.parent.mkdir(parents=True)
         settings_file.write_text('{"items": ["first"]}')
 
-        is_valid, error, suggestions = validate_override_path(
+        is_valid, error, warning, suggestions = validate_override_path(
             "claude", "items[invalid]", tmp_path
         )
         assert not is_valid
@@ -722,13 +731,7 @@ class TestDeepMergeWithArrays:
                 ]
             }
         }
-        override = {
-            "hooks": {
-                "SubagentStop": [
-                    {"command": "new.py"}
-                ]
-            }
-        }
+        override = {"hooks": {"SubagentStop": [{"command": "new.py"}]}}
 
         result = config._deep_merge(base, override)
 
@@ -761,26 +764,10 @@ class TestDeepMergeWithArrays:
         config = Config()
         base = {
             "hooks": {
-                "SubagentStop": [
-                    {
-                        "hooks": [
-                            {"type": "command", "command": "old.py"}
-                        ]
-                    }
-                ]
+                "SubagentStop": [{"hooks": [{"type": "command", "command": "old.py"}]}]
             }
         }
-        override = {
-            "hooks": {
-                "SubagentStop": [
-                    {
-                        "hooks": [
-                            {"command": "new.py"}
-                        ]
-                    }
-                ]
-            }
-        }
+        override = {"hooks": {"SubagentStop": [{"hooks": [{"command": "new.py"}]}]}}
 
         result = config._deep_merge(base, override)
 

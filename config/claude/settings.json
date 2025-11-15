@@ -37,6 +37,8 @@
       "Bash(gh pr diff:*)",
       "Bash(gh pr list:*)",
       "Bash(gh pr view:*)",
+      "Bash(gh release view:*)",
+      "Bash(gh release list:*)",
       "Bash(gh search issues:*)",
       "Bash(git add:*)",
       "Bash(git branch:*)",

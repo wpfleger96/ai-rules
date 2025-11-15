@@ -17,6 +17,14 @@ class SharedAgent(Agent):
     def agent_id(self) -> str:
         return "shared"
 
+    @property
+    def config_file_name(self) -> str:
+        return ""
+
+    @property
+    def config_file_format(self) -> str:
+        return ""
+
     def get_symlinks(self) -> List[Tuple[Path, Path]]:
         """Get shared symlinks for agent-agnostic configurations."""
         symlinks = []

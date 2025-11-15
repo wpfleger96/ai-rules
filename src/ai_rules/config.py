@@ -8,6 +8,17 @@ import re
 import yaml
 from fnmatch import fnmatch
 
+AGENT_CONFIG_METADATA = {
+    "claude": {
+        "config_file": "settings.json",
+        "format": "json",
+    },
+    "goose": {
+        "config_file": "config.yaml",
+        "format": "yaml",
+    },
+}
+
 
 def parse_setting_path(path: str) -> List[Union[str, int]]:
     """Parse a setting path with array indices into components.
@@ -140,7 +151,7 @@ def _format_path(components: List[Union[str, int]]) -> str:
 
 def validate_override_path(
     agent: str, setting: str, repo_root: Path
-) -> Tuple[bool, str, List[str]]:
+) -> Tuple[bool, str, str, List[str]]:
     """Validate an override path against base settings.
 
     Args:
@@ -149,45 +160,56 @@ def validate_override_path(
         repo_root: Repository root path
 
     Returns:
-        Tuple of (is_valid, error_message, suggestions)
-        - If valid: (True, '', [])
-        - If invalid: (False, 'error message', ['suggestion1', 'suggestion2'])
+        Tuple of (is_valid, error_message, warning_message, suggestions)
+        - If valid: (True, '', '', [])
+        - If invalid (hard error): (False, 'error message', '', ['suggestion1', 'suggestion2'])
+        - If valid with warning: (True, '', 'warning message', ['suggestion1', 'suggestion2'])
     """
-    valid_agents = ["claude", "goose"]
+    valid_agents = list(AGENT_CONFIG_METADATA.keys())
     if agent not in valid_agents:
         return (
             False,
             f"Unknown agent '{agent}'",
+            "",
             valid_agents,
         )
 
-    settings_file = repo_root / "config" / agent / "settings.json"
+    agent_config = AGENT_CONFIG_METADATA[agent]
+    config_file = agent_config["config_file"]
+    config_format = agent_config["format"]
+
+    settings_file = repo_root / "config" / agent / config_file
     if not settings_file.exists():
         return (
             False,
             f"No base settings file found for agent '{agent}' at {settings_file}",
+            "",
             [],
         )
 
     try:
         with open(settings_file, "r") as f:
-            base_settings = json.load(f)
-    except (json.JSONDecodeError, OSError) as e:
-        return (False, f"Failed to load base settings: {e}", [])
+            if config_format == "json":
+                base_settings = json.load(f)
+            elif config_format == "yaml":
+                base_settings = yaml.safe_load(f)
+            else:
+                return (False, f"Unsupported config format: {config_format}", "", [])
+    except (json.JSONDecodeError, yaml.YAMLError, OSError) as e:
+        return (False, f"Failed to load base settings: {e}", "", [])
 
     try:
         path_components = parse_setting_path(setting)
     except ValueError as e:
-        return (False, str(e), [])
+        return (False, str(e), "", [])
 
     value, success, error_msg = navigate_path(base_settings, path_components)
 
     if success:
-        return (True, "", [])
+        return (True, "", "", [])
 
     suggestions = []
     if "not found" in error_msg.lower():
-        len(path_components) - 1
         for i in range(len(path_components) - 1, -1, -1):
             partial_path = path_components[:i]
             partial_value, partial_success, _ = navigate_path(
@@ -197,7 +219,11 @@ def validate_override_path(
                 suggestions = list(partial_value.keys())
                 break
 
-    return (False, error_msg, suggestions)
+    warning_msg = f"Path '{setting}' not found in base config. Setting will be added as a new key."
+    if suggestions:
+        warning_msg += f" Did you mean one of: {', '.join(suggestions[:5])}?"
+
+    return (True, "", warning_msg, suggestions)
 
 
 class ProjectConfig:
@@ -398,9 +424,13 @@ class Config:
         if agent not in self.settings_overrides:
             return None
 
+        agent_config = AGENT_CONFIG_METADATA.get(agent)
+        if not agent_config:
+            return None
+
         cache_dir = self.get_cache_dir() / agent
         cache_dir.mkdir(parents=True, exist_ok=True)
-        return cache_dir / "settings.json"
+        return cache_dir / agent_config["config_file"]
 
     def get_settings_file_for_symlink(
         self, agent: str, base_settings_path: Path, repo_root: Path
@@ -487,7 +517,7 @@ class Config:
 
         Args:
             agent: Agent name (e.g., 'claude', 'goose')
-            base_settings_path: Path to base settings.json in repo
+            base_settings_path: Path to base config file in repo
             repo_root: Repository root path
             force_rebuild: Force rebuild even if cache exists and is fresh
 
@@ -504,13 +534,24 @@ class Config:
             if not self.is_cache_stale(agent, base_settings_path, repo_root):
                 return cache_path
 
+        agent_config = AGENT_CONFIG_METADATA.get(agent)
+        if not agent_config:
+            return None
+
+        config_format = agent_config["format"]
+
         # Read base settings
         if not base_settings_path.exists():
             # No base settings, just create from overrides
             base_settings = {}
         else:
             with open(base_settings_path, "r") as f:
-                base_settings = json.load(f)
+                if config_format == "json":
+                    base_settings = json.load(f)
+                elif config_format == "yaml":
+                    base_settings = yaml.safe_load(f) or {}
+                else:
+                    return None
 
         # Merge with overrides
         merged = self.merge_settings(agent, base_settings)
@@ -518,7 +559,10 @@ class Config:
         # Write to cache
         if cache_path:
             with open(cache_path, "w") as f:
-                json.dump(merged, f, indent=2)
+                if config_format == "json":
+                    json.dump(merged, f, indent=2)
+                elif config_format == "yaml":
+                    yaml.safe_dump(merged, f, default_flow_style=False, sort_keys=False)
 
         return cache_path
 
