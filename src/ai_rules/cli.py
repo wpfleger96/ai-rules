@@ -14,7 +14,12 @@ from ai_rules.agents.base import Agent
 from ai_rules.agents.claude import ClaudeAgent
 from ai_rules.agents.goose import GooseAgent
 from ai_rules.agents.shared import SharedAgent
-from ai_rules.config import Config, ProjectConfig
+from ai_rules.config import (
+    Config,
+    ProjectConfig,
+    parse_setting_path,
+    validate_override_path,
+)
 from ai_rules.symlinks import (
     SymlinkResult,
     check_symlink,
@@ -1169,20 +1174,40 @@ def override_set(key: str, value: str):
     """Set a settings override for an agent.
 
     KEY should be in format 'agent.setting' (e.g., 'claude.model')
+    Supports array notation: 'claude.hooks.SubagentStop[0].hooks[0].command'
     VALUE will be parsed as JSON if possible, otherwise treated as string
+
+    Array notation examples:
+    - claude.hooks.SubagentStop[0].command
+    - claude.hooks.SubagentStop[0].hooks[0].command
+    - claude.items[0].nested[1].value
+
+    Path validation:
+    - Validates agent name (must be 'claude', 'goose', etc.)
+    - Validates full path against base settings structure
+    - Provides helpful suggestions when paths are invalid
     """
     user_config_path = Path.home() / ".ai-rules-config.yaml"
+    repo_root = get_repo_root()
 
-    # Parse key
     parts = key.split(".", 1)
     if len(parts) != 2:
         console.print("[red]Error:[/red] Key must be in format 'agent.setting'")
-        console.print("[dim]Example: claude.model[/dim]")
+        console.print("[dim]Example: claude.model or claude.hooks.SubagentStop[0].command[/dim]")
         sys.exit(1)
 
     agent, setting = parts
 
-    # Try to parse value as JSON
+    is_valid, error_msg, suggestions = validate_override_path(
+        agent, setting, repo_root
+    )
+
+    if not is_valid:
+        console.print(f"[red]Error:[/red] {error_msg}")
+        if suggestions:
+            console.print(f"[dim]Available options: {', '.join(suggestions[:10])}[/dim]")
+        sys.exit(1)
+
     import json
 
     try:
@@ -1198,14 +1223,51 @@ def override_set(key: str, value: str):
     if agent not in data["settings_overrides"]:
         data["settings_overrides"][agent] = {}
 
-    # Support nested keys (e.g., claude.foo.bar)
-    setting_parts = setting.split(".")
+    try:
+        path_components = parse_setting_path(setting)
+    except ValueError as e:
+        console.print(f"[red]Error:[/red] {e}")
+        sys.exit(1)
+
     current = data["settings_overrides"][agent]
-    for part in setting_parts[:-1]:
-        if part not in current:
-            current[part] = {}
-        current = current[part]
-    current[setting_parts[-1]] = parsed_value
+    for i, component in enumerate(path_components[:-1]):
+        if isinstance(component, int):
+            if not isinstance(current, list):
+                console.print(
+                    f"[red]Error:[/red] Expected array at path component {i}, "
+                    f"but found {type(current).__name__}"
+                )
+                sys.exit(1)
+
+            while len(current) <= component:
+                current.append({})
+
+            current = current[component]
+        else:
+            if component not in current:
+                next_component = path_components[i + 1] if i + 1 < len(path_components) else None
+                if isinstance(next_component, int):
+                    current[component] = []
+                else:
+                    current[component] = {}
+
+            current = current[component]
+
+    final_component = path_components[-1]
+    if isinstance(final_component, int):
+        if not isinstance(current, list):
+            console.print(
+                f"[red]Error:[/red] Expected array for final component, "
+                f"but found {type(current).__name__}"
+            )
+            sys.exit(1)
+
+        while len(current) <= final_component:
+            current.append(None)
+
+        current[final_component] = parsed_value
+    else:
+        current[final_component] = parsed_value
 
     Config.save_user_config(data)
 

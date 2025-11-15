@@ -1,11 +1,203 @@
 """Configuration loading and management."""
 
 from pathlib import Path
-from typing import Dict, List, Optional, Any
+from typing import Dict, List, Optional, Any, Union, Tuple
 import copy
 import json
+import re
 import yaml
 from fnmatch import fnmatch
+
+
+def parse_setting_path(path: str) -> List[Union[str, int]]:
+    """Parse a setting path with array indices into components.
+
+    Examples:
+        'model' -> ['model']
+        'hooks.SubagentStop[0].command' -> ['hooks', 'SubagentStop', 0, 'command']
+        'env.SOME_VAR' -> ['env', 'SOME_VAR']
+        'hooks.SubagentStop[0].hooks[0].command' -> ['hooks', 'SubagentStop', 0, 'hooks', 0, 'command']
+
+    Args:
+        path: Setting path string with optional array indices
+
+    Returns:
+        List of path components (str for keys, int for array indices)
+
+    Raises:
+        ValueError: If array indices are invalid or path is malformed
+    """
+    if not path:
+        raise ValueError("Path cannot be empty")
+
+    components = []
+    parts = path.split(".")
+
+    for part in parts:
+        if "[" in part:
+            match = re.match(r"^([^\[]+)(\[\d+\])+$", part)
+            if not match:
+                raise ValueError(
+                    f"Invalid array notation in '{part}'. Use format: key[0] or key[0][1]"
+                )
+
+            key = match.group(1)
+            components.append(key)
+
+            indices = re.findall(r"\[(\d+)\]", part)
+            for idx in indices:
+                components.append(int(idx))
+        else:
+            components.append(part)
+
+    return components
+
+
+def navigate_path(
+    data: Any, path_components: List[Union[str, int]]
+) -> Tuple[Any, bool, str]:
+    """Navigate a data structure using path components.
+
+    Args:
+        data: Data structure to navigate (dict, list, or primitive)
+        path_components: List of path components (str for keys, int for indices)
+
+    Returns:
+        Tuple of (value_at_path, success, error_message)
+        - If success: (value, True, '')
+        - If failure: (None, False, 'error description')
+    """
+    current = data
+
+    for i, component in enumerate(path_components):
+        if isinstance(component, int):
+            if not isinstance(current, list):
+                path_so_far = _format_path(path_components[:i])
+                return (
+                    None,
+                    False,
+                    f"Expected array at '{path_so_far}' but found {type(current).__name__}",
+                )
+
+            if component >= len(current):
+                path_so_far = _format_path(path_components[:i])
+                return (
+                    None,
+                    False,
+                    f"Array index {component} out of range at '{path_so_far}' (length: {len(current)})",
+                )
+
+            current = current[component]
+        else:
+            if not isinstance(current, dict):
+                path_so_far = _format_path(path_components[:i])
+                return (
+                    None,
+                    False,
+                    f"Expected object at '{path_so_far}' but found {type(current).__name__}",
+                )
+
+            if component not in current:
+                path_so_far = _format_path(path_components[: i + 1])
+                list(current.keys()) if isinstance(current, dict) else []
+                return (
+                    None,
+                    False,
+                    f"Key '{component}' not found at '{path_so_far}'",
+                )
+
+            current = current[component]
+
+    return (current, True, "")
+
+
+def _format_path(components: List[Union[str, int]]) -> str:
+    """Format path components back into a string representation.
+
+    Args:
+        components: List of path components
+
+    Returns:
+        Formatted path string
+    """
+    if not components:
+        return ""
+
+    result = []
+    i = 0
+    while i < len(components):
+        component = components[i]
+        if isinstance(component, str):
+            result.append(component)
+            i += 1
+        else:
+            if result:
+                result[-1] += f"[{component}]"
+            i += 1
+
+    return ".".join(result)
+
+
+def validate_override_path(
+    agent: str, setting: str, repo_root: Path
+) -> Tuple[bool, str, List[str]]:
+    """Validate an override path against base settings.
+
+    Args:
+        agent: Agent name (e.g., 'claude', 'goose')
+        setting: Setting path (e.g., 'hooks.SubagentStop[0].command')
+        repo_root: Repository root path
+
+    Returns:
+        Tuple of (is_valid, error_message, suggestions)
+        - If valid: (True, '', [])
+        - If invalid: (False, 'error message', ['suggestion1', 'suggestion2'])
+    """
+    valid_agents = ["claude", "goose"]
+    if agent not in valid_agents:
+        return (
+            False,
+            f"Unknown agent '{agent}'",
+            valid_agents,
+        )
+
+    settings_file = repo_root / "config" / agent / "settings.json"
+    if not settings_file.exists():
+        return (
+            False,
+            f"No base settings file found for agent '{agent}' at {settings_file}",
+            [],
+        )
+
+    try:
+        with open(settings_file, "r") as f:
+            base_settings = json.load(f)
+    except (json.JSONDecodeError, OSError) as e:
+        return (False, f"Failed to load base settings: {e}", [])
+
+    try:
+        path_components = parse_setting_path(setting)
+    except ValueError as e:
+        return (False, str(e), [])
+
+    value, success, error_msg = navigate_path(base_settings, path_components)
+
+    if success:
+        return (True, "", [])
+
+    suggestions = []
+    if "not found" in error_msg.lower():
+        len(path_components) - 1
+        for i in range(len(path_components) - 1, -1, -1):
+            partial_path = path_components[:i]
+            partial_value, partial_success, _ = navigate_path(
+                base_settings, partial_path
+            )
+            if partial_success and isinstance(partial_value, dict):
+                suggestions = list(partial_value.keys())
+                break
+
+    return (False, error_msg, suggestions)
 
 
 class ProjectConfig:
@@ -148,16 +340,28 @@ class Config:
     def _deep_merge(base: Dict[str, Any], override: Dict[str, Any]) -> Dict[str, Any]:
         """Deep merge two dictionaries, with override values taking precedence.
 
+        Supports merging nested dictionaries and arrays. Arrays are merged element-by-element,
+        with dict elements being recursively merged.
+
         Uses deep copy to prevent mutation of the base dictionary.
         """
         result = copy.deepcopy(base)
         for key, value in override.items():
-            if (
-                key in result
-                and isinstance(result[key], dict)
-                and isinstance(value, dict)
-            ):
+            if key not in result:
+                result[key] = value
+            elif isinstance(result[key], dict) and isinstance(value, dict):
                 result[key] = Config._deep_merge(result[key], value)
+            elif isinstance(result[key], list) and isinstance(value, list):
+                merged_array = copy.deepcopy(result[key])
+                for i, item in enumerate(value):
+                    if i < len(merged_array):
+                        if isinstance(merged_array[i], dict) and isinstance(item, dict):
+                            merged_array[i] = Config._deep_merge(merged_array[i], item)
+                        else:
+                            merged_array[i] = item
+                    else:
+                        merged_array.append(item)
+                result[key] = merged_array
             else:
                 result[key] = value
         return result

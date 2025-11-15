@@ -2,7 +2,7 @@ from pathlib import Path
 
 import pytest
 
-from ai_rules.config import Config
+from ai_rules.config import Config, parse_setting_path, navigate_path, validate_override_path
 
 
 @pytest.mark.unit
@@ -498,3 +498,292 @@ settings_overrides:
             "claude", base_settings_path, tmp_path
         )
         assert result == base_settings_path
+
+
+@pytest.mark.unit
+@pytest.mark.config
+class TestPathParsing:
+    """Test setting path parsing with array notation."""
+
+    def test_parse_simple_path(self):
+        """Test parsing a simple path without arrays."""
+        result = parse_setting_path("model")
+        assert result == ["model"]
+
+    def test_parse_nested_path(self):
+        """Test parsing a nested path."""
+        result = parse_setting_path("env.SOME_VAR")
+        assert result == ["env", "SOME_VAR"]
+
+    def test_parse_path_with_array_index(self):
+        """Test parsing a path with array index."""
+        result = parse_setting_path("hooks.SubagentStop[0].command")
+        assert result == ["hooks", "SubagentStop", 0, "command"]
+
+    def test_parse_path_with_multiple_array_indices(self):
+        """Test parsing a path with multiple array indices."""
+        result = parse_setting_path("hooks.SubagentStop[0].hooks[0].command")
+        assert result == ["hooks", "SubagentStop", 0, "hooks", 0, "command"]
+
+    def test_parse_path_with_nested_array_indices(self):
+        """Test parsing a path with nested array indices on same key."""
+        result = parse_setting_path("matrix[0][1].value")
+        assert result == ["matrix", 0, 1, "value"]
+
+    def test_parse_empty_path_raises_error(self):
+        """Test that empty path raises ValueError."""
+        with pytest.raises(ValueError, match="Path cannot be empty"):
+            parse_setting_path("")
+
+    def test_parse_invalid_array_notation_raises_error(self):
+        """Test that invalid array notation raises ValueError."""
+        with pytest.raises(ValueError, match="Invalid array notation"):
+            parse_setting_path("hooks[invalid].command")
+
+    def test_parse_unclosed_bracket_raises_error(self):
+        """Test that unclosed bracket raises ValueError."""
+        with pytest.raises(ValueError, match="Invalid array notation"):
+            parse_setting_path("hooks[0.command")
+
+
+@pytest.mark.unit
+@pytest.mark.config
+class TestPathNavigation:
+    """Test navigating data structures using path components."""
+
+    def test_navigate_simple_dict(self):
+        """Test navigating a simple dictionary."""
+        data = {"model": "sonnet"}
+        value, success, error = navigate_path(data, ["model"])
+        assert success
+        assert value == "sonnet"
+        assert error == ""
+
+    def test_navigate_nested_dict(self):
+        """Test navigating a nested dictionary."""
+        data = {"env": {"VAR": "value"}}
+        value, success, error = navigate_path(data, ["env", "VAR"])
+        assert success
+        assert value == "value"
+
+    def test_navigate_array_index(self):
+        """Test navigating with array index."""
+        data = {"items": ["first", "second", "third"]}
+        value, success, error = navigate_path(data, ["items", 0])
+        assert success
+        assert value == "first"
+
+    def test_navigate_nested_array_and_dict(self):
+        """Test navigating through nested arrays and dicts."""
+        data = {"hooks": {"SubagentStop": [{"command": "test.py"}]}}
+        value, success, error = navigate_path(
+            data, ["hooks", "SubagentStop", 0, "command"]
+        )
+        assert success
+        assert value == "test.py"
+
+    def test_navigate_missing_key_fails(self):
+        """Test that navigating to missing key fails."""
+        data = {"model": "sonnet"}
+        value, success, error = navigate_path(data, ["missing"])
+        assert not success
+        assert "not found" in error.lower()
+
+    def test_navigate_array_index_out_of_range_fails(self):
+        """Test that out of range array index fails."""
+        data = {"items": ["first"]}
+        value, success, error = navigate_path(data, ["items", 5])
+        assert not success
+        assert "out of range" in error.lower()
+
+    def test_navigate_expected_array_but_found_dict_fails(self):
+        """Test that expecting array but finding dict fails."""
+        data = {"items": {"key": "value"}}
+        value, success, error = navigate_path(data, ["items", 0])
+        assert not success
+        assert "expected array" in error.lower()
+
+    def test_navigate_expected_dict_but_found_array_fails(self):
+        """Test that expecting dict but finding array fails."""
+        data = {"items": ["first", "second"]}
+        value, success, error = navigate_path(data, ["items", "key"])
+        assert not success
+        assert "expected object" in error.lower()
+
+
+@pytest.mark.unit
+@pytest.mark.config
+class TestPathValidation:
+    """Test validation of override paths against base settings."""
+
+    def test_validate_invalid_agent_fails(self, tmp_path):
+        """Test that invalid agent name fails validation."""
+        is_valid, error, suggestions = validate_override_path(
+            "invalid", "model", tmp_path
+        )
+        assert not is_valid
+        assert "unknown agent" in error.lower()
+        assert "claude" in suggestions
+        assert "goose" in suggestions
+
+    def test_validate_missing_settings_file_fails(self, tmp_path):
+        """Test that missing settings file fails validation."""
+        is_valid, error, suggestions = validate_override_path(
+            "claude", "model", tmp_path
+        )
+        assert not is_valid
+        assert "no base settings file" in error.lower()
+
+    def test_validate_valid_simple_path_succeeds(self, tmp_path):
+        """Test that valid simple path succeeds."""
+        settings_file = tmp_path / "config" / "claude" / "settings.json"
+        settings_file.parent.mkdir(parents=True)
+        settings_file.write_text('{"model": "sonnet"}')
+
+        is_valid, error, suggestions = validate_override_path(
+            "claude", "model", tmp_path
+        )
+        assert is_valid
+        assert error == ""
+        assert suggestions == []
+
+    def test_validate_valid_nested_path_succeeds(self, tmp_path):
+        """Test that valid nested path succeeds."""
+        settings_file = tmp_path / "config" / "claude" / "settings.json"
+        settings_file.parent.mkdir(parents=True)
+        settings_file.write_text('{"env": {"VAR": "value"}}')
+
+        is_valid, error, suggestions = validate_override_path(
+            "claude", "env.VAR", tmp_path
+        )
+        assert is_valid
+
+    def test_validate_valid_array_path_succeeds(self, tmp_path):
+        """Test that valid array path succeeds."""
+        settings_file = tmp_path / "config" / "claude" / "settings.json"
+        settings_file.parent.mkdir(parents=True)
+        settings_file.write_text('{"items": ["first", "second"]}')
+
+        is_valid, error, suggestions = validate_override_path(
+            "claude", "items[0]", tmp_path
+        )
+        assert is_valid
+
+    def test_validate_invalid_path_provides_suggestions(self, tmp_path):
+        """Test that invalid path provides suggestions."""
+        settings_file = tmp_path / "config" / "claude" / "settings.json"
+        settings_file.parent.mkdir(parents=True)
+        settings_file.write_text('{"model": "sonnet", "theme": "dark"}')
+
+        is_valid, error, suggestions = validate_override_path(
+            "claude", "invalid", tmp_path
+        )
+        assert not is_valid
+        assert "not found" in error.lower()
+        assert "model" in suggestions
+        assert "theme" in suggestions
+
+    def test_validate_malformed_array_notation_fails(self, tmp_path):
+        """Test that malformed array notation fails."""
+        settings_file = tmp_path / "config" / "claude" / "settings.json"
+        settings_file.parent.mkdir(parents=True)
+        settings_file.write_text('{"items": ["first"]}')
+
+        is_valid, error, suggestions = validate_override_path(
+            "claude", "items[invalid]", tmp_path
+        )
+        assert not is_valid
+        assert "invalid array notation" in error.lower()
+
+
+@pytest.mark.unit
+@pytest.mark.config
+class TestDeepMergeWithArrays:
+    """Test deep merge functionality with array support."""
+
+    def test_merge_arrays_element_by_element(self):
+        """Test that arrays are merged element by element."""
+        config = Config()
+        base = {"items": ["a", "b", "c"]}
+        override = {"items": ["x", "y"]}
+
+        result = config._deep_merge(base, override)
+
+        assert result["items"] == ["x", "y", "c"]
+
+    def test_merge_array_with_dict_elements(self):
+        """Test merging arrays containing dicts."""
+        config = Config()
+        base = {
+            "hooks": {
+                "SubagentStop": [
+                    {"command": "old.py", "type": "command"},
+                    {"command": "other.py"},
+                ]
+            }
+        }
+        override = {
+            "hooks": {
+                "SubagentStop": [
+                    {"command": "new.py"}
+                ]
+            }
+        }
+
+        result = config._deep_merge(base, override)
+
+        assert result["hooks"]["SubagentStop"][0]["command"] == "new.py"
+        assert result["hooks"]["SubagentStop"][0]["type"] == "command"
+        assert result["hooks"]["SubagentStop"][1]["command"] == "other.py"
+
+    def test_merge_extends_base_array_if_override_longer(self):
+        """Test that override can extend base array."""
+        config = Config()
+        base = {"items": ["a"]}
+        override = {"items": ["x", "y", "z"]}
+
+        result = config._deep_merge(base, override)
+
+        assert result["items"] == ["x", "y", "z"]
+
+    def test_merge_preserves_base_array_elements_not_overridden(self):
+        """Test that array elements not in override are preserved."""
+        config = Config()
+        base = {"items": ["a", "b", "c", "d"]}
+        override = {"items": ["x"]}
+
+        result = config._deep_merge(base, override)
+
+        assert result["items"] == ["x", "b", "c", "d"]
+
+    def test_merge_nested_arrays_in_dicts(self):
+        """Test merging nested structures with arrays."""
+        config = Config()
+        base = {
+            "hooks": {
+                "SubagentStop": [
+                    {
+                        "hooks": [
+                            {"type": "command", "command": "old.py"}
+                        ]
+                    }
+                ]
+            }
+        }
+        override = {
+            "hooks": {
+                "SubagentStop": [
+                    {
+                        "hooks": [
+                            {"command": "new.py"}
+                        ]
+                    }
+                ]
+            }
+        }
+
+        result = config._deep_merge(base, override)
+
+        hooks_elem = result["hooks"]["SubagentStop"][0]["hooks"][0]
+        assert hooks_elem["command"] == "new.py"
+        assert hooks_elem["type"] == "command"

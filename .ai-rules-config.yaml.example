@@ -49,15 +49,36 @@ exclude_symlinks:
 #
 # CLI commands:
 #   ai-rules override set claude.model "claude-sonnet-4-5-20250929"
+#   ai-rules override set claude.hooks.SubagentStop[0].hooks[0].command "script.py"
 #   ai-rules override unset claude.model
 #   ai-rules override list
 #   ai-rules config show --merged
 #
+# Array notation:
+#   Use [0], [1], etc. for array indices in nested structures
+#   Example: claude.hooks.SubagentStop[0].hooks[0].command
+#
+# Path validation:
+#   Commands validate paths against base settings and provide suggestions
+#   Invalid paths are rejected with helpful error messages
+#
 # After changing overrides: ai-rules install --rebuild-cache
 settings_overrides:
+  # Simple overrides
   # claude:
   #   model: "claude-sonnet-4-5-20250929"  # Override on personal laptop
-  #   theme: "dark"
+  #
+  # Nested object overrides
+  #   env:
+  #     MY_CUSTOM_VAR: "value"
+  #
+  # Array element overrides (use YAML array syntax)
+  #   hooks:
+  #     SubagentStop:
+  #     - hooks:
+  #       - command: "uv run ~/my-hook.py"
+  #         type: "command"
+  #
   # goose:
   #   provider: "anthropic"
 

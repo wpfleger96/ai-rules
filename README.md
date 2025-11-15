@@ -71,7 +71,8 @@ ai-rules exclude remove "~/.claude/*.json"   # Remove exclusion pattern
 ai-rules exclude list                        # List all exclusions
 
 # Manage settings overrides (for machine-specific settings)
-ai-rules override set claude.model "claude-sonnet-4-5-20250929"  # Set override
+ai-rules override set claude.model "claude-sonnet-4-5-20250929"  # Set simple override
+ai-rules override set claude.hooks.SubagentStop[0].hooks[0].command "script.py"  # Array notation
 ai-rules override unset claude.model         # Remove override
 ai-rules override list                       # List all overrides
 ```
@@ -181,6 +182,25 @@ After changing overrides, run:
 ```bash
 ai-rules install --rebuild-cache
 ```
+
+#### Array Notation for Nested Settings
+
+Override commands support array index notation for complex nested structures:
+
+```bash
+# Override nested array elements (e.g., hooks)
+ai-rules override set claude.hooks.SubagentStop[0].hooks[0].command "uv run ~/my-hook.py"
+
+# Override environment variables
+ai-rules override set claude.env.MY_VAR "value"
+
+# The system validates paths and provides helpful suggestions
+ai-rules override set claude.modle "sonnet"
+# Error: Key 'modle' not found at 'modle'
+# Available options: model, env, hooks, statusLine, ...
+```
+
+Path validation ensures you only set valid overrides that exist in the base settings, preventing typos and configuration errors.
 
 ### Project-Level Rules
 
