@@ -15,6 +15,7 @@ from ai_rules.agents.claude import ClaudeAgent
 from ai_rules.agents.goose import GooseAgent
 from ai_rules.agents.shared import SharedAgent
 from ai_rules.config import (
+    AGENT_CONFIG_METADATA,
     Config,
     ProjectConfig,
     parse_setting_path,
@@ -282,7 +283,6 @@ def install_project_symlinks(
     for project_name, project in selected_projects.items():
         console.print(f"\n[bold]{project_name}[/bold] [dim]({project.path})[/dim]")
 
-        # Check if AGENTS.md exists for this project
         project_agents_file = (
             repo_root / "config" / "projects" / project_name / "AGENTS.md"
         )
@@ -382,7 +382,6 @@ def install(
     repo_root = get_repo_root()
     config = Config.load(repo_root)
 
-    # Clear cache if requested
     if rebuild_cache and not dry_run:
         import shutil
 
@@ -393,7 +392,6 @@ def install(
     all_agents = get_agents(repo_root, config)
     selected_agents = select_agents(all_agents, agents)
 
-    # Validate project configurations if not user_only
     if not user_only:
         validation_errors = config.validate_projects()
         if validation_errors:
@@ -405,7 +403,6 @@ def install(
             )
             sys.exit(1)
 
-    # Filter projects if specified
     selected_projects = filter_selected_projects(config, projects, user_only)
 
     if not dry_run and not check_first_run(selected_agents, force):
@@ -542,6 +539,7 @@ def status(agents: Optional[str], projects: Optional[str], user_only: bool):
 
     # User-level status
     console.print("[bold cyan]User-Level Configuration[/bold cyan]\n")
+    cache_stale = False
     for agent in selected_agents:
         console.print(f"[bold]{agent.name}:[/bold]")
 
@@ -559,6 +557,17 @@ def status(agents: Optional[str], projects: Optional[str], user_only: bool):
 
         for target, _ in excluded_symlinks:
             console.print(f"  [dim]○[/dim] {target} [dim](excluded by config)[/dim]")
+
+        # Check cache staleness for agents with settings overrides
+        agent_config = AGENT_CONFIG_METADATA.get(agent.agent_id)
+        if agent_config and agent.agent_id in config.settings_overrides:
+            base_settings_path = (
+                repo_root / "config" / agent.agent_id / agent_config["config_file"]
+            )
+            if config.is_cache_stale(agent.agent_id, base_settings_path, repo_root):
+                console.print("  [yellow]⚠[/yellow] Cached settings are stale")
+                all_correct = False
+                cache_stale = True
 
         console.print()
 
@@ -606,6 +615,24 @@ def status(agents: Optional[str], projects: Optional[str], user_only: bool):
                             f"  [dim]○[/dim] {agent_label} {target.name} [dim](excluded by config)[/dim]"
                         )
 
+                    # Check cache staleness for agents with settings overrides
+                    agent_config = AGENT_CONFIG_METADATA.get(agent.agent_id)
+                    if agent_config and agent.agent_id in config.settings_overrides:
+                        base_settings_path = (
+                            repo_root
+                            / "config"
+                            / agent.agent_id
+                            / agent_config["config_file"]
+                        )
+                        if config.is_cache_stale(
+                            agent.agent_id, base_settings_path, repo_root
+                        ):
+                            console.print(
+                                f"  [yellow]⚠[/yellow] {agent_label} Cached settings are stale"
+                            )
+                            all_correct = False
+                            cache_stale = True
+
                 console.print()
 
     # Check git hooks configuration
@@ -645,7 +672,12 @@ def status(agents: Optional[str], projects: Optional[str], user_only: bool):
     console.print()
 
     if not all_correct:
-        console.print("[yellow]💡 Run 'ai-rules install' to fix issues[/yellow]")
+        if cache_stale:
+            console.print(
+                "[yellow]💡 Run 'ai-rules install --rebuild-cache' to fix issues[/yellow]"
+            )
+        else:
+            console.print("[yellow]💡 Run 'ai-rules install' to fix issues[/yellow]")
         sys.exit(1)
     else:
         console.print("[green]All symlinks are correct![/green]")

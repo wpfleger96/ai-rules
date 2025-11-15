@@ -1,7 +1,12 @@
+import time
 from pathlib import Path
 
 import pytest
+import yaml
 from ai_rules.agents.claude import ClaudeAgent
+from ai_rules.agents.goose import GooseAgent
+from ai_rules.agents.shared import SharedAgent
+from ai_rules.cli import main
 from ai_rules.config import Config
 from ai_rules.symlinks import check_symlink, create_symlink
 
@@ -115,3 +120,171 @@ class TestStatusValidation:
         assert statuses[str(target1)] == "correct"
         assert statuses[str(target2)] == "missing"
         assert statuses[str(target3)] == "not_symlink"
+
+
+@pytest.mark.integration
+class TestStatusCacheValidation:
+    """Test status command cache staleness detection."""
+
+    def test_status_detects_stale_cache_when_base_settings_newer(
+        self, test_repo, mock_home, runner, monkeypatch
+    ):
+        """Test that status detects stale cache when base settings are modified."""
+        import ai_rules.cli
+
+        monkeypatch.setattr(ai_rules.cli, "get_repo_root", lambda: test_repo)
+
+        user_config_path = mock_home / ".ai-rules-config.yaml"
+        user_config = {
+            "version": 1,
+            "settings_overrides": {"claude": {"test_override": "value"}},
+        }
+        with open(user_config_path, "w") as f:
+            yaml.dump(user_config, f)
+
+        config = Config.load(test_repo)
+        cache_path = config.get_merged_settings_path("claude", test_repo)
+        assert cache_path is not None
+
+        config.build_merged_settings(
+            "claude", test_repo / "config" / "claude" / "settings.json", test_repo
+        )
+        assert cache_path.exists()
+
+        time.sleep(0.01)
+
+        base_settings_path = test_repo / "config" / "claude" / "settings.json"
+        base_settings_path.write_text('{"test": "updated"}')
+
+        assert config.is_cache_stale("claude", base_settings_path, test_repo)
+
+        result = runner.invoke(main, ["status"], catch_exceptions=False)
+        assert result.exit_code == 1
+        assert "Cached settings are stale" in result.output
+
+    def test_status_detects_stale_cache_when_user_config_newer(
+        self, test_repo, mock_home, runner, monkeypatch
+    ):
+        """Test that status detects stale cache when user config is modified."""
+        import ai_rules.cli
+
+        monkeypatch.setattr(ai_rules.cli, "get_repo_root", lambda: test_repo)
+
+        user_config_path = mock_home / ".ai-rules-config.yaml"
+        user_config = {
+            "version": 1,
+            "settings_overrides": {"claude": {"test_override": "value"}},
+        }
+        with open(user_config_path, "w") as f:
+            yaml.dump(user_config, f)
+
+        config = Config.load(test_repo)
+        cache_path = config.get_merged_settings_path("claude", test_repo)
+        assert cache_path is not None
+
+        config.build_merged_settings(
+            "claude", test_repo / "config" / "claude" / "settings.json", test_repo
+        )
+        assert cache_path.exists()
+
+        time.sleep(0.01)
+
+        user_config["settings_overrides"]["claude"]["test_override"] = "updated_value"
+        with open(user_config_path, "w") as f:
+            yaml.dump(user_config, f)
+
+        config_reloaded = Config.load(test_repo)
+        assert config_reloaded.is_cache_stale(
+            "claude", test_repo / "config" / "claude" / "settings.json", test_repo
+        )
+
+        result = runner.invoke(main, ["status"], catch_exceptions=False)
+        assert result.exit_code == 1
+        assert "Cached settings are stale" in result.output
+
+    def test_status_suggests_rebuild_cache_when_cache_stale(
+        self, test_repo, mock_home, runner, monkeypatch
+    ):
+        """Test that status suggests --rebuild-cache flag when cache is stale."""
+        import ai_rules.cli
+
+        monkeypatch.setattr(ai_rules.cli, "get_repo_root", lambda: test_repo)
+
+        user_config_path = mock_home / ".ai-rules-config.yaml"
+        user_config = {
+            "version": 1,
+            "settings_overrides": {"claude": {"test_override": "value"}},
+        }
+        with open(user_config_path, "w") as f:
+            yaml.dump(user_config, f)
+
+        config = Config.load(test_repo)
+        config.build_merged_settings(
+            "claude", test_repo / "config" / "claude" / "settings.json", test_repo
+        )
+
+        time.sleep(0.01)
+
+        base_settings_path = test_repo / "config" / "claude" / "settings.json"
+        base_settings_path.write_text('{"test": "updated"}')
+
+        result = runner.invoke(main, ["status"], catch_exceptions=False)
+        assert result.exit_code == 1
+        assert "--rebuild-cache" in result.output
+
+    def test_status_passes_when_cache_fresh(
+        self, test_repo, mock_home, runner, monkeypatch
+    ):
+        """Test that status passes when cache is fresh."""
+        import ai_rules.cli
+
+        monkeypatch.setattr(ai_rules.cli, "get_repo_root", lambda: test_repo)
+
+        user_config_path = mock_home / ".ai-rules-config.yaml"
+        user_config = {
+            "version": 1,
+            "settings_overrides": {"claude": {"test_override": "value"}},
+        }
+        with open(user_config_path, "w") as f:
+            yaml.dump(user_config, f)
+
+        config = Config.load(test_repo)
+        config.build_merged_settings(
+            "claude", test_repo / "config" / "claude" / "settings.json", test_repo
+        )
+
+        claude = ClaudeAgent(test_repo, config)
+        goose = GooseAgent(test_repo, config)
+        shared = SharedAgent(test_repo, config)
+        for agent in [claude, goose, shared]:
+            for target, source in agent.get_symlinks():
+                target_path = Path(str(target).replace("~", str(mock_home)))
+                create_symlink(target_path, source, force=False, dry_run=False)
+
+        assert not config.is_cache_stale(
+            "claude", test_repo / "config" / "claude" / "settings.json", test_repo
+        )
+
+        result = runner.invoke(main, ["status"], catch_exceptions=False)
+        assert result.exit_code == 0
+
+    def test_status_no_cache_warning_when_no_overrides(
+        self, test_repo, mock_home, runner, monkeypatch
+    ):
+        """Test that status doesn't warn about cache when no overrides exist."""
+        import ai_rules.cli
+
+        monkeypatch.setattr(ai_rules.cli, "get_repo_root", lambda: test_repo)
+
+        config = Config.load(test_repo)
+        claude = ClaudeAgent(test_repo, config)
+        goose = GooseAgent(test_repo, config)
+        shared = SharedAgent(test_repo, config)
+        for agent in [claude, goose, shared]:
+            for target, source in agent.get_symlinks():
+                target_path = Path(str(target).replace("~", str(mock_home)))
+                create_symlink(target_path, source, force=False, dry_run=False)
+
+        result = runner.invoke(main, ["status"], catch_exceptions=False)
+        assert result.exit_code == 0
+        assert "Cached settings are stale" not in result.output
