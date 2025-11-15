@@ -25,7 +25,12 @@ class ClaudeAgent(Agent):
 
         settings_file = self.config_dir / "claude" / "settings.json"
         if settings_file.exists():
-            symlinks.append((Path("~/.claude/settings.json"), settings_file))
+            # Get appropriate settings file (cached merged or base)
+            # Cache is built during install operations, not during enumeration
+            target_file = self.config.get_settings_file_for_symlink(
+                "claude", settings_file, self.repo_root
+            )
+            symlinks.append((Path("~/.claude/settings.json"), target_file))
 
         agents_dir = self.config_dir / "claude" / "agents"
         if agents_dir.exists():

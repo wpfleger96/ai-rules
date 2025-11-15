@@ -348,6 +348,11 @@ def install_project_symlinks(
 @click.option("--force", is_flag=True, help="Skip all confirmations")
 @click.option("--dry-run", is_flag=True, help="Preview changes without applying")
 @click.option(
+    "--rebuild-cache",
+    is_flag=True,
+    help="Rebuild merged settings cache (use after changing overrides)",
+)
+@click.option(
     "--agents",
     help="Comma-separated list of agents to install (default: all)",
 )
@@ -363,6 +368,7 @@ def install_project_symlinks(
 def install(
     force: bool,
     dry_run: bool,
+    rebuild_cache: bool,
     agents: Optional[str],
     projects: Optional[str],
     user_only: bool,
@@ -370,6 +376,15 @@ def install(
     """Install AI agent configs via symlinks."""
     repo_root = get_repo_root()
     config = Config.load(repo_root)
+
+    # Clear cache if requested
+    if rebuild_cache and not dry_run:
+        import shutil
+
+        cache_dir = Config.get_cache_dir()
+        if cache_dir.exists():
+            shutil.rmtree(cache_dir)
+            console.print("[dim]✓ Cleared settings cache[/dim]")
     all_agents = get_agents(repo_root, config)
     selected_agents = select_agents(all_agents, agents)
 
@@ -394,6 +409,20 @@ def install(
 
     if dry_run:
         console.print("[bold]Dry run mode - no changes will be made[/bold]\n")
+
+    # Build merged settings cache if needed (not in dry-run mode)
+    if not dry_run:
+        for agent in selected_agents:
+            if agent.agent_id in ["claude", "goose"]:
+                settings_file = repo_root / "config" / agent.agent_id / "settings.json"
+                if settings_file.exists():
+                    # Build cache with force_rebuild if --rebuild-cache was specified
+                    config.build_merged_settings(
+                        agent.agent_id,
+                        settings_file,
+                        repo_root,
+                        force_rebuild=rebuild_cache,
+                    )
 
     # Install user-level symlinks
     user_results = install_user_symlinks(selected_agents, force, dry_run)
@@ -1027,6 +1056,616 @@ def diff(agents: Optional[str]):
         console.print(
             "[yellow]💡 Run 'ai-rules install' to fix these differences[/yellow]"
         )
+
+
+@main.group()
+def exclude():
+    """Manage exclusion patterns."""
+    pass
+
+
+@exclude.command("add")
+@click.argument("pattern")
+def exclude_add(pattern: str):
+    """Add an exclusion pattern to user config.
+
+    PATTERN can be an exact path or glob pattern (e.g., ~/.claude/*.json)
+    """
+    user_config_path = Path.home() / ".ai-rules-config.yaml"
+
+    # Load existing config
+    if user_config_path.exists():
+        with open(user_config_path, "r") as f:
+            data = yaml.safe_load(f) or {}
+    else:
+        data = {"version": 1}
+
+    # Ensure exclude_symlinks exists
+    if "exclude_symlinks" not in data:
+        data["exclude_symlinks"] = []
+
+    # Add pattern if not already present
+    if pattern in data["exclude_symlinks"]:
+        console.print(f"[yellow]Pattern already excluded:[/yellow] {pattern}")
+        return
+
+    data["exclude_symlinks"].append(pattern)
+
+    # Write updated config
+    with open(user_config_path, "w") as f:
+        yaml.dump(data, f, default_flow_style=False, sort_keys=False)
+
+    console.print(f"[green]✓[/green] Added exclusion pattern: {pattern}")
+    console.print(f"[dim]Config updated: {user_config_path}[/dim]")
+
+
+@exclude.command("remove")
+@click.argument("pattern")
+def exclude_remove(pattern: str):
+    """Remove an exclusion pattern from user config."""
+    user_config_path = Path.home() / ".ai-rules-config.yaml"
+
+    if not user_config_path.exists():
+        console.print("[red]No user config found[/red]")
+        sys.exit(1)
+
+    with open(user_config_path, "r") as f:
+        data = yaml.safe_load(f) or {}
+
+    if "exclude_symlinks" not in data or pattern not in data["exclude_symlinks"]:
+        console.print(f"[yellow]Pattern not found:[/yellow] {pattern}")
+        sys.exit(1)
+
+    data["exclude_symlinks"].remove(pattern)
+
+    # Write updated config
+    with open(user_config_path, "w") as f:
+        yaml.dump(data, f, default_flow_style=False, sort_keys=False)
+
+    console.print(f"[green]✓[/green] Removed exclusion pattern: {pattern}")
+    console.print(f"[dim]Config updated: {user_config_path}[/dim]")
+
+
+@exclude.command("list")
+def exclude_list():
+    """List all exclusion patterns."""
+    repo_root = get_repo_root()
+    config = Config.load(repo_root)
+    user_config_path = Path.home() / ".ai-rules-config.yaml"
+    repo_config_path = repo_root / ".ai-rules-config.yaml"
+
+    if not config.exclude_symlinks:
+        console.print("[dim]No exclusion patterns configured[/dim]")
+        return
+
+    console.print("[bold]Exclusion Patterns:[/bold]\n")
+
+    # Load configs separately to show sources
+    user_exclusions = []
+    repo_exclusions = []
+
+    if user_config_path.exists():
+        with open(user_config_path, "r") as f:
+            data = yaml.safe_load(f) or {}
+            user_exclusions = data.get("exclude_symlinks", [])
+
+    if repo_config_path.exists():
+        with open(repo_config_path, "r") as f:
+            data = yaml.safe_load(f) or {}
+            repo_exclusions = data.get("exclude_symlinks", [])
+
+    for pattern in sorted(config.exclude_symlinks):
+        source = []
+        if pattern in user_exclusions:
+            source.append("user")
+        if pattern in repo_exclusions:
+            source.append("repo")
+        source_str = ", ".join(source)
+        console.print(f"  • {pattern} [dim]({source_str})[/dim]")
+
+
+@main.group()
+def override():
+    """Manage settings overrides."""
+    pass
+
+
+@override.command("set")
+@click.argument("key")
+@click.argument("value")
+def override_set(key: str, value: str):
+    """Set a settings override for an agent.
+
+    KEY should be in format 'agent.setting' (e.g., 'claude.model')
+    VALUE will be parsed as JSON if possible, otherwise treated as string
+    """
+    user_config_path = Path.home() / ".ai-rules-config.yaml"
+
+    # Parse key
+    parts = key.split(".", 1)
+    if len(parts) != 2:
+        console.print("[red]Error:[/red] Key must be in format 'agent.setting'")
+        console.print("[dim]Example: claude.model[/dim]")
+        sys.exit(1)
+
+    agent, setting = parts
+
+    # Try to parse value as JSON
+    import json
+
+    try:
+        parsed_value = json.loads(value)
+    except json.JSONDecodeError:
+        parsed_value = value
+
+    # Load existing config
+    if user_config_path.exists():
+        with open(user_config_path, "r") as f:
+            data = yaml.safe_load(f) or {}
+    else:
+        data = {"version": 1}
+
+    # Ensure settings_overrides exists
+    if "settings_overrides" not in data:
+        data["settings_overrides"] = {}
+
+    if agent not in data["settings_overrides"]:
+        data["settings_overrides"][agent] = {}
+
+    # Support nested keys (e.g., claude.foo.bar)
+    setting_parts = setting.split(".")
+    current = data["settings_overrides"][agent]
+    for part in setting_parts[:-1]:
+        if part not in current:
+            current[part] = {}
+        current = current[part]
+    current[setting_parts[-1]] = parsed_value
+
+    # Write updated config
+    with open(user_config_path, "w") as f:
+        yaml.dump(data, f, default_flow_style=False, sort_keys=False)
+
+    console.print(f"[green]✓[/green] Set override: {agent}.{setting} = {parsed_value}")
+    console.print(f"[dim]Config updated: {user_config_path}[/dim]")
+    console.print(
+        "\n[yellow]💡 Run 'ai-rules install --rebuild-cache' to apply changes[/yellow]"
+    )
+
+
+@override.command("unset")
+@click.argument("key")
+def override_unset(key: str):
+    """Remove a settings override.
+
+    KEY should be in format 'agent.setting' (e.g., 'claude.model')
+    Supports nested keys like 'agent.nested.key'
+    """
+    user_config_path = Path.home() / ".ai-rules-config.yaml"
+
+    if not user_config_path.exists():
+        console.print("[red]No user config found[/red]")
+        sys.exit(1)
+
+    # Parse key
+    parts = key.split(".", 1)
+    if len(parts) != 2:
+        console.print("[red]Error:[/red] Key must be in format 'agent.setting'")
+        sys.exit(1)
+
+    agent, setting = parts
+
+    with open(user_config_path, "r") as f:
+        data = yaml.safe_load(f) or {}
+
+    if "settings_overrides" not in data or agent not in data["settings_overrides"]:
+        console.print(f"[yellow]Override not found:[/yellow] {key}")
+        sys.exit(1)
+
+    # Support nested keys (e.g., claude.foo.bar)
+    setting_parts = setting.split(".")
+    current = data["settings_overrides"][agent]
+
+    # Navigate to parent of the key to delete
+    for part in setting_parts[:-1]:
+        if not isinstance(current, dict) or part not in current:
+            console.print(f"[yellow]Override not found:[/yellow] {key}")
+            sys.exit(1)
+        current = current[part]
+
+    # Check if final key exists
+    final_key = setting_parts[-1]
+    if not isinstance(current, dict) or final_key not in current:
+        console.print(f"[yellow]Override not found:[/yellow] {key}")
+        sys.exit(1)
+
+    # Delete the key
+    del current[final_key]
+
+    # Clean up empty nested dicts
+    current = data["settings_overrides"][agent]
+    path = []
+
+    # Rebuild path to check for empty dicts
+    for part in setting_parts[:-1]:
+        path.append((current, part))
+        current = current[part]
+
+    # Remove empty nested dicts from innermost to outermost
+    for parent, key in reversed(path):
+        if isinstance(parent[key], dict) and not parent[key]:
+            del parent[key]
+        else:
+            break
+
+    # Clean up empty agent entries
+    if not data["settings_overrides"][agent]:
+        del data["settings_overrides"][agent]
+
+    # Write updated config
+    with open(user_config_path, "w") as f:
+        yaml.dump(data, f, default_flow_style=False, sort_keys=False)
+
+    console.print(f"[green]✓[/green] Removed override: {key}")
+    console.print(f"[dim]Config updated: {user_config_path}[/dim]")
+    console.print(
+        "\n[yellow]💡 Run 'ai-rules install --rebuild-cache' to apply changes[/yellow]"
+    )
+
+
+@override.command("list")
+def override_list():
+    """List all settings overrides."""
+    repo_root = get_repo_root()
+    config = Config.load(repo_root)
+
+    if not config.settings_overrides:
+        console.print("[dim]No settings overrides configured[/dim]")
+        return
+
+    console.print("[bold]Settings Overrides:[/bold]\n")
+
+    for agent, overrides in sorted(config.settings_overrides.items()):
+        console.print(f"[bold]{agent}:[/bold]")
+        for key, value in sorted(overrides.items()):
+            console.print(f"  • {key}: {value}")
+        console.print()
+
+
+@main.group()
+def config():
+    """Manage ai-rules configuration."""
+    pass
+
+
+@config.command("show")
+@click.option(
+    "--merged", is_flag=True, help="Show merged settings with overrides applied"
+)
+@click.option("--agent", help="Show config for specific agent only")
+def config_show(merged: bool, agent: Optional[str]):
+    """Show current configuration."""
+    repo_root = get_repo_root()
+    cfg = Config.load(repo_root)
+    user_config_path = Path.home() / ".ai-rules-config.yaml"
+
+    if merged:
+        # Show merged settings
+        console.print("[bold]Merged Settings:[/bold]\n")
+
+        agents_to_show = [agent] if agent else ["claude", "goose"]
+
+        for agent_name in agents_to_show:
+            if agent_name not in cfg.settings_overrides:
+                console.print(
+                    f"[dim]{agent_name}: No overrides (using repo settings)[/dim]\n"
+                )
+                continue
+
+            console.print(f"[bold]{agent_name}:[/bold]")
+
+            # Try to load base settings
+            base_path = repo_root / "config" / agent_name / "settings.json"
+            if base_path.exists():
+                with open(base_path, "r") as f:
+                    import json
+
+                    base_settings = json.load(f)
+
+                merged_settings = cfg.merge_settings(agent_name, base_settings)
+
+                # Show overridden keys
+                overridden_keys = []
+                for key in cfg.settings_overrides[agent_name]:
+                    if key in base_settings:
+                        old_val = base_settings[key]
+                        new_val = merged_settings[key]
+                        console.print(
+                            f"  [yellow]↻[/yellow] {key}: {old_val} → {new_val}"
+                        )
+                        overridden_keys.append(key)
+                    else:
+                        console.print(
+                            f"  [green]+[/green] {key}: {merged_settings[key]}"
+                        )
+                        overridden_keys.append(key)
+
+                # Show unchanged keys
+                for key, value in merged_settings.items():
+                    if key not in overridden_keys:
+                        console.print(f"  [dim]•[/dim] {key}: {value}")
+            else:
+                console.print(
+                    f"  [yellow]⚠[/yellow] No base settings found at {base_path}"
+                )
+                console.print(
+                    f"  [dim]Overrides: {cfg.settings_overrides[agent_name]}[/dim]"
+                )
+
+            console.print()
+    else:
+        # Show raw config
+        console.print("[bold]Configuration:[/bold]\n")
+
+        if user_config_path.exists():
+            with open(user_config_path, "r") as f:
+                content = f.read()
+            console.print(f"[bold]User Config:[/bold] {user_config_path}")
+            console.print(content)
+        else:
+            console.print(f"[dim]No user config at {user_config_path}[/dim]\n")
+
+        repo_config_path = repo_root / ".ai-rules-config.yaml"
+        if repo_config_path.exists():
+            with open(repo_config_path, "r") as f:
+                content = f.read()
+            console.print(f"\n[bold]Repo Config:[/bold] {repo_config_path}")
+            console.print(content)
+
+
+@config.command("edit")
+def config_edit():
+    """Edit user configuration file in $EDITOR."""
+    import os
+    import subprocess
+
+    user_config_path = Path.home() / ".ai-rules-config.yaml"
+    editor = os.environ.get("EDITOR", "vi")
+
+    # Create config if it doesn't exist
+    if not user_config_path.exists():
+        user_config_path.parent.mkdir(parents=True, exist_ok=True)
+        with open(user_config_path, "w") as f:
+            f.write("version: 1\n")
+
+    try:
+        subprocess.run([editor, str(user_config_path)], check=True)
+        console.print(f"[green]✓[/green] Config edited: {user_config_path}")
+    except subprocess.CalledProcessError:
+        console.print("[red]Error opening editor[/red]")
+        sys.exit(1)
+
+
+@config.command("init")
+def config_init():
+    """Interactive configuration wizard."""
+    user_config_path = Path.home() / ".ai-rules-config.yaml"
+
+    console.print("[bold cyan]Welcome to ai-rules configuration wizard![/bold cyan]\n")
+    console.print("This will help you set up your .ai-rules-config.yaml file.")
+    console.print(f"Config will be created at: [dim]{user_config_path}[/dim]\n")
+
+    if user_config_path.exists():
+        console.print("[yellow]⚠[/yellow] Config file already exists!")
+        response = console.input("Overwrite existing config? [y/N]: ")
+        if response.lower() != "y":
+            console.print("[dim]Cancelled[/dim]")
+            return
+
+    # Initialize config
+    config_data = {"version": 1}
+
+    # Step 1: Exclusions
+    console.print("\n[bold]Step 1: Exclusion Patterns[/bold]")
+    console.print("Do you want to exclude any files from being managed?\n")
+
+    console.print("Common files to exclude:")
+    common_exclusions = [
+        ("~/.claude/settings.json", "Claude Code settings", False),
+        ("~/.config/goose/config.yaml", "Goose config", False),
+        ("~/.config/goose/.goosehints", "Goose hints", True),
+        ("~/AGENTS.md", "Shared agents file", False),
+    ]
+
+    selected_exclusions = []
+    for pattern, description, default in common_exclusions:
+        default_str = "Y/n" if default else "y/N"
+        response = console.input(f"  Exclude {description}? [{default_str}]: ").lower()
+        should_exclude = (default and response != "n") or (
+            not default and response == "y"
+        )
+        if should_exclude:
+            selected_exclusions.append(pattern)
+            console.print(f"    [green]✓[/green] Will exclude: {pattern}")
+
+    # Custom exclusions
+    console.print(
+        "\n[dim]Enter custom exclusion patterns (glob patterns supported)[/dim]"
+    )
+    console.print("[dim]One per line, empty line to finish:[/dim]")
+    while True:
+        pattern = console.input("> ").strip()
+        if not pattern:
+            break
+        selected_exclusions.append(pattern)
+        console.print(f"  [green]✓[/green] Added: {pattern}")
+
+    if selected_exclusions:
+        config_data["exclude_symlinks"] = selected_exclusions
+        console.print(
+            f"\n[green]✓[/green] Configured {len(selected_exclusions)} exclusion pattern(s)"
+        )
+
+    # Step 2: Settings Overrides
+    console.print("\n[bold]Step 2: Settings Overrides[/bold]")
+    response = console.input(
+        "Do you want to override any settings for this machine? [y/N]: "
+    )
+
+    if response.lower() == "y":
+        config_data["settings_overrides"] = {}
+
+        while True:
+            console.print("\nWhich agent's settings do you want to override?")
+            console.print("  1) claude")
+            console.print("  2) goose")
+            console.print("  3) done")
+            agent_choice = console.input("> ").strip()
+
+            if agent_choice == "3" or not agent_choice:
+                break
+
+            agent_map = {"1": "claude", "2": "goose"}
+            agent = agent_map.get(agent_choice)
+
+            if not agent:
+                console.print("[yellow]Invalid choice[/yellow]")
+                continue
+
+            console.print(f"\n[bold]{agent.title()} settings overrides:[/bold]")
+            console.print("[dim]Enter key=value pairs (empty to finish):[/dim]")
+            console.print("[dim]Example: model=claude-sonnet-4-5-20250929[/dim]\n")
+
+            agent_overrides = {}
+            while True:
+                override = console.input("> ").strip()
+                if not override:
+                    break
+
+                if "=" not in override:
+                    console.print("[yellow]Invalid format. Use key=value[/yellow]")
+                    continue
+
+                key, value = override.split("=", 1)
+                key = key.strip()
+                value = value.strip()
+
+                # Try to parse value as JSON
+                import json
+
+                try:
+                    parsed_value = json.loads(value)
+                except json.JSONDecodeError:
+                    parsed_value = value
+
+                agent_overrides[key] = parsed_value
+                console.print(f"  [green]✓[/green] Added: {key} = {parsed_value}")
+
+            if agent_overrides:
+                config_data["settings_overrides"][agent] = agent_overrides
+
+        if config_data["settings_overrides"]:
+            total_overrides = sum(
+                len(v) for v in config_data["settings_overrides"].values()
+            )
+            console.print(
+                f"\n[green]✓[/green] Configured {total_overrides} override(s) for {len(config_data['settings_overrides'])} agent(s)"
+            )
+
+    # Step 3: Projects
+    console.print("\n[bold]Step 3: Projects (Optional)[/bold]")
+    response = console.input(
+        "Do you want to configure project-specific settings? [y/N]: "
+    )
+
+    if response.lower() == "y":
+        config_data["projects"] = {}
+
+        while True:
+            console.print("\n[dim]Leave project name empty to finish[/dim]")
+            project_name = console.input("Project name: ").strip()
+            if not project_name:
+                break
+
+            project_path = console.input("Project path: ").strip()
+            if not project_path:
+                console.print("[yellow]Path required[/yellow]")
+                continue
+
+            project_config = {"path": project_path}
+
+            # Project-specific exclusions
+            console.print(
+                f"\n[dim]Project-specific exclusions for '{project_name}':[/dim]"
+            )
+            console.print("[dim]One per line, empty line to finish:[/dim]")
+            project_exclusions = []
+            while True:
+                pattern = console.input("> ").strip()
+                if not pattern:
+                    break
+                project_exclusions.append(pattern)
+                console.print(f"  [green]✓[/green] Added: {pattern}")
+
+            if project_exclusions:
+                project_config["exclude_symlinks"] = project_exclusions
+
+            config_data["projects"][project_name] = project_config
+            console.print(f"[green]✓[/green] Added project: {project_name}")
+
+            response = console.input("\nAdd another project? [y/N]: ")
+            if response.lower() != "y":
+                break
+
+        if config_data["projects"]:
+            console.print(
+                f"\n[green]✓[/green] Configured {len(config_data['projects'])} project(s)"
+            )
+
+    # Review and save
+    console.print("\n[bold cyan]Configuration Summary:[/bold cyan]")
+    console.print("=" * 50)
+
+    if "exclude_symlinks" in config_data:
+        console.print(
+            f"\n[bold]Global Exclusions ({len(config_data['exclude_symlinks'])}):[/bold]"
+        )
+        for pattern in config_data["exclude_symlinks"]:
+            console.print(f"  • {pattern}")
+
+    if "settings_overrides" in config_data:
+        console.print("\n[bold]Settings Overrides:[/bold]")
+        for agent, overrides in config_data["settings_overrides"].items():
+            console.print(f"  [bold]{agent}:[/bold]")
+            for key, value in overrides.items():
+                console.print(f"    • {key}: {value}")
+
+    if "projects" in config_data:
+        console.print(f"\n[bold]Projects ({len(config_data['projects'])}):[/bold]")
+        for name, proj in config_data["projects"].items():
+            console.print(f"  [bold]{name}:[/bold]")
+            console.print(f"    • path: {proj['path']}")
+            if "exclude_symlinks" in proj:
+                console.print(
+                    f"    • exclusions: {', '.join(proj['exclude_symlinks'])}"
+                )
+
+    console.print("\n" + "=" * 50)
+    response = console.input("\nSave configuration? [Y/n]: ")
+
+    if response.lower() in ("", "y"):
+        user_config_path.parent.mkdir(parents=True, exist_ok=True)
+        with open(user_config_path, "w") as f:
+            yaml.dump(config_data, f, default_flow_style=False, sort_keys=False)
+
+        console.print(f"\n[green]✓[/green] Configuration saved to {user_config_path}")
+        console.print("\n[bold]Next steps:[/bold]")
+        console.print("  • Run [cyan]ai-rules install[/cyan] to apply these settings")
+        console.print("  • Run [cyan]ai-rules config show[/cyan] to view your config")
+        console.print(
+            "  • Run [cyan]ai-rules config show --merged[/cyan] to see merged settings"
+        )
+    else:
+        console.print("[dim]Configuration not saved[/dim]")
 
 
 if __name__ == "__main__":
