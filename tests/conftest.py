@@ -1,4 +1,5 @@
 import pytest
+from click.testing import CliRunner
 
 
 def pytest_configure(config):
@@ -22,6 +23,12 @@ def mock_home(tmp_path, monkeypatch):
     home_dir.mkdir()
     monkeypatch.setenv("HOME", str(home_dir))
     return home_dir
+
+
+@pytest.fixture
+def runner():
+    """Create a Click CLI runner for testing CLI commands."""
+    return CliRunner()
 
 
 @pytest.fixture

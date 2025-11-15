@@ -1,13 +1,12 @@
 #!/usr/bin/env bash
 
-set -o errexit  # quit on first error
-set -o nounset
+set -euo pipefail
 
 echo "Syncing dependencies"
 uv sync
 
-echo "Running formatting"
-uvx ruff format .
-
 echo "Running linter"
 uvx ruff check . --fix
+
+echo "Running formatting"
+uvx ruff format .

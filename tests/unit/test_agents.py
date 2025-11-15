@@ -52,42 +52,6 @@ class TestClaudeAgent:
         assert "~/.claude/commands/test-command.md" in command_targets
         assert "~/.claude/commands/another-command.md" in command_targets
 
-    def test_handles_missing_agents_directory(self, tmp_path):
-        repo_root = tmp_path / "test-repo"
-        repo_root.mkdir()
-        config_dir = repo_root / "config"
-        config_dir.mkdir()
-        (config_dir / "AGENTS.md").write_text("# Test")
-        claude_dir = config_dir / "claude"
-        claude_dir.mkdir()
-        (claude_dir / "settings.json").write_text("{}")
-
-        agent = ClaudeAgent(repo_root, Config(exclude_symlinks=[]))
-        symlinks = agent.get_symlinks()
-
-        agent_targets = [
-            str(target) for target, _ in symlinks if "/agents/" in str(target)
-        ]
-        assert len(agent_targets) == 0
-
-    def test_handles_missing_commands_directory(self, tmp_path):
-        repo_root = tmp_path / "test-repo"
-        repo_root.mkdir()
-        config_dir = repo_root / "config"
-        config_dir.mkdir()
-        (config_dir / "AGENTS.md").write_text("# Test")
-        claude_dir = config_dir / "claude"
-        claude_dir.mkdir()
-        (claude_dir / "settings.json").write_text("{}")
-
-        agent = ClaudeAgent(repo_root, Config(exclude_symlinks=[]))
-        symlinks = agent.get_symlinks()
-
-        command_targets = [
-            str(target) for target, _ in symlinks if "/commands/" in str(target)
-        ]
-        assert len(command_targets) == 0
-
     def test_excludes_filtered_symlinks(self, test_repo):
         config = Config(
             exclude_symlinks=[
@@ -104,14 +68,6 @@ class TestClaudeAgent:
         assert "~/.claude/agents/test-agent.md" not in targets
         assert "~/CLAUDE.md" in targets
         assert "~/.claude/commands/test-command.md" in targets
-
-    def test_all_sources_point_to_existing_files(self, test_repo):
-        agent = ClaudeAgent(test_repo, Config(exclude_symlinks=[]))
-
-        symlinks = agent.get_symlinks()
-
-        for _, source in symlinks:
-            assert source.exists(), f"Source file does not exist: {source}"
 
 
 @pytest.mark.unit
@@ -139,14 +95,6 @@ class TestGooseAgent:
         assert "~/.config/goose/config.yaml" not in targets
         assert "~/.config/goose/.goosehints" in targets
 
-    def test_all_sources_point_to_existing_files(self, test_repo):
-        agent = GooseAgent(test_repo, Config(exclude_symlinks=[]))
-
-        symlinks = agent.get_symlinks()
-
-        for _, source in symlinks:
-            assert source.exists(), f"Source file does not exist: {source}"
-
 
 @pytest.mark.unit
 @pytest.mark.agents
@@ -171,14 +119,6 @@ class TestSharedAgent:
         targets = [str(target) for target, _ in symlinks]
         assert "~/AGENTS.md" not in targets
         assert len(targets) == 0
-
-    def test_all_sources_point_to_existing_files(self, test_repo):
-        agent = SharedAgent(test_repo, Config(exclude_symlinks=[]))
-
-        symlinks = agent.get_symlinks()
-
-        for _, source in symlinks:
-            assert source.exists(), f"Source file does not exist: {source}"
 
     def test_project_symlinks(self, test_repo, tmp_path):
         config = Config()

@@ -335,3 +335,30 @@ class Config:
                 )
 
         return errors
+
+    @staticmethod
+    def load_user_config() -> Dict[str, Any]:
+        """Load user config file with defaults.
+
+        Returns:
+            Dictionary with user config data, or empty dict with version if file doesn't exist
+        """
+        user_config_path = Path.home() / ".ai-rules-config.yaml"
+
+        if user_config_path.exists():
+            with open(user_config_path, "r") as f:
+                return yaml.safe_load(f) or {"version": 1}
+        return {"version": 1}
+
+    @staticmethod
+    def save_user_config(data: Dict[str, Any]) -> None:
+        """Save user config file with consistent formatting.
+
+        Args:
+            data: Configuration dictionary to save
+        """
+        user_config_path = Path.home() / ".ai-rules-config.yaml"
+        user_config_path.parent.mkdir(parents=True, exist_ok=True)
+
+        with open(user_config_path, "w") as f:
+            yaml.dump(data, f, default_flow_style=False, sort_keys=False)

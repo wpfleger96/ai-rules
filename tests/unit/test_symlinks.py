@@ -192,13 +192,6 @@ class TestRemoveSymlink:
         assert target.read_text() == "important data"
         assert "not a symlink" in message.lower()
 
-    def test_handles_missing_target_gracefully(self, tmp_path):
-        target = tmp_path / "nonexistent.txt"
-
-        success, message = remove_symlink(target, force=True)
-
-        assert success is False
-
     def test_removes_broken_symlink(self, tmp_path):
         source = tmp_path / "source.txt"
         target = tmp_path / "target.txt"

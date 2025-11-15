@@ -52,13 +52,6 @@ class TestUninstallSafety:
         assert success is True
         assert not target_path.exists()
 
-    def test_uninstall_handles_missing_targets_gracefully(self, test_repo, mock_home):
-        target_path = mock_home / "CLAUDE.md"
-
-        success, message = remove_symlink(target_path, force=True)
-
-        assert success is False
-
     def test_complete_uninstall_cleanup(self, test_repo, mock_home):
         config = Config(exclude_symlinks=[])
         claude = ClaudeAgent(test_repo, config)

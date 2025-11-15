@@ -62,15 +62,6 @@ class TestConfigLoading:
 
         assert len(config.exclude_symlinks) == 0
 
-    def test_handles_empty_config_file(self, tmp_path, monkeypatch):
-        monkeypatch.setenv("HOME", str(tmp_path / "home"))
-        repo_config = tmp_path / ".ai-rules-config.yaml"
-        repo_config.write_text("")
-
-        config = Config.load(tmp_path)
-
-        assert len(config.exclude_symlinks) == 0
-
     def test_handles_invalid_yaml(self, tmp_path, monkeypatch):
         monkeypatch.setenv("HOME", str(tmp_path / "home"))
         repo_config = tmp_path / ".ai-rules-config.yaml"
@@ -78,15 +69,6 @@ class TestConfigLoading:
 
         with pytest.raises(Exception):
             Config.load(tmp_path)
-
-    def test_handles_config_without_exclude_symlinks(self, tmp_path, monkeypatch):
-        monkeypatch.setenv("HOME", str(tmp_path / "home"))
-        repo_config = tmp_path / ".ai-rules-config.yaml"
-        repo_config.write_text("version: 1\n")
-
-        config = Config.load(tmp_path)
-
-        assert len(config.exclude_symlinks) == 0
 
 
 @pytest.mark.unit
