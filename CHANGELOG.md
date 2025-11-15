@@ -1,45 +1,77 @@
 # CHANGELOG
 
 
-## Unreleased
+## v0.3.0 (2025-11-15)
+
+### Bug Fixes
+
+- Address critical code review issues
+  ([`8b97673`](https://github.com/wpfleger96/ai-rules/commit/8b976730ce1ca41c9e7c3cf5a69594baf457bd6f))
+
+This commit fixes the critical and high-priority issues identified in the code review:
+
+Critical Fixes: - Fix deep merge shallow copy bug - Use copy.deepcopy() instead of base.copy() to
+  prevent mutation of base dictionaries (CRITICAL) - Add nested key support to override unset
+  command - Now matches override set functionality for consistency
+
+High-Priority Fixes: - Add cache invalidation/staleness detection - Cache is now checked against
+  base settings and user config modification times - Optimize cache rebuilding - Cache only built
+  during install, not on every get_symlinks() call (status checks are now read-only)
+
+Technical Changes: - Added is_cache_stale() method to check if cache needs rebuilding - Added
+  get_settings_file_for_symlink() for read-only symlink enumeration - Modified
+  build_merged_settings() to skip rebuild when cache is fresh - Added force_rebuild parameter to
+  build_merged_settings() - Cache building moved to install command, before symlink creation - Added
+  7 new tests for cache invalidation logic
+
+Test Results: - All 30 tests passing (23 original + 7 new) - Tests cover cache staleness detection,
+  force rebuild, and file selection
+
+Performance Impact: - Status/diff commands no longer rebuild cache unnecessarily - Cache
+  automatically invalidates when base settings or overrides change - --rebuild-cache flag forces
+  cache rebuild when needed
+
+### Chores
+
+- Couple more CC perms
+  ([`2af58b4`](https://github.com/wpfleger96/ai-rules/commit/2af58b475f76e0900fce0a35d4911381ace03af9))
+
+- Tweak AGENTS file
+  ([`8b02b94`](https://github.com/wpfleger96/ai-rules/commit/8b02b94197dc50cd86cc8b69586bd1f45133a57f))
 
 ### Features
 
-- **Glob Pattern Support**: Exclusion patterns now support glob matching (e.g., `~/.claude/*.json`, `**/*.yaml`)
-  - Enables flexible exclusions without listing every file
-  - Works with both exact paths and glob patterns
+- Improve exclusion config UX and add settings merge functionality
+  ([`673057a`](https://github.com/wpfleger96/ai-rules/commit/673057a8c5278ed913d698deaf11482f4a447737))
 
-- **Settings Overrides**: New machine-specific settings override system
-  - Sync base `settings.json` via git while maintaining local overrides
-  - Perfect for different model access across work/personal laptops
-  - Deep merge support for nested settings
-  - Cached merged settings in `~/.ai-rules/cache/`
+This commit significantly improves the user experience for managing exclusions and adds powerful
+  settings override capabilities for machine-specific configurations.
 
-- **Improved CLI UX**: New command groups for easier configuration management
-  - `ai-rules config init` - Interactive configuration wizard for first-time setup
-  - `ai-rules config show` - View raw config or merged settings with overrides
-  - `ai-rules config edit` - Edit user config in $EDITOR
-  - `ai-rules exclude add/remove/list` - Manage exclusions without touching YAML
-  - `ai-rules override set/unset/list` - Manage settings overrides via CLI
+Major Features: - Glob pattern support for exclusions (e.g., ~/.claude/*.json) - Settings overrides
+  for machine-specific settings with deep merge - Interactive config wizard (ai-rules config init) -
+  New CLI command groups: exclude, override, config - Settings cache management with --rebuild-cache
+  flag
 
-- **Install Enhancements**:
-  - `--rebuild-cache` flag to rebuild merged settings cache
-  - Automatic settings merging during install
-  - Cache management for merged configurations
+CLI Improvements: - ai-rules config init: Interactive wizard for first-time setup - ai-rules config
+  show: View raw or merged settings - ai-rules config edit: Edit config in $EDITOR - ai-rules
+  exclude add/remove/list: Manage exclusions - ai-rules override set/unset/list: Manage settings
+  overrides
 
-### Documentation
+Settings Merge System: - Sync base settings.json via git - Override specific keys per machine (e.g.,
+  model access) - Deep merge with caching in ~/.ai-rules/cache/ - Supports different settings across
+  work/personal laptops
 
-- Comprehensive README updates with new command documentation
-- Updated example config file with detailed comments and use cases
-- Added troubleshooting section for common override scenarios
-- Documented config file precedence and merging behavior
+Technical Changes: - Added fnmatch for glob pattern matching in config.py - Implemented deep merge
+  algorithm for settings - Added build_merged_settings() for cache management - Enhanced ClaudeAgent
+  to use merged settings - Added 16 new tests covering glob patterns and merging
 
-### Tests
+Documentation: - Comprehensive README updates with examples - Updated .ai-rules-config.yaml.example
+  with detailed comments - Added troubleshooting section - Documented config precedence and merging
+  behavior - Updated CHANGELOG.md
 
-- Added comprehensive test suite for glob pattern matching
-- Added tests for settings override loading and merging
-- Added tests for cache creation and management
-- All 23+ tests passing
+All tests passing (23 tests).
+
+Fixes #[issue-number]
 
 
 ## v0.2.0 (2025-11-07)
