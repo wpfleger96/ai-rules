@@ -380,6 +380,7 @@ def install(
     # Clear cache if requested
     if rebuild_cache and not dry_run:
         import shutil
+
         cache_dir = Config.get_cache_dir()
         if cache_dir.exists():
             shutil.rmtree(cache_dir)
@@ -417,7 +418,10 @@ def install(
                 if settings_file.exists():
                     # Build cache with force_rebuild if --rebuild-cache was specified
                     config.build_merged_settings(
-                        agent.agent_id, settings_file, repo_root, force_rebuild=rebuild_cache
+                        agent.agent_id,
+                        settings_file,
+                        repo_root,
+                        force_rebuild=rebuild_cache,
                     )
 
     # Install user-level symlinks
@@ -1188,6 +1192,7 @@ def override_set(key: str, value: str):
 
     # Try to parse value as JSON
     import json
+
     try:
         parsed_value = json.loads(value)
     except json.JSONDecodeError:
@@ -1223,7 +1228,7 @@ def override_set(key: str, value: str):
     console.print(f"[green]✓[/green] Set override: {agent}.{setting} = {parsed_value}")
     console.print(f"[dim]Config updated: {user_config_path}[/dim]")
     console.print(
-        f"\n[yellow]💡 Run 'ai-rules install --rebuild-cache' to apply changes[/yellow]"
+        "\n[yellow]💡 Run 'ai-rules install --rebuild-cache' to apply changes[/yellow]"
     )
 
 
@@ -1252,10 +1257,7 @@ def override_unset(key: str):
     with open(user_config_path, "r") as f:
         data = yaml.safe_load(f) or {}
 
-    if (
-        "settings_overrides" not in data
-        or agent not in data["settings_overrides"]
-    ):
+    if "settings_overrides" not in data or agent not in data["settings_overrides"]:
         console.print(f"[yellow]Override not found:[/yellow] {key}")
         sys.exit(1)
 
@@ -1280,7 +1282,6 @@ def override_unset(key: str):
     del current[final_key]
 
     # Clean up empty nested dicts
-    setting_parts_reversed = setting_parts[:-1][::-1]
     current = data["settings_overrides"][agent]
     path = []
 
@@ -1307,7 +1308,7 @@ def override_unset(key: str):
     console.print(f"[green]✓[/green] Removed override: {key}")
     console.print(f"[dim]Config updated: {user_config_path}[/dim]")
     console.print(
-        f"\n[yellow]💡 Run 'ai-rules install --rebuild-cache' to apply changes[/yellow]"
+        "\n[yellow]💡 Run 'ai-rules install --rebuild-cache' to apply changes[/yellow]"
     )
 
 
@@ -1355,7 +1356,9 @@ def config_show(merged: bool, agent: Optional[str]):
 
         for agent_name in agents_to_show:
             if agent_name not in cfg.settings_overrides:
-                console.print(f"[dim]{agent_name}: No overrides (using repo settings)[/dim]\n")
+                console.print(
+                    f"[dim]{agent_name}: No overrides (using repo settings)[/dim]\n"
+                )
                 continue
 
             console.print(f"[bold]{agent_name}:[/bold]")
@@ -1365,6 +1368,7 @@ def config_show(merged: bool, agent: Optional[str]):
             if base_path.exists():
                 with open(base_path, "r") as f:
                     import json
+
                     base_settings = json.load(f)
 
                 merged_settings = cfg.merge_settings(agent_name, base_settings)
@@ -1380,7 +1384,9 @@ def config_show(merged: bool, agent: Optional[str]):
                         )
                         overridden_keys.append(key)
                     else:
-                        console.print(f"  [green]+[/green] {key}: {merged_settings[key]}")
+                        console.print(
+                            f"  [green]+[/green] {key}: {merged_settings[key]}"
+                        )
                         overridden_keys.append(key)
 
                 # Show unchanged keys
@@ -1388,8 +1394,12 @@ def config_show(merged: bool, agent: Optional[str]):
                     if key not in overridden_keys:
                         console.print(f"  [dim]•[/dim] {key}: {value}")
             else:
-                console.print(f"  [yellow]⚠[/yellow] No base settings found at {base_path}")
-                console.print(f"  [dim]Overrides: {cfg.settings_overrides[agent_name]}[/dim]")
+                console.print(
+                    f"  [yellow]⚠[/yellow] No base settings found at {base_path}"
+                )
+                console.print(
+                    f"  [dim]Overrides: {cfg.settings_overrides[agent_name]}[/dim]"
+                )
 
             console.print()
     else:
@@ -1431,7 +1441,7 @@ def config_edit():
         subprocess.run([editor, str(user_config_path)], check=True)
         console.print(f"[green]✓[/green] Config edited: {user_config_path}")
     except subprocess.CalledProcessError:
-        console.print(f"[red]Error opening editor[/red]")
+        console.print("[red]Error opening editor[/red]")
         sys.exit(1)
 
 
@@ -1441,7 +1451,7 @@ def config_init():
     user_config_path = Path.home() / ".ai-rules-config.yaml"
 
     console.print("[bold cyan]Welcome to ai-rules configuration wizard![/bold cyan]\n")
-    console.print(f"This will help you set up your .ai-rules-config.yaml file.")
+    console.print("This will help you set up your .ai-rules-config.yaml file.")
     console.print(f"Config will be created at: [dim]{user_config_path}[/dim]\n")
 
     if user_config_path.exists():
@@ -1470,13 +1480,17 @@ def config_init():
     for pattern, description, default in common_exclusions:
         default_str = "Y/n" if default else "y/N"
         response = console.input(f"  Exclude {description}? [{default_str}]: ").lower()
-        should_exclude = (default and response != "n") or (not default and response == "y")
+        should_exclude = (default and response != "n") or (
+            not default and response == "y"
+        )
         if should_exclude:
             selected_exclusions.append(pattern)
             console.print(f"    [green]✓[/green] Will exclude: {pattern}")
 
     # Custom exclusions
-    console.print("\n[dim]Enter custom exclusion patterns (glob patterns supported)[/dim]")
+    console.print(
+        "\n[dim]Enter custom exclusion patterns (glob patterns supported)[/dim]"
+    )
     console.print("[dim]One per line, empty line to finish:[/dim]")
     while True:
         pattern = console.input("> ").strip()
@@ -1487,11 +1501,15 @@ def config_init():
 
     if selected_exclusions:
         config_data["exclude_symlinks"] = selected_exclusions
-        console.print(f"\n[green]✓[/green] Configured {len(selected_exclusions)} exclusion pattern(s)")
+        console.print(
+            f"\n[green]✓[/green] Configured {len(selected_exclusions)} exclusion pattern(s)"
+        )
 
     # Step 2: Settings Overrides
     console.print("\n[bold]Step 2: Settings Overrides[/bold]")
-    response = console.input("Do you want to override any settings for this machine? [y/N]: ")
+    response = console.input(
+        "Do you want to override any settings for this machine? [y/N]: "
+    )
 
     if response.lower() == "y":
         config_data["settings_overrides"] = {}
@@ -1533,6 +1551,7 @@ def config_init():
 
                 # Try to parse value as JSON
                 import json
+
                 try:
                     parsed_value = json.loads(value)
                 except json.JSONDecodeError:
@@ -1545,12 +1564,18 @@ def config_init():
                 config_data["settings_overrides"][agent] = agent_overrides
 
         if config_data["settings_overrides"]:
-            total_overrides = sum(len(v) for v in config_data["settings_overrides"].values())
-            console.print(f"\n[green]✓[/green] Configured {total_overrides} override(s) for {len(config_data['settings_overrides'])} agent(s)")
+            total_overrides = sum(
+                len(v) for v in config_data["settings_overrides"].values()
+            )
+            console.print(
+                f"\n[green]✓[/green] Configured {total_overrides} override(s) for {len(config_data['settings_overrides'])} agent(s)"
+            )
 
     # Step 3: Projects
     console.print("\n[bold]Step 3: Projects (Optional)[/bold]")
-    response = console.input("Do you want to configure project-specific settings? [y/N]: ")
+    response = console.input(
+        "Do you want to configure project-specific settings? [y/N]: "
+    )
 
     if response.lower() == "y":
         config_data["projects"] = {}
@@ -1569,7 +1594,9 @@ def config_init():
             project_config = {"path": project_path}
 
             # Project-specific exclusions
-            console.print(f"\n[dim]Project-specific exclusions for '{project_name}':[/dim]")
+            console.print(
+                f"\n[dim]Project-specific exclusions for '{project_name}':[/dim]"
+            )
             console.print("[dim]One per line, empty line to finish:[/dim]")
             project_exclusions = []
             while True:
@@ -1590,19 +1617,23 @@ def config_init():
                 break
 
         if config_data["projects"]:
-            console.print(f"\n[green]✓[/green] Configured {len(config_data['projects'])} project(s)")
+            console.print(
+                f"\n[green]✓[/green] Configured {len(config_data['projects'])} project(s)"
+            )
 
     # Review and save
     console.print("\n[bold cyan]Configuration Summary:[/bold cyan]")
     console.print("=" * 50)
 
     if "exclude_symlinks" in config_data:
-        console.print(f"\n[bold]Global Exclusions ({len(config_data['exclude_symlinks'])}):[/bold]")
+        console.print(
+            f"\n[bold]Global Exclusions ({len(config_data['exclude_symlinks'])}):[/bold]"
+        )
         for pattern in config_data["exclude_symlinks"]:
             console.print(f"  • {pattern}")
 
     if "settings_overrides" in config_data:
-        console.print(f"\n[bold]Settings Overrides:[/bold]")
+        console.print("\n[bold]Settings Overrides:[/bold]")
         for agent, overrides in config_data["settings_overrides"].items():
             console.print(f"  [bold]{agent}:[/bold]")
             for key, value in overrides.items():
@@ -1614,7 +1645,9 @@ def config_init():
             console.print(f"  [bold]{name}:[/bold]")
             console.print(f"    • path: {proj['path']}")
             if "exclude_symlinks" in proj:
-                console.print(f"    • exclusions: {', '.join(proj['exclude_symlinks'])}")
+                console.print(
+                    f"    • exclusions: {', '.join(proj['exclude_symlinks'])}"
+                )
 
     console.print("\n" + "=" * 50)
     response = console.input("\nSave configuration? [Y/n]: ")
@@ -1628,7 +1661,9 @@ def config_init():
         console.print("\n[bold]Next steps:[/bold]")
         console.print("  • Run [cyan]ai-rules install[/cyan] to apply these settings")
         console.print("  • Run [cyan]ai-rules config show[/cyan] to view your config")
-        console.print("  • Run [cyan]ai-rules config show --merged[/cyan] to see merged settings")
+        console.print(
+            "  • Run [cyan]ai-rules config show --merged[/cyan] to see merged settings"
+        )
     else:
         console.print("[dim]Configuration not saved[/dim]")
 

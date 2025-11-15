@@ -269,7 +269,11 @@ class Config:
         return False
 
     def build_merged_settings(
-        self, agent: str, base_settings_path: Path, repo_root: Path, force_rebuild: bool = False
+        self,
+        agent: str,
+        base_settings_path: Path,
+        repo_root: Path,
+        force_rebuild: bool = False,
     ) -> Optional[Path]:
         """Build merged settings file in cache if overrides exist.
 
