@@ -10,3 +10,8 @@ uvx ruff check . --fix
 
 echo "Running formatting"
 uvx ruff format .
+
+if [ -n "${RUN_TESTS:-}" ]; then
+    echo "Running tests"
+    uv run pytest
+fi

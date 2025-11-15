@@ -1,4 +1,6 @@
-#!/bin/bash
+#!/usr/bin/env bash
+
+set -euo pipefail
 
 # Check if any new files were added to config/ during the merge
 new_config_files=$(git diff --name-status --diff-filter=A ORIG_HEAD HEAD -- config/ 2>/dev/null | grep '^A')
