@@ -35,8 +35,6 @@ class GooseAgent(Agent):
 
         config_file = self.config_dir / "goose" / "config.yaml"
         if config_file.exists():
-            # Get appropriate settings file (cached merged or base)
-            # Cache is built during install operations, not during enumeration
             target_file = self.config.get_settings_file_for_symlink(
                 "goose", config_file, self.repo_root
             )
@@ -51,7 +49,6 @@ class GooseAgent(Agent):
         """
         symlinks = []
 
-        # Project-level .goosehints file
         project_agents_file = self.config_dir / "projects" / project.name / "AGENTS.md"
         if project_agents_file.exists():
             target = project.path / ".goosehints"

@@ -39,7 +39,6 @@ class TestOverrideSetCommand:
         with open(config_path) as f:
             data = yaml.safe_load(f)
 
-        # Should be parsed as integer, not string
         assert data["settings_overrides"]["claude"]["timeout"] == 30
         assert isinstance(data["settings_overrides"]["claude"]["timeout"], int)
 
@@ -83,7 +82,6 @@ class TestOverrideSetCommand:
         config_path = tmp_path / ".ai-rules-config.yaml"
         monkeypatch.setenv("HOME", str(tmp_path))
 
-        # Create existing config
         existing_data = {
             "version": 1,
             "settings_overrides": {"claude": {"model": "old-model"}},
@@ -125,7 +123,6 @@ class TestOverrideUnsetCommand:
         config_path = tmp_path / ".ai-rules-config.yaml"
         monkeypatch.setenv("HOME", str(tmp_path))
 
-        # Create config with overrides
         existing_data = {
             "version": 1,
             "settings_overrides": {"claude": {"model": "claude-3-opus", "timeout": 30}},
@@ -148,7 +145,6 @@ class TestOverrideUnsetCommand:
         config_path = tmp_path / ".ai-rules-config.yaml"
         monkeypatch.setenv("HOME", str(tmp_path))
 
-        # Create config with nested overrides
         existing_data = {
             "version": 1,
             "settings_overrides": {
@@ -175,7 +171,6 @@ class TestOverrideUnsetCommand:
         config_path = tmp_path / ".ai-rules-config.yaml"
         monkeypatch.setenv("HOME", str(tmp_path))
 
-        # Create config with nested override (only one key)
         existing_data = {
             "version": 1,
             "settings_overrides": {
@@ -192,7 +187,6 @@ class TestOverrideUnsetCommand:
         with open(config_path) as f:
             data = yaml.safe_load(f)
 
-        # Empty "api" dict and "claude" entry should both be removed
         assert "claude" not in data.get("settings_overrides", {})
 
     def test_override_unset_removes_agent_when_empty(
@@ -202,7 +196,6 @@ class TestOverrideUnsetCommand:
         config_path = tmp_path / ".ai-rules-config.yaml"
         monkeypatch.setenv("HOME", str(tmp_path))
 
-        # Create config with single override
         existing_data = {
             "version": 1,
             "settings_overrides": {"claude": {"model": "claude-3-opus"}},
@@ -217,7 +210,6 @@ class TestOverrideUnsetCommand:
         with open(config_path) as f:
             data = yaml.safe_load(f)
 
-        # Claude entry should be removed entirely
         assert "claude" not in data.get("settings_overrides", {})
 
     def test_override_unset_fails_on_missing_config(
@@ -238,7 +230,6 @@ class TestOverrideUnsetCommand:
         config_path = tmp_path / ".ai-rules-config.yaml"
         monkeypatch.setenv("HOME", str(tmp_path))
 
-        # Create config without the override
         existing_data = {
             "version": 1,
             "settings_overrides": {"claude": {"timeout": 30}},
@@ -260,7 +251,6 @@ class TestOverrideListCommand:
         config_path = tmp_path / ".ai-rules-config.yaml"
         monkeypatch.setenv("HOME", str(tmp_path))
 
-        # Create config with overrides
         existing_data = {
             "version": 1,
             "settings_overrides": {
@@ -271,7 +261,6 @@ class TestOverrideListCommand:
         with open(config_path, "w") as f:
             yaml.dump(existing_data, f)
 
-        # Need to set up a minimal repo root for Config.load()
         repo_root = tmp_path / "repo"
         repo_root.mkdir()
         monkeypatch.chdir(repo_root)
@@ -288,12 +277,10 @@ class TestOverrideListCommand:
         config_path = tmp_path / ".ai-rules-config.yaml"
         monkeypatch.setenv("HOME", str(tmp_path))
 
-        # Create empty config
         existing_data = {"version": 1}
         with open(config_path, "w") as f:
             yaml.dump(existing_data, f)
 
-        # Need to set up a minimal repo root for Config.load()
         repo_root = tmp_path / "repo"
         repo_root.mkdir()
         monkeypatch.chdir(repo_root)

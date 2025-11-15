@@ -31,7 +31,6 @@ class TestExcludeAddCommand:
         config_path = tmp_path / ".ai-rules-config.yaml"
         monkeypatch.setenv("HOME", str(tmp_path))
 
-        # Create existing config
         existing_data = {
             "version": 1,
             "exclude_symlinks": ["~/.existing/pattern.txt"],
@@ -55,7 +54,6 @@ class TestExcludeAddCommand:
         config_path = tmp_path / ".ai-rules-config.yaml"
         monkeypatch.setenv("HOME", str(tmp_path))
 
-        # Create existing config with pattern
         existing_data = {
             "version": 1,
             "exclude_symlinks": ["~/.claude/settings.json"],
@@ -71,7 +69,6 @@ class TestExcludeAddCommand:
         with open(config_path) as f:
             data = yaml.safe_load(f)
 
-        # Should still only have one
         assert data["exclude_symlinks"].count("~/.claude/settings.json") == 1
 
     def test_exclude_add_handles_glob_patterns(self, runner, tmp_path, monkeypatch):
@@ -97,7 +94,6 @@ class TestExcludeRemoveCommand:
         config_path = tmp_path / ".ai-rules-config.yaml"
         monkeypatch.setenv("HOME", str(tmp_path))
 
-        # Create config with patterns
         existing_data = {
             "version": 1,
             "exclude_symlinks": ["~/.pattern1.txt", "~/.pattern2.txt"],
@@ -134,7 +130,6 @@ class TestExcludeRemoveCommand:
         config_path = tmp_path / ".ai-rules-config.yaml"
         monkeypatch.setenv("HOME", str(tmp_path))
 
-        # Create config without the pattern
         existing_data = {
             "version": 1,
             "exclude_symlinks": ["~/.other.txt"],
@@ -156,7 +151,6 @@ class TestExcludeListCommand:
         config_path = tmp_path / ".ai-rules-config.yaml"
         monkeypatch.setenv("HOME", str(tmp_path))
 
-        # Create config with patterns
         existing_data = {
             "version": 1,
             "exclude_symlinks": ["~/.pattern1.txt", "~/.pattern2.txt"],
@@ -164,7 +158,6 @@ class TestExcludeListCommand:
         with open(config_path, "w") as f:
             yaml.dump(existing_data, f)
 
-        # Need to set up a minimal repo root for Config.load()
         repo_root = tmp_path / "repo"
         repo_root.mkdir()
         monkeypatch.chdir(repo_root)
@@ -180,12 +173,10 @@ class TestExcludeListCommand:
         config_path = tmp_path / ".ai-rules-config.yaml"
         monkeypatch.setenv("HOME", str(tmp_path))
 
-        # Create empty config
         existing_data = {"version": 1}
         with open(config_path, "w") as f:
             yaml.dump(existing_data, f)
 
-        # Need to set up a minimal repo root for Config.load()
         repo_root = tmp_path / "repo"
         repo_root.mkdir()
         monkeypatch.chdir(repo_root)

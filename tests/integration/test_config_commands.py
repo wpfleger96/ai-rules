@@ -13,7 +13,6 @@ class TestConfigInitCommand:
         config_path = tmp_path / ".ai-rules-config.yaml"
         monkeypatch.setenv("HOME", str(tmp_path))
 
-        # Mock user inputs: skip all optional sections
         inputs = [
             "n",  # Exclude Claude Code settings?
             "n",  # Exclude Goose config?
@@ -139,7 +138,6 @@ class TestConfigInitCommand:
         config_path = tmp_path / ".ai-rules-config.yaml"
         monkeypatch.setenv("HOME", str(tmp_path))
 
-        # Create existing config
         with open(config_path, "w") as f:
             yaml.dump({"version": 1}, f)
 
@@ -157,7 +155,6 @@ class TestConfigInitCommand:
         config_path = tmp_path / ".ai-rules-config.yaml"
         monkeypatch.setenv("HOME", str(tmp_path))
 
-        # Create existing config
         with open(config_path, "w") as f:
             yaml.dump({"version": 1, "old_key": "old_value"}, f)
 

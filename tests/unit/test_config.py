@@ -279,7 +279,6 @@ settings_overrides:
         home.mkdir()
         monkeypatch.setenv("HOME", str(home))
 
-        # Create base settings
         base_settings_path = tmp_path / "settings.json"
         base_settings_path.write_text('{"model": "claude-opus-4-20250514"}')
 
@@ -351,13 +350,10 @@ settings_overrides:
             settings_overrides={"claude": {"model": "claude-sonnet-4-5-20250929"}}
         )
 
-        # Build cache
         config.build_merged_settings("claude", base_settings_path, tmp_path)
 
-        # Wait a moment to ensure different timestamps
         time.sleep(0.01)
 
-        # Cache should be fresh
         assert not config.is_cache_stale("claude", base_settings_path, tmp_path)
 
     def test_is_cache_stale_when_base_settings_updated(self, tmp_path, monkeypatch):
@@ -375,18 +371,14 @@ settings_overrides:
             settings_overrides={"claude": {"model": "claude-sonnet-4-5-20250929"}}
         )
 
-        # Build cache
         config.build_merged_settings("claude", base_settings_path, tmp_path)
 
-        # Wait to ensure different timestamp
         time.sleep(0.01)
 
-        # Modify base settings
         base_settings_path.write_text(
             '{"model": "claude-opus-4-20250514", "new": "value"}'
         )
 
-        # Cache should now be stale
         assert config.is_cache_stale("claude", base_settings_path, tmp_path)
 
     def test_build_merged_settings_skips_rebuild_when_fresh(
@@ -406,22 +398,18 @@ settings_overrides:
             settings_overrides={"claude": {"model": "claude-sonnet-4-5-20250929"}}
         )
 
-        # Build cache first time
         cache_path1 = config.build_merged_settings(
             "claude", base_settings_path, tmp_path
         )
         mtime1 = cache_path1.stat().st_mtime
 
-        # Wait a moment
         time.sleep(0.01)
 
-        # Build again - should use existing cache
         cache_path2 = config.build_merged_settings(
             "claude", base_settings_path, tmp_path
         )
         mtime2 = cache_path2.stat().st_mtime
 
-        # Cache file should not have been modified (same timestamp)
         assert mtime1 == mtime2
 
     def test_build_merged_settings_rebuilds_when_forced(self, tmp_path, monkeypatch):
@@ -439,22 +427,18 @@ settings_overrides:
             settings_overrides={"claude": {"model": "claude-sonnet-4-5-20250929"}}
         )
 
-        # Build cache first time
         cache_path1 = config.build_merged_settings(
             "claude", base_settings_path, tmp_path
         )
         mtime1 = cache_path1.stat().st_mtime
 
-        # Wait a moment
         time.sleep(0.01)
 
-        # Build again with force_rebuild
         cache_path2 = config.build_merged_settings(
             "claude", base_settings_path, tmp_path, force_rebuild=True
         )
         mtime2 = cache_path2.stat().st_mtime
 
-        # Cache file should have been rebuilt (different timestamp)
         assert mtime2 > mtime1
 
     def test_get_settings_file_for_symlink_returns_cache_when_exists(
@@ -472,12 +456,10 @@ settings_overrides:
             settings_overrides={"claude": {"model": "claude-sonnet-4-5-20250929"}}
         )
 
-        # Build cache
         cache_path = config.build_merged_settings(
             "claude", base_settings_path, tmp_path
         )
 
-        # get_settings_file_for_symlink should return cache path
         result = config.get_settings_file_for_symlink(
             "claude", base_settings_path, tmp_path
         )
@@ -498,7 +480,6 @@ settings_overrides:
             settings_overrides={"claude": {"model": "claude-sonnet-4-5-20250929"}}
         )
 
-        # Don't build cache, just check what file would be used
         result = config.get_settings_file_for_symlink(
             "claude", base_settings_path, tmp_path
         )

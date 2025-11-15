@@ -243,11 +243,9 @@ class ProjectConfig:
         """
         normalized = Path(symlink_target).expanduser().as_posix()
         for excl in self.exclude_symlinks:
-            # Try exact match first (faster)
             excl_normalized = Path(excl).expanduser().as_posix()
             if normalized == excl_normalized:
                 return True
-            # Try glob pattern matching
             if fnmatch(normalized, excl_normalized):
                 return True
         return False
@@ -284,13 +282,11 @@ class Config:
         projects = {}
         settings_overrides = {}
 
-        # Load user config (can contain projects, exclusions, and settings overrides)
         if user_config_path.exists():
             with open(user_config_path, "r") as f:
                 data = yaml.safe_load(f) or {}
                 exclude_symlinks.extend(data.get("exclude_symlinks", []))
 
-                # Load project configurations
                 projects_data = data.get("projects", {})
                 for project_name, project_data in projects_data.items():
                     if isinstance(project_data, dict):
@@ -308,10 +304,8 @@ class Config:
                             exclude_symlinks=project_exclusions,
                         )
 
-                # Load settings overrides
                 settings_overrides = data.get("settings_overrides", {})
 
-        # Load repo config (only for global exclusions, not projects or overrides)
         if repo_config_path.exists():
             with open(repo_config_path, "r") as f:
                 data = yaml.safe_load(f) or {}
@@ -330,11 +324,9 @@ class Config:
         """
         normalized = Path(symlink_target).expanduser().as_posix()
         for excl in self.exclude_symlinks:
-            # Try exact match first (faster)
             excl_normalized = Path(excl).expanduser().as_posix()
             if normalized == excl_normalized:
                 return True
-            # Try glob pattern matching
             if fnmatch(normalized, excl_normalized):
                 return True
         return False
@@ -344,11 +336,9 @@ class Config:
 
         Combines global exclusions and project-specific exclusions.
         """
-        # Check global exclusions
         if self.is_excluded(symlink_target):
             return True
 
-        # Check project-specific exclusions
         project = self.projects.get(project_name)
         if project:
             return project.is_excluded(symlink_target)
@@ -455,11 +445,8 @@ class Config:
 
         cache_path = self.get_merged_settings_path(agent, repo_root)
         if cache_path and cache_path.exists():
-            # Use cached version if it exists
             return cache_path
 
-        # No cache exists, use base file
-        # Note: Cache will be built during install operations
         return base_settings_path
 
     def is_cache_stale(
@@ -489,12 +476,10 @@ class Config:
 
         cache_mtime = cache_path.stat().st_mtime
 
-        # Check if base settings are newer
         if base_settings_path.exists():
             if base_settings_path.stat().st_mtime > cache_mtime:
                 return True
 
-        # Check if user config is newer (overrides may have changed)
         user_config_path = Path.home() / ".ai-rules-config.yaml"
         if user_config_path.exists():
             if user_config_path.stat().st_mtime > cache_mtime:
@@ -529,7 +514,6 @@ class Config:
 
         cache_path = self.get_merged_settings_path(agent, repo_root)
 
-        # Skip rebuild if cache is fresh and not forced
         if not force_rebuild and cache_path and cache_path.exists():
             if not self.is_cache_stale(agent, base_settings_path, repo_root):
                 return cache_path
@@ -540,9 +524,7 @@ class Config:
 
         config_format = agent_config["format"]
 
-        # Read base settings
         if not base_settings_path.exists():
-            # No base settings, just create from overrides
             base_settings = {}
         else:
             with open(base_settings_path, "r") as f:
@@ -553,10 +535,7 @@ class Config:
                 else:
                     return None
 
-        # Merge with overrides
         merged = self.merge_settings(agent, base_settings)
-
-        # Write to cache
         if cache_path:
             with open(cache_path, "w") as f:
                 if config_format == "json":

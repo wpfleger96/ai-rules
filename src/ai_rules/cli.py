@@ -412,7 +412,6 @@ def install(
     if dry_run:
         console.print("[bold]Dry run mode - no changes will be made[/bold]\n")
 
-    # Build merged settings cache if needed (not in dry-run mode)
     if not dry_run:
         for agent in selected_agents:
             if agent.agent_id in ["claude", "goose"]:
@@ -420,7 +419,6 @@ def install(
                     repo_root / "config" / agent.agent_id / agent.config_file_name
                 )
                 if settings_file.exists():
-                    # Build cache with force_rebuild if --rebuild-cache was specified
                     config.build_merged_settings(
                         agent.agent_id,
                         settings_file,
@@ -428,22 +426,16 @@ def install(
                         force_rebuild=rebuild_cache,
                     )
 
-    # Install user-level symlinks
     user_results = install_user_symlinks(selected_agents, force, dry_run)
 
-    # Install project-level symlinks
     project_results = install_project_symlinks(
         selected_agents, selected_projects, config, repo_root, force, dry_run
     )
-
-    # Combine results
     total_created = user_results["created"] + project_results["created"]
     total_updated = user_results["updated"] + project_results["updated"]
     total_skipped = user_results["skipped"] + project_results["skipped"]
     total_excluded = user_results["excluded"] + project_results["excluded"]
     total_errors = user_results["errors"] + project_results["errors"]
-
-    # Configure git hooks if we're in the ai-rules repo
     if not dry_run:
         hooks_dir = repo_root / ".hooks"
         post_merge_hook = hooks_dir / "post-merge"
@@ -537,7 +529,6 @@ def status(agents: Optional[str], projects: Optional[str], user_only: bool):
 
     all_correct = True
 
-    # User-level status
     console.print("[bold cyan]User-Level Configuration[/bold cyan]\n")
     cache_stale = False
     for agent in selected_agents:
@@ -557,8 +548,6 @@ def status(agents: Optional[str], projects: Optional[str], user_only: bool):
 
         for target, _ in excluded_symlinks:
             console.print(f"  [dim]○[/dim] {target} [dim](excluded by config)[/dim]")
-
-        # Check cache staleness for agents with settings overrides
         agent_config = AGENT_CONFIG_METADATA.get(agent.agent_id)
         if agent_config and agent.agent_id in config.settings_overrides:
             base_settings_path = (
@@ -571,9 +560,7 @@ def status(agents: Optional[str], projects: Optional[str], user_only: bool):
 
         console.print()
 
-    # Project-level status
     if not user_only and config.projects:
-        # Filter projects if specified
         selected_projects = filter_selected_projects(config, projects, user_only=False)
 
         if selected_projects:
@@ -583,7 +570,6 @@ def status(agents: Optional[str], projects: Optional[str], user_only: bool):
                     f"[bold]{project_name}[/bold] [dim]({project.path})[/dim]"
                 )
 
-                # Check if project path exists
                 if not project.path.exists():
                     console.print("  [red]✗[/red] Project path does not exist")
                     all_correct = False
@@ -615,7 +601,6 @@ def status(agents: Optional[str], projects: Optional[str], user_only: bool):
                             f"  [dim]○[/dim] {agent_label} {target.name} [dim](excluded by config)[/dim]"
                         )
 
-                    # Check cache staleness for agents with settings overrides
                     agent_config = AGENT_CONFIG_METADATA.get(agent.agent_id)
                     if agent_config and agent.agent_id in config.settings_overrides:
                         base_settings_path = (
@@ -635,7 +620,6 @@ def status(agents: Optional[str], projects: Optional[str], user_only: bool):
 
                 console.print()
 
-    # Check git hooks configuration
     console.print("[bold cyan]Git Hooks Configuration[/bold cyan]\n")
     hooks_dir = repo_root / ".hooks"
     post_merge_hook = hooks_dir / "post-merge"
@@ -707,7 +691,6 @@ def uninstall(
     all_agents = get_agents(repo_root, config)
     selected_agents = select_agents(all_agents, agents)
 
-    # Filter projects if specified
     selected_projects = filter_selected_projects(config, projects, user_only)
 
     if not force:
@@ -727,7 +710,6 @@ def uninstall(
     total_removed = 0
     total_skipped = 0
 
-    # Remove user-level symlinks
     console.print("\n[bold cyan]User-Level Configuration[/bold cyan]")
     for agent in selected_agents:
         console.print(f"\n[bold]{agent.name}[/bold]")
@@ -744,7 +726,6 @@ def uninstall(
                 console.print(f"  [yellow]○[/yellow] {target} [dim]({message})[/dim]")
                 total_skipped += 1
 
-    # Remove project-level symlinks
     if selected_projects:
         console.print("\n[bold cyan]Project-Level Configurations[/bold cyan]")
         for project_name, project in selected_projects.items():
@@ -822,10 +803,8 @@ def add_project_cmd(name: str, path: str):
 
     config_path = PathLib.home() / ".ai-rules-config.yaml"
 
-    # Resolve the project path
     project_path = PathLib(path).expanduser().resolve()
 
-    # Check if path exists
     if not project_path.exists():
         console.print(f"[red]Error:[/red] Path does not exist: {project_path}")
         console.print("[dim]Create the directory first, or check the path[/dim]")
@@ -835,13 +814,11 @@ def add_project_cmd(name: str, path: str):
         console.print(f"[red]Error:[/red] Path is not a directory: {project_path}")
         sys.exit(1)
 
-    # Load existing config
     existing_config = {}
     if config_path.exists():
         with open(config_path, "r") as f:
             existing_config = yaml.safe_load(f) or {}
 
-    # Check if project already exists
     projects = existing_config.get("projects", {})
     if name in projects:
         console.print(f"[yellow]Warning:[/yellow] Project '{name}' already exists")
@@ -849,11 +826,8 @@ def add_project_cmd(name: str, path: str):
             console.print("[yellow]Cancelled[/yellow]")
             sys.exit(0)
 
-    # Add the new project
     projects[name] = {"path": str(project_path), "exclude_symlinks": []}
     existing_config["projects"] = projects
-
-    # Write back the config
     with open(config_path, "w") as f:
         yaml.safe_dump(existing_config, f, default_flow_style=False, sort_keys=False)
 
@@ -879,7 +853,6 @@ def remove_project_cmd(name: str, force: bool):
         console.print("[yellow]No config file found[/yellow]")
         sys.exit(1)
 
-    # Load existing config
     with open(config_path, "r") as f:
         existing_config = yaml.safe_load(f) or {}
 
@@ -904,11 +877,8 @@ def remove_project_cmd(name: str, force: bool):
             console.print("[yellow]Cancelled[/yellow]")
             sys.exit(0)
 
-    # Remove the project
     del projects[name]
     existing_config["projects"] = projects
-
-    # Write back the config
     with open(config_path, "w") as f:
         yaml.safe_dump(existing_config, f, default_flow_style=False, sort_keys=False)
 
@@ -1171,7 +1141,6 @@ def exclude_list():
 
     console.print("[bold]Exclusion Patterns:[/bold]\n")
 
-    # Load configs separately to show sources
     user_exclusions = []
     repo_exclusions = []
 
@@ -1335,7 +1304,6 @@ def override_unset(key: str):
         console.print("[red]No user config found[/red]")
         sys.exit(1)
 
-    # Parse key
     parts = key.split(".", 1)
     if len(parts) != 2:
         console.print("[red]Error:[/red] Key must be in format 'agent.setting'")
@@ -1349,43 +1317,35 @@ def override_unset(key: str):
         console.print(f"[yellow]Override not found:[/yellow] {key}")
         sys.exit(1)
 
-    # Support nested keys (e.g., claude.foo.bar)
     setting_parts = setting.split(".")
     current = data["settings_overrides"][agent]
 
-    # Navigate to parent of the key to delete
     for part in setting_parts[:-1]:
         if not isinstance(current, dict) or part not in current:
             console.print(f"[yellow]Override not found:[/yellow] {key}")
             sys.exit(1)
         current = current[part]
 
-    # Check if final key exists
     final_key = setting_parts[-1]
     if not isinstance(current, dict) or final_key not in current:
         console.print(f"[yellow]Override not found:[/yellow] {key}")
         sys.exit(1)
 
-    # Delete the key
     del current[final_key]
 
-    # Clean up empty nested dicts
     current = data["settings_overrides"][agent]
     path = []
 
-    # Rebuild path to check for empty dicts
     for part in setting_parts[:-1]:
         path.append((current, part))
         current = current[part]
 
-    # Remove empty nested dicts from innermost to outermost
     for parent, key in reversed(path):
         if isinstance(parent[key], dict) and not parent[key]:
             del parent[key]
         else:
             break
 
-    # Clean up empty agent entries
     if not data["settings_overrides"][agent]:
         del data["settings_overrides"][agent]
 
@@ -1435,7 +1395,6 @@ def config_show(merged: bool, agent: Optional[str]):
     user_config_path = Path.home() / ".ai-rules-config.yaml"
 
     if merged:
-        # Show merged settings
         console.print("[bold]Merged Settings:[/bold]\n")
 
         agents_to_show = [agent] if agent else ["claude", "goose"]
@@ -1449,7 +1408,6 @@ def config_show(merged: bool, agent: Optional[str]):
 
             console.print(f"[bold]{agent_name}:[/bold]")
 
-            # Try to load base settings
             from ai_rules.config import AGENT_CONFIG_METADATA
 
             agent_config = AGENT_CONFIG_METADATA.get(agent_name)
@@ -1471,7 +1429,6 @@ def config_show(merged: bool, agent: Optional[str]):
 
                 merged_settings = cfg.merge_settings(agent_name, base_settings)
 
-                # Show overridden keys
                 overridden_keys = []
                 for key in cfg.settings_overrides[agent_name]:
                     if key in base_settings:
@@ -1487,7 +1444,6 @@ def config_show(merged: bool, agent: Optional[str]):
                         )
                         overridden_keys.append(key)
 
-                # Show unchanged keys
                 for key, value in merged_settings.items():
                     if key not in overridden_keys:
                         console.print(f"  [dim]•[/dim] {key}: {value}")
@@ -1501,7 +1457,6 @@ def config_show(merged: bool, agent: Optional[str]):
 
             console.print()
     else:
-        # Show raw config
         console.print("[bold]Configuration:[/bold]\n")
 
         if user_config_path.exists():
@@ -1529,7 +1484,6 @@ def config_edit():
     user_config_path = Path.home() / ".ai-rules-config.yaml"
     editor = os.environ.get("EDITOR", "vi")
 
-    # Create config if it doesn't exist
     if not user_config_path.exists():
         user_config_path.parent.mkdir(parents=True, exist_ok=True)
         with open(user_config_path, "w") as f:
