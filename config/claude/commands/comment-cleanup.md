@@ -10,26 +10,27 @@ Perform a comprehensive cleanup of unnecessary code comments across the codebase
 ## What to Remove
 
 Remove these types of comments:
-- **Organizational comments**: Section dividers like "# User-level status" or "# Install symlinks"
-- **Obvious comments**: Comments that simply restate what the code does (e.g., "# Create config" right before creating a config)
-- **Implementation detail comments**: Comments explaining how code works when it's clear from the code (e.g., "# Try exact match first")
-- **Trivial test comments**: Comments in tests like "# Should be parsed as integer" or "# Create existing config"
+- **Organizational comments**: Section dividers like "// User-level status" or "// Install symlinks"
+- **Obvious comments**: Comments that simply restate what the code does (e.g., "// Create config" right before creating a config)
+- **Implementation detail comments**: Comments explaining how code works when it's clear from the code (e.g., "// Try exact match first")
+- **Trivial test comments**: Comments in tests like "// Should be parsed as integer" or "// Create existing config"
 
 ## What to Preserve
 
 Keep these types of content:
 - **WHY comments**: Comments explaining architectural decisions, workarounds, or non-obvious reasoning
-- **Docstrings**: All triple-quoted function/class documentation
-- **Shebangs**: `#!/usr/bin/env python` and similar
-- **Linter directives**: Comments like `# type:`, `# noqa`, `# pragma:`, `# fmt:`, `# pylint:`, `# mypy:`
+- **Documentation comments**: Function/class documentation (docstrings, JSDoc, JavaDoc, etc.)
+- **Shebangs**: `#!/usr/bin/env` lines and similar interpreter directives
+- **Linter directives**: Tool-specific comments (e.g., `eslint-disable`, `prettier-ignore`, `noqa`, `@ts-ignore`, `#pragma`, etc.)
 - **TODO/FIXME**: Action items for future work
 
 ## Process
 
 1. **Search for comments**:
    - Use grep/search to find all comments in source files
-   - Pattern: `^\s*#` (lines starting with #, with optional whitespace)
-   - Search Python files: `*.py` in `src/`, `tests/`, etc.
+   - Search patterns depend on language (e.g., `//` for C-style, `#` for shell/Python, `<!-- -->` for HTML/XML)
+   - Search all code files across language-specific directories (e.g., `src/`, `lib/`, `tests/`, `pkg/`, etc.)
+   - Focus on the primary source file extensions for your project's language(s)
 
 2. **Review and categorize**:
    - For each file with comments, determine which are necessary (WHY) vs unnecessary (WHAT)
@@ -49,24 +50,31 @@ Keep these types of content:
 ## Examples
 
 **Remove** (obvious WHAT):
-```python
-# Load user config
-with open(config_path) as f:
-    data = yaml.load(f)
+```
+// Load user config
+const data = loadConfig(configPath);
 
-# Check if path exists
-if not path.exists():
-    return False
+// Check if path exists
+if (!pathExists(path)) {
+    return false;
+}
+
+// Create new user
+user = new User(name, email);
 ```
 
 **Keep** (explains WHY):
-```python
-# Use deep copy to prevent mutation of the base dictionary
-result = copy.deepcopy(base)
+```
+// Use deep copy to prevent mutation of the shared state object
+const result = deepCopy(baseObject);
 
-# Workaround for Python 3.8 compatibility issue with pathlib
-if sys.version_info < (3, 9):
-    path = Path(str(path))
+// Workaround for legacy browser compatibility - IE11 doesn't support fetch
+if (!window.fetch) {
+    return xhrRequest(url);
+}
+
+// PERF: Cache compiled regex to avoid recompilation on every call
+const cachedPattern = /^[a-z]+$/i;
 ```
 
 ## Success Criteria
