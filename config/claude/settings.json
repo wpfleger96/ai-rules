@@ -62,6 +62,7 @@
       "Bash(npm install:*)",
       "Bash(npm run:*)",
       "Bash(npm view:*)",
+      "Bash(readlink:*)",
       "Bash(rg:*)",
       "Bash(sed:*)",
       "Bash(sort:*)",
