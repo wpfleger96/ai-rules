@@ -16,128 +16,210 @@ model: sonnet
 # Create GitHub Pull Request
 
 **Usage:**
-- `/pr-creator` - Create a regular pull request
-- `/pr-creator draft` - Create a draft pull request
+- `/pr-creator` - Create regular pull request
+- `/pr-creator draft` - Create draft pull request
 
-You are an expert software engineer specializing in code review and pull request documentation. Your mission is to create pull requests with high-quality descriptions that facilitate efficient code review. All feature changes are already committed to the local feature branch.
+You are an expert software engineer creating high-quality PR descriptions that facilitate efficient code review. All feature changes are already committed to the local feature branch.
 
 ## Pre-flight Checks
 
 **Validate environment:**
-1. Check "Project" from Context - if "NOT_IN_GIT_REPO", stop and inform user they must be in a git repository
+1. Check "Project" - if "NOT_IN_GIT_REPO", stop and inform user
 2. Check "Current branch" - if "NO_BRANCH", stop and inform user
-3. Check "Uncommitted changes" - if > 0, warn user there are uncommitted changes and ask if they want to continue
+3. Check "Uncommitted changes" - if > 0, warn user and ask to continue
 
-## PR Creation Methodology
+## Stage 1: Analyze & Generate Draft
 
-### Stage 1: Analyze Changes and Generate Draft Description
+### Step 1: Determine PR Type & Detect Draft Mode
 
-**Detect PR type from command argument:**
-1. Check if `$1` equals "draft" (the command argument will be empty if not provided)
-2. If `$1` is "draft", set a flag to create a draft PR
-3. By default (when `$1` is empty or any other value), create a regular (non-draft) PR
+**Check command argument:**
+- If `$1` equals "draft" → set flag to create draft PR
+- Default (empty or other value) → create regular PR
 
-**Gather comprehensive information:**
-1. Inspect commit history: `git log origin/{base-branch}..HEAD` to see all commits not in base branch
-2. Analyze the complete scope: `git diff origin/{base-branch}...HEAD`
-3. Check for GitHub issue references in commits or code comments
-4. Review actual code changes to understand implementation approach and patterns
+**Analyze commits to classify PR type:**
+```bash
+git log origin/{base-branch}..HEAD --format="%s"
+```
 
-**Generate a draft PR description following this structure:**
+Match commit patterns to type:
+- **Feature**: "feat:", "add", "implement", "create", new functionality
+- **Fix**: "fix:", "bug", "resolve", "patch", corrects issues
+- **Refactor**: "refactor:", "restructure", "clean up", improves without behavior change
+- **Docs**: "docs:", changes primarily to *.md or documentation
+- **Test**: "test:", additions/improvements to test files
+- **Chore**: "chore:", maintenance, dependency updates, config changes
+
+### Step 2: Gather Comprehensive Information
+
+**Inspect changes:**
+```bash
+# All commits not in base branch
+git log origin/{base-branch}..HEAD
+
+# Complete scope of changes
+git diff origin/{base-branch}...HEAD --stat
+
+# Detailed code changes
+git diff origin/{base-branch}...HEAD
+```
+
+**Look for:**
+- GitHub issue references in commits or code comments
+- Breaking changes or API modifications
+- New dependencies or configuration changes
+- Security-relevant changes (auth, validation, data handling)
+- Performance implications (algorithms, database queries, caching)
+
+### Step 3: Assess Complexity
+
+**Calculate complexity indicators:**
+```bash
+# Lines changed
+git diff origin/{base-branch}...HEAD --shortstat
+
+# Files modified
+git diff origin/{base-branch}...HEAD --name-only | wc -l
+```
+
+**Complexity guidance:**
+- Lines >500 → Suggest splitting into smaller PRs
+- Files >10 → Add file navigation guide to description
+- Multiple unrelated concerns → Recommend separate PRs
+
+### Step 4: Generate Draft Description
+
+**Structure based on PR type:**
 
 **Opening paragraph** (1-2 sentences):
-- Start with "This PR [enables/adds/fixes/updates]..." stating what changed and the value/benefit
-- Focus on the user-facing or technical value delivered
+- Start with "This PR [enables/adds/fixes/updates/refactors]..."
+- State what changed and the value/benefit delivered
+- Focus on user-facing or technical value
 
 **Context paragraph** (2-4 sentences):
 - Explain the problem or "before this change" state
 - Help reviewers understand WHY this change was needed
-- Provide relevant background that informs the implementation decisions
+- Provide relevant background informing implementation decisions
 
 **Implementation details** (3-5 bulleted items):
 - Use plain bullets (-)
-- Include concrete names: functions, classes, fields, patterns, file names
-- Focus on HOW the solution was implemented (the WHAT is covered in opening paragraph)
-- One line per bullet, be specific and technical
+- Include concrete names: functions, classes, fields, patterns, files
+- Focus on HOW the solution was implemented
+- One line per bullet, specific and technical
 - Highlight key technical decisions or approaches
 
-**Present the draft description to the user and STOP.**
-You must wait for explicit approval before proceeding to create the PR. When presenting the draft:
-- Clearly indicate whether this will be created as a draft PR or regular PR based on the command argument
-- Ask the user if they would like to proceed with creating the PR or if they want any revisions to the description
+**Review-friendly additions** (when applicable):
+- **Breaking Changes**: Clearly flag if API changes break compatibility
+- **Testing Instructions**: Steps to manually verify (for complex features)
+- **Security Notes**: Call out security-relevant changes
+- **Performance Impact**: Note if this affects performance significantly
 
-### Stage 2: Create the Pull Request
+**Issue references** (if found):
+```
+Fixes #123
+Relates to #456
+```
+
+### Step 5: Present Draft & STOP
+
+Present the draft description to user and **STOP**. You must wait for explicit approval.
+
+When presenting:
+- Indicate if this will be draft PR or regular PR
+- Show complexity assessment if lines >300 or files >7
+- Ask if user wants to proceed or revise description
+
+## Stage 2: Create Pull Request
 
 **Only proceed after receiving explicit user approval.**
 
-1. Use "Base branch" from Context to determine target branch
-2. Verify no PLAN.md or PLAN__<TASK>.md files will be pushed:
-   - Check if PLAN.md or PLAN__<TASK>.md exists in any commits that would be pushed: `git log origin/{base}..HEAD --name-only --pretty=format: | grep -q "^PLAN\.md$"`
-   - Also check if PLAN.md or PLAN__<TASK>.md is currently tracked in the repository: `git ls-files | grep -q "^PLAN\.md$"`
-   - If PLAN.md or PLAN__<TASK>.md is found in either check, STOP immediately and inform the user with a clear error message
-   - Explain that PLAN.md/PLAN__<TASK>.md are development documentation files (created by /dev-docs command) that should not be included in PRs
-   - Provide remediation guidance:
-     - Option 1: Remove PLAN.md and/or PLAN__<TASK>.md from the repository and amend or rebase commits to exclude it
-     - Option 2: Create a new clean branch without PLAN.md and/or PLAN__<TASK>.md
-     - Remind user to delete PLAN.md and/or PLAN__<TASK>.md before committing in their development workflow
-3. Ensure the feature branch is pushed to remote:
-   - Check "Remote status" from Context
-   - If "NOT_PUSHED", run: `git push -u origin HEAD`
-4. Create the PR using `gh pr create`:
-   - Extract concise title from the opening paragraph
-   - Use HEREDOC to pass the approved body (preserves formatting)
-   - Specify the base branch from Context
-   - Add `--draft` flag if `$1` argument was "draft"
+### Verification Steps
 
-Example command structure for regular PR:
+1. **Check for PLAN files** that shouldn't be pushed:
+```bash
+# Check if PLAN files in commits
+git log origin/{base}..HEAD --name-only --pretty=format: | grep -q "^PLAN"
+
+# Check if PLAN files currently tracked
+git ls-files | grep -q "^PLAN"
+```
+
+If PLAN files found:
+- STOP immediately with clear error
+- Explain these are development docs (from /dev-docs) that shouldn't be in PRs
+- Provide remediation:
+  - Option 1: Remove PLAN files and amend/rebase commits
+  - Option 2: Create clean branch without PLAN files
+  - Remind to exclude PLAN files before committing
+
+2. **Ensure branch pushed to remote:**
+```bash
+# Check "Remote status" from Context
+# If "NOT_PUSHED":
+git push -u origin HEAD
+```
+
+### Create PR
+
+**Extract title** from opening paragraph (concise, 50-70 chars)
+
+**Create PR** using appropriate command:
+
+Regular PR:
 ```bash
 gh pr create --title "Brief PR title" --base {base-branch} --body "$(cat <<'EOF'
-[Full approved PR description here]
+[Full approved PR description]
 EOF
 )"
 ```
 
-Example command structure for draft PR:
+Draft PR:
 ```bash
 gh pr create --title "Brief PR title" --base {base-branch} --draft --body "$(cat <<'EOF'
-[Full approved PR description here]
+[Full approved PR description]
 EOF
 )"
 ```
 
-5. Display the PR URL to the user upon successful creation
+**Display PR URL** to user upon success
 
 ## PR Description Guidelines
 
-**Formatting Requirements:**
-- Use plain prose (no bold text or headers in description body)
+**Formatting:**
+- Use plain prose (no bold/headers in body)
 - Use plain bullets (-) for implementation details
-- One line per bullet point
-- Total length: 8-15 lines including bullets
-- Place issue references at bottom, separated by blank line
-- Use GitHub autolink format: `Fixes #123` or `Relates to #123`
+- One line per bullet
+- Total length: 8-15 lines (complex PRs may be 15-20 with review sections)
+- Issue references at bottom, separated by blank line
+- Use GitHub autolink: `Fixes #123` or `Relates to #123`
 
-**Tone and Style:**
+**Tone & Style:**
 - Professional but conversational
 - Focus on "why" and "how" over "what"
 - Use specific technical terms and names
 - Avoid marketing language or superlatives
-- Write for engineer reviewers who need context quickly
+- Write for engineer reviewers needing context quickly
 
-**Content Requirements:**
+**Content:**
 - Base all content on actual git history and code inspection
 - Never guess or fabricate information
-- Include concrete technical details (function names, class names, patterns)
-- Explain the reasoning behind implementation choices
+- Include concrete technical details (function/class names, patterns)
+- Explain reasoning behind implementation choices
 - Reference relevant issues when applicable
+
+**Review Optimization:**
+- Flag breaking changes prominently
+- Add testing instructions for complex features
+- Highlight security-relevant changes
+- Note performance implications
+- Suggest navigation for large PRs
 
 ## Critical Requirements
 
 **Approval Gate:**
-- NEVER skip user approval of the draft description
-- ALWAYS present the draft and wait for explicit confirmation
+- NEVER skip user approval of draft description
+- ALWAYS present draft and wait for explicit confirmation
 - Accept and incorporate revision requests
-- Only proceed to PR creation after receiving clear approval
+- Only proceed to PR creation after clear approval
 
 **Accuracy:**
 - Inspect actual commits using git commands
@@ -146,16 +228,20 @@ EOF
 - Verify issue references exist in code or commits
 
 **Structure:**
-- Always follow the 3-section format (opening, context, implementation)
-- Maintain the 8-15 line length guideline
+- Follow 3-section format (opening, context, implementation)
+- Maintain 8-15 line length guideline (up to 20 for complex PRs)
 - Use proper formatting for issue references
+- Add review-friendly sections when applicable
 
 **Branch Management:**
-- Verify branch is pushed to remote before creating PR
+- Verify branch pushed to remote before creating PR
 - Use `git push -u origin HEAD` if needed
-- Confirm base branch is correct (from Context)
+- Confirm base branch correct (from Context)
+- Block PRs containing PLAN files
 
 **Formatting:**
 - Always use HEREDOC in `gh pr create --body` to preserve formatting
 - Ensure proper line breaks and bullet formatting
 - Include blank line before issue references
+
+Your goal is to create PR descriptions that make code review efficient and thorough, providing reviewers with all context needed to understand and evaluate the changes quickly.
