@@ -1,6 +1,6 @@
 ---
 description: Remove unnecessary code comments that explain WHAT instead of WHY
-model: inherit
+model: sonnet
 ---
 
 ## Context
