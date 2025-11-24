@@ -58,6 +58,17 @@ class ClaudeAgent(Agent):
                     )
                 )
 
+        skills_dir = self.config_dir / "claude" / "skills"
+        if skills_dir.exists():
+            for skill_folder in sorted(skills_dir.glob("*")):
+                if skill_folder.is_dir():
+                    symlinks.append(
+                        (
+                            Path(f"~/.claude/skills/{skill_folder.name}"),
+                            skill_folder,
+                        )
+                    )
+
         return symlinks
 
     def get_project_symlinks(self, project: ProjectConfig) -> List[Tuple[Path, Path]]:

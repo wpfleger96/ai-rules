@@ -469,20 +469,28 @@ def install(
 
 
 def _display_symlink_status(
-    status_code: str, target: Path, message: str, agent_label: Optional[str] = None
+    status_code: str,
+    target: Path,
+    source: Path,
+    message: str,
+    agent_label: Optional[str] = None,
 ) -> bool:
     """Display symlink status with consistent formatting.
 
     Args:
         status_code: Status code from check_symlink()
         target: Target path to display
+        source: Source path (to check if it's a directory)
         message: Status message
         agent_label: Optional agent label for project-level display
 
     Returns:
         True if status is correct, False otherwise
     """
-    target_display = f"{agent_label} {target.name}" if agent_label else str(target)
+    target_str = str(target)
+    if source.is_dir():
+        target_str = target_str.rstrip("/") + "/"
+    target_display = f"{agent_label} {target.name}" if agent_label else target_str
 
     if status_code == "correct":
         console.print(f"  [green]✓[/green] {target_display}")
@@ -542,7 +550,7 @@ def status(agents: Optional[str], projects: Optional[str], user_only: bool):
 
         for target, source in filtered_symlinks:
             status_code, message = check_symlink(target, source)
-            is_correct = _display_symlink_status(status_code, target, message)
+            is_correct = _display_symlink_status(status_code, target, source, message)
             if not is_correct:
                 all_correct = False
 
@@ -591,7 +599,7 @@ def status(agents: Optional[str], projects: Optional[str], user_only: bool):
                     for target, source in filtered_project_symlinks:
                         status_code, message = check_symlink(target, source)
                         is_correct = _display_symlink_status(
-                            status_code, target, message, agent_label
+                            status_code, target, source, message, agent_label
                         )
                         if not is_correct:
                             all_correct = False
