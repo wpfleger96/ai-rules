@@ -25,6 +25,15 @@ Automatically creates task-specific PLAN files (`PLAN__<TASK>.md`) or updates ex
 - Valid: ✓ `AUTH_FLOW`, ✓ `API_MIGRATION`, ✓ `SLACK_FORMATTING`
 - Invalid: ✗ `auth_flow` (lowercase), ✗ `AUTH__FLOW` (double underscore), ✗ `TOO_MANY_WORDS` (>2 words)
 
+## CRITICAL: File Location
+
+**ALWAYS write PLAN files to the git repository root, NEVER to ~/.claude/plans/**
+
+- Target path: `{git_root}/PLAN__<TASK>.md` (e.g., `/Users/user/project/PLAN__AUTH_FLOW.md`)
+- Claude Code has an internal plan mode that uses `~/.claude/plans/` - this is SEPARATE and UNRELATED
+- If you see a path containing `~/.claude/plans/`, you are using the WRONG location
+- The `/dev-docs` command manages repository-local documentation, not Claude Code internals
+
 ## Phase 1: Determine Mode
 
 Use pre-executed context to determine mode:
@@ -94,7 +103,7 @@ Structure (preserve original organization from ExitPlanMode):
   - Order: setup → implementation → testing
   - Apply evidence-based statuses
 
-Write to `{project_root}/PLAN__<TASK>.md` and **validate**:
+Write to `{git_root}/PLAN__<TASK>.md` (NOT ~/.claude/plans/) and **validate**:
 - Compare structure to FIRST ExitPlanMode call
 - If original had phases, ensure all phases documented
 - If original was flat list, ensure no invented phases
@@ -149,7 +158,7 @@ Report: file path, X tasks completed, Y in progress, Z changes made
 - **PRESERVE STRUCTURE**: Match original organization exactly
 - Document entire plan regardless of implementation progress
 - Support both complex multi-phase AND simple flat lists
-- Generate valid task name, create `PLAN__<TASK>.md` in git root
+- Generate valid task name, create `PLAN__<TASK>.md` in git root (NEVER in ~/.claude/plans/)
 
 **Update Mode:**
 - Use Edit tool with exact matching
