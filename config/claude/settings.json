@@ -1,10 +1,10 @@
 {
   "cleanupPeriodDays": 99999,
   "env": {
-    "ANTHROPIC_DEFAULT_SONNET_MODEL": "claude-sonnet-4-5-20250929[1m]",
+    "ANTHROPIC_DEFAULT_SONNET_MODEL": "claude-sonnet-4-5-20250929",
     "ANTHROPIC_DEFAULT_OPUS_MODEL": "claude-opus-4-5-20251101",
     "ANTHROPIC_DEFAULT_HAIKU_MODEL": "claude-haiku-4-5-20251001",
-    "CLAUDE_CODE_SUBAGENT_MODEL": "claude-sonnet-4-5-20250929[1m]"
+    "CLAUDE_CODE_SUBAGENT_MODEL": "claude-sonnet-4-5-20250929"
   },
   "permissions": {
     "allow": [
@@ -92,19 +92,8 @@
     ],
     "defaultMode": "plan"
   },
-  "model": "opusplan",
-  "hooks": {
-    "SubagentStop": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "uv run /Users/wpfleger/Development/Personal/ai-rules/config/claude/hooks/subagentStop.py"
-          }
-        ]
-      }
-    ]
-  },
+  "model": "sonnet",
+  "hooks": {},
   "statusLine": {
     "type": "command",
     "command": "sh -c 'cd ~/Development/Personal/claude-code-status-line && uv run --no-config claude-statusline'"

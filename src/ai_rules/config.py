@@ -220,11 +220,11 @@ def validate_override_path(
                 suggestions = list(partial_value.keys())
                 break
 
-    warning_msg = f"Path '{setting}' not found in base config. Setting will be added as a new key."
+    error_msg = f"Path '{setting}' not found in base config."
     if suggestions:
-        warning_msg += f" Did you mean one of: {', '.join(suggestions[:5])}?"
+        error_msg += f" Did you mean one of: {', '.join(suggestions[:5])}?"
 
-    return (True, "", warning_msg, suggestions)
+    return (False, error_msg, "", suggestions)
 
 
 class ProjectConfig:

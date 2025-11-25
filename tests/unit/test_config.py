@@ -659,7 +659,7 @@ class TestPathValidation:
         assert warning == ""
 
     def test_validate_invalid_path_provides_suggestions(self, tmp_path):
-        """Test that invalid path provides suggestions (as warning)."""
+        """Test that invalid path provides suggestions (as error)."""
         settings_file = tmp_path / "config" / "claude" / "settings.json"
         settings_file.parent.mkdir(parents=True)
         settings_file.write_text('{"model": "sonnet", "theme": "dark"}')
@@ -667,9 +667,9 @@ class TestPathValidation:
         is_valid, error, warning, suggestions = validate_override_path(
             "claude", "invalid", tmp_path
         )
-        assert is_valid
-        assert error == ""
-        assert "not found" in warning.lower()
+        assert not is_valid
+        assert "not found" in error.lower()
+        assert warning == ""
         assert "model" in suggestions
         assert "theme" in suggestions
 

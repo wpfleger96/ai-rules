@@ -32,15 +32,19 @@ class TestOverrideSetCommand:
         config_path = tmp_path / ".ai-rules-config.yaml"
         monkeypatch.setenv("HOME", str(tmp_path))
 
-        result = runner.invoke(main, ["override", "set", "claude.timeout", "30"])
+        result = runner.invoke(
+            main, ["override", "set", "claude.cleanupPeriodDays", "30"]
+        )
 
         assert result.exit_code == 0
 
         with open(config_path) as f:
             data = yaml.safe_load(f)
 
-        assert data["settings_overrides"]["claude"]["timeout"] == 30
-        assert isinstance(data["settings_overrides"]["claude"]["timeout"], int)
+        assert data["settings_overrides"]["claude"]["cleanupPeriodDays"] == 30
+        assert isinstance(
+            data["settings_overrides"]["claude"]["cleanupPeriodDays"], int
+        )
 
     def test_override_set_with_string_value(self, runner, tmp_path, monkeypatch):
         """Test override set handles string values."""
@@ -64,7 +68,13 @@ class TestOverrideSetCommand:
         monkeypatch.setenv("HOME", str(tmp_path))
 
         result = runner.invoke(
-            main, ["override", "set", "claude.api.endpoint", "https://api.example.com"]
+            main,
+            [
+                "override",
+                "set",
+                "claude.env.ANTHROPIC_DEFAULT_SONNET_MODEL",
+                "claude-sonnet-4-5",
+            ],
         )
 
         assert result.exit_code == 0
@@ -73,8 +83,10 @@ class TestOverrideSetCommand:
             data = yaml.safe_load(f)
 
         assert (
-            data["settings_overrides"]["claude"]["api"]["endpoint"]
-            == "https://api.example.com"
+            data["settings_overrides"]["claude"]["env"][
+                "ANTHROPIC_DEFAULT_SONNET_MODEL"
+            ]
+            == "claude-sonnet-4-5"
         )
 
     def test_override_set_updates_existing_value(self, runner, tmp_path, monkeypatch):
@@ -104,7 +116,9 @@ class TestOverrideSetCommand:
         monkeypatch.setenv("HOME", str(tmp_path))
 
         runner.invoke(main, ["override", "set", "claude.model", "claude-model"])
-        result = runner.invoke(main, ["override", "set", "goose.model", "goose-model"])
+        result = runner.invoke(
+            main, ["override", "set", "goose.GOOSE_MODEL", "goose-model"]
+        )
 
         assert result.exit_code == 0
 
@@ -112,7 +126,7 @@ class TestOverrideSetCommand:
             data = yaml.safe_load(f)
 
         assert data["settings_overrides"]["claude"]["model"] == "claude-model"
-        assert data["settings_overrides"]["goose"]["model"] == "goose-model"
+        assert data["settings_overrides"]["goose"]["GOOSE_MODEL"] == "goose-model"
 
 
 class TestOverrideUnsetCommand:
