@@ -755,3 +755,58 @@ class TestDeepMergeWithArrays:
         hooks_elem = result["hooks"]["SubagentStop"][0]["hooks"][0]
         assert hooks_elem["command"] == "new.py"
         assert hooks_elem["type"] == "command"
+
+
+class TestCacheCleanup:
+    """Tests for orphaned cache cleanup functionality."""
+
+    def test_cleanup_orphaned_cache(self, tmp_path, monkeypatch):
+        """Test that orphaned cache files are removed."""
+        from pathlib import Path
+
+        home = tmp_path / "home"
+        home.mkdir()
+        monkeypatch.setenv("HOME", str(home))
+        monkeypatch.setattr(Path, "home", staticmethod(lambda: home))
+
+        cache_dir = home / ".ai-rules" / "cache" / "claude"
+        cache_dir.mkdir(parents=True)
+        (cache_dir / "settings.json").write_text('{"orphaned": true}')
+
+        config = Config(settings_overrides={})
+
+        removed = config.cleanup_orphaned_cache(tmp_path)
+        assert "claude" in removed
+        assert not cache_dir.exists()
+
+    def test_cleanup_preserves_cache_with_overrides(self, tmp_path, monkeypatch):
+        """Test that cache files with active overrides are preserved."""
+        from pathlib import Path
+
+        home = tmp_path / "home"
+        home.mkdir()
+        monkeypatch.setenv("HOME", str(home))
+        monkeypatch.setattr(Path, "home", staticmethod(lambda: home))
+
+        cache_dir = home / ".ai-rules" / "cache" / "claude"
+        cache_dir.mkdir(parents=True)
+        (cache_dir / "settings.json").write_text('{"active": true}')
+
+        config = Config(settings_overrides={"claude": {"model": "test"}})
+
+        removed = config.cleanup_orphaned_cache(tmp_path)
+        assert removed == []
+        assert cache_dir.exists()
+
+    def test_cleanup_when_no_cache_dir(self, tmp_path, monkeypatch):
+        """Test cleanup when cache directory doesn't exist."""
+        from pathlib import Path
+
+        home = tmp_path / "home"
+        home.mkdir()
+        monkeypatch.setenv("HOME", str(home))
+        monkeypatch.setattr(Path, "home", staticmethod(lambda: home))
+
+        config = Config(settings_overrides={})
+        removed = config.cleanup_orphaned_cache(tmp_path)
+        assert removed == []

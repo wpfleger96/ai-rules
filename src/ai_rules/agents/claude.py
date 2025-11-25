@@ -4,6 +4,7 @@ from pathlib import Path
 from typing import List, Tuple
 from ai_rules.agents.base import Agent
 from ai_rules.config import ProjectConfig
+from ai_rules.mcp import MCPManager, OperationResult, MCPStatus
 
 
 class ClaudeAgent(Agent):
@@ -84,3 +85,42 @@ class ClaudeAgent(Agent):
             symlinks.append((target, project_agents_file))
 
         return symlinks
+
+    def install_mcps(
+        self, force: bool = False, dry_run: bool = False
+    ) -> Tuple[OperationResult, str, List[str]]:
+        """Install managed MCPs into ~/.claude.json.
+
+        Args:
+            force: Skip confirmation prompts
+            dry_run: Don't actually modify files
+
+        Returns:
+            Tuple of (result, message, conflicts_list)
+        """
+        manager = MCPManager()
+        return manager.install_mcps(self.repo_root, self.config, force, dry_run)
+
+    def uninstall_mcps(
+        self, force: bool = False, dry_run: bool = False
+    ) -> Tuple[OperationResult, str]:
+        """Uninstall managed MCPs from ~/.claude.json.
+
+        Args:
+            force: Skip confirmation prompts
+            dry_run: Don't actually modify files
+
+        Returns:
+            Tuple of (result, message)
+        """
+        manager = MCPManager()
+        return manager.uninstall_mcps(force, dry_run)
+
+    def get_mcp_status(self) -> MCPStatus:
+        """Get status of managed and unmanaged MCPs.
+
+        Returns:
+            MCPStatus object with categorized MCPs
+        """
+        manager = MCPManager()
+        return manager.get_status(self.repo_root, self.config)

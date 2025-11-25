@@ -426,11 +426,56 @@ def install(
                         force_rebuild=rebuild_cache,
                     )
 
+        orphaned = config.cleanup_orphaned_cache(repo_root)
+        if orphaned:
+            console.print(
+                f"[dim]✓ Cleaned up orphaned cache for: {', '.join(orphaned)}[/dim]"
+            )
+
     user_results = install_user_symlinks(selected_agents, force, dry_run)
 
     project_results = install_project_symlinks(
         selected_agents, selected_projects, config, repo_root, force, dry_run
     )
+
+    claude_agent = next((a for a in selected_agents if a.agent_id == "claude"), None)
+    if claude_agent:
+        from ai_rules.mcp import OperationResult, MCPManager
+
+        result, message, conflicts = claude_agent.install_mcps(
+            force=force, dry_run=dry_run
+        )
+
+        if conflicts and not force:
+            console.print("\n[bold yellow]MCP Conflicts Detected:[/bold yellow]")
+            mgr = MCPManager()
+            expected_mcps = mgr.load_managed_mcps(repo_root, config)
+            claude_data = mgr.load_claude_json()
+            installed_mcps = claude_data.get("mcpServers", {})
+
+            for conflict_name in conflicts:
+                expected = expected_mcps.get(conflict_name, {})
+                installed = installed_mcps.get(conflict_name, {})
+                if expected and installed:
+                    diff = mgr.format_diff(conflict_name, expected, installed)
+                    console.print(f"\n{diff}\n")
+
+            if not dry_run and not Confirm.ask(
+                "Overwrite local changes?", default=False
+            ):
+                console.print("[yellow]Skipped MCP installation[/yellow]")
+            else:
+                result, message, _ = claude_agent.install_mcps(
+                    force=True, dry_run=dry_run
+                )
+                console.print(f"[green]✓[/green] {message}")
+        elif result == OperationResult.UPDATED:
+            console.print(f"[green]✓[/green] {message}")
+        elif result == OperationResult.ALREADY_SYNCED:
+            console.print(f"[dim]○[/dim] {message}")
+        elif result != OperationResult.NOT_FOUND:
+            console.print(f"[yellow]⚠[/yellow] {message}")
+
     total_created = user_results["created"] + project_results["created"]
     total_updated = user_results["updated"] + project_results["updated"]
     total_skipped = user_results["skipped"] + project_results["skipped"]
@@ -565,6 +610,44 @@ def status(agents: Optional[str], projects: Optional[str], user_only: bool):
                 console.print("  [yellow]⚠[/yellow] Cached settings are stale")
                 all_correct = False
                 cache_stale = True
+
+        if agent.agent_id == "claude":
+            mcp_status = agent.get_mcp_status()
+            if (
+                mcp_status.managed_mcps
+                or mcp_status.unmanaged_mcps
+                or mcp_status.pending_mcps
+                or mcp_status.stale_mcps
+            ):
+                console.print("  [bold]MCPs:[/bold]")
+                for name in sorted(mcp_status.managed_mcps.keys()):
+                    synced = mcp_status.synced.get(name, False)
+                    has_override = mcp_status.has_overrides.get(name, False)
+                    status_text = (
+                        "[green]Synced[/green]"
+                        if synced
+                        else "[yellow]Outdated[/yellow]"
+                    )
+                    override_text = ", override" if has_override else ""
+                    console.print(
+                        f"    {name:<20} {status_text} [dim](managed{override_text})[/dim]"
+                    )
+                    if not synced:
+                        all_correct = False
+                for name in sorted(mcp_status.pending_mcps.keys()):
+                    has_override = mcp_status.has_overrides.get(name, False)
+                    override_text = ", override" if has_override else ""
+                    console.print(
+                        f"    {name:<20} [yellow]Not installed[/yellow] [dim](managed{override_text})[/dim]"
+                    )
+                    all_correct = False
+                for name in sorted(mcp_status.stale_mcps.keys()):
+                    console.print(
+                        f"    {name:<20} [red]Should be removed[/red] [dim](no longer in config)[/dim]"
+                    )
+                    all_correct = False
+                for name in sorted(mcp_status.unmanaged_mcps.keys()):
+                    console.print(f"    {name:<20} [dim]Unmanaged[/dim]")
 
         console.print()
 
@@ -733,6 +816,15 @@ def uninstall(
             else:
                 console.print(f"  [yellow]○[/yellow] {target} [dim]({message})[/dim]")
                 total_skipped += 1
+
+        if agent.agent_id == "claude":
+            from ai_rules.mcp import OperationResult
+
+            result, message = agent.uninstall_mcps(force=force, dry_run=False)
+            if result == OperationResult.REMOVED:
+                console.print(f"  [green]✓[/green] {message}")
+            elif result == OperationResult.NOT_FOUND:
+                console.print(f"  [dim]•[/dim] {message}")
 
     if selected_projects:
         console.print("\n[bold cyan]Project-Level Configurations[/bold cyan]")

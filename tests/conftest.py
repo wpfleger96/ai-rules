@@ -1,4 +1,5 @@
 import pytest
+from pathlib import Path
 from click.testing import CliRunner
 
 
@@ -22,6 +23,8 @@ def mock_home(tmp_path, monkeypatch):
     home_dir = tmp_path / "home"
     home_dir.mkdir()
     monkeypatch.setenv("HOME", str(home_dir))
+    monkeypatch.setenv("USERPROFILE", str(home_dir))
+    monkeypatch.setattr(Path, "home", staticmethod(lambda: home_dir))
     return home_dir
 
 
@@ -57,5 +60,8 @@ def test_repo(tmp_path):
     goose_dir = config_dir / "goose"
     goose_dir.mkdir()
     (goose_dir / "config.yaml").write_text("test: config")
+
+    mcps_file = claude_dir / "mcps.json"
+    mcps_file.write_text("{}")
 
     return repo_root

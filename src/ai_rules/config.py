@@ -5,6 +5,7 @@ from typing import Dict, List, Optional, Any, Union, Tuple
 import copy
 import json
 import re
+import shutil
 import yaml
 from fnmatch import fnmatch
 
@@ -259,10 +260,12 @@ class Config:
         exclude_symlinks: Optional[List[str]] = None,
         projects: Optional[Dict[str, ProjectConfig]] = None,
         settings_overrides: Optional[Dict[str, Dict[str, Any]]] = None,
+        mcp_overrides: Optional[Dict[str, Dict[str, Any]]] = None,
     ):
         self.exclude_symlinks = set(exclude_symlinks or [])
         self.projects = projects or {}
         self.settings_overrides = settings_overrides or {}
+        self.mcp_overrides = mcp_overrides or {}
 
     @classmethod
     def load(cls, repo_root: Path) -> "Config":
@@ -281,6 +284,7 @@ class Config:
         exclude_symlinks = []
         projects = {}
         settings_overrides = {}
+        mcp_overrides = {}
 
         if user_config_path.exists():
             with open(user_config_path, "r") as f:
@@ -305,6 +309,7 @@ class Config:
                         )
 
                 settings_overrides = data.get("settings_overrides", {})
+                mcp_overrides = data.get("mcp_overrides", {})
 
         if repo_config_path.exists():
             with open(repo_config_path, "r") as f:
@@ -315,6 +320,7 @@ class Config:
             exclude_symlinks=exclude_symlinks,
             projects=projects,
             settings_overrides=settings_overrides,
+            mcp_overrides=mcp_overrides,
         )
 
     def is_excluded(self, symlink_target: str) -> bool:
@@ -589,3 +595,26 @@ class Config:
 
         with open(user_config_path, "w") as f:
             yaml.dump(data, f, default_flow_style=False, sort_keys=False)
+
+    def cleanup_orphaned_cache(self, repo_root: Path) -> List[str]:
+        """Remove cache files for agents that no longer have overrides.
+
+        Args:
+            repo_root: Repository root path
+
+        Returns:
+            List of agent IDs whose caches were removed
+        """
+        removed = []
+        cache_dir = self.get_cache_dir()
+        if not cache_dir.exists():
+            return removed
+
+        for agent_dir in cache_dir.iterdir():
+            if agent_dir.is_dir():
+                agent_id = agent_dir.name
+                if agent_id not in self.settings_overrides:
+                    shutil.rmtree(agent_dir)
+                    removed.append(agent_id)
+
+        return removed
