@@ -1,5 +1,6 @@
 ---
 description: Audit and optimize test suite by removing trivial tests and consolidating valuable ones
+allowed-tools: Bash, Read, Write, Edit, Grep, Glob, TodoWrite
 model: inherit
 ---
 

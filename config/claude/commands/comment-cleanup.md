@@ -1,5 +1,6 @@
 ---
 description: Remove unnecessary code comments that explain WHAT instead of WHY
+allowed-tools: Bash, Read, Write, Edit, Grep, Glob, TodoWrite
 model: sonnet
 ---
 
