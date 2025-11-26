@@ -4,8 +4,8 @@ import pytest
 
 from ai_rules.config import (
     Config,
-    parse_setting_path,
     navigate_path,
+    parse_setting_path,
     validate_override_path,
 )
 

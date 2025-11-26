@@ -2,6 +2,7 @@
 
 from pathlib import Path
 from typing import List, Tuple
+
 from ai_rules.agents.base import Agent
 from ai_rules.config import ProjectConfig
 

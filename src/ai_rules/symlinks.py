@@ -5,6 +5,7 @@ from datetime import datetime
 from enum import Enum
 from pathlib import Path
 from typing import Tuple
+
 from rich.console import Console
 
 console = Console()

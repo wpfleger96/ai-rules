@@ -3,6 +3,7 @@
 from abc import ABC, abstractmethod
 from pathlib import Path
 from typing import Dict, List, Tuple
+
 from ai_rules.config import Config, ProjectConfig
 
 
@@ -57,6 +58,15 @@ class Agent(ABC):
             for target, source in all_symlinks
             if not self.config.is_excluded(str(target))
         ]
+
+    def get_deprecated_symlinks(self) -> List[Path]:
+        """Get list of deprecated symlink paths that should be cleaned up.
+
+        Returns:
+            List of paths that were previously used but are now deprecated.
+            These will be removed during install if they point to our config files.
+        """
+        return []
 
     @abstractmethod
     def get_project_symlinks(self, project: ProjectConfig) -> List[Tuple[Path, Path]]:

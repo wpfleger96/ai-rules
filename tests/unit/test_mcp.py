@@ -1,10 +1,11 @@
 """Tests for MCP management functionality."""
 
 import json
+
 import pytest
 
-from ai_rules.mcp import MCPManager, OperationResult
 from ai_rules.config import Config
+from ai_rules.mcp import MCPManager, OperationResult
 
 
 @pytest.fixture(autouse=True)

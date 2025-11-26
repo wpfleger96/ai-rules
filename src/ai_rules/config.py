@@ -1,13 +1,14 @@
 """Configuration loading and management."""
 
-from pathlib import Path
-from typing import Dict, List, Optional, Any, Union, Tuple
 import copy
 import json
 import re
 import shutil
-import yaml
 from fnmatch import fnmatch
+from pathlib import Path
+from typing import Any, Dict, List, Optional, Tuple, Union
+
+import yaml
 
 AGENT_CONFIG_METADATA = {
     "claude": {

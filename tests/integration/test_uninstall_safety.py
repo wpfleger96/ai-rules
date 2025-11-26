@@ -63,7 +63,7 @@ class TestUninstallSafety:
                 create_symlink(target_path, source, force=False, dry_run=False)
 
         claude_files = [
-            mock_home / "CLAUDE.md",
+            mock_home / ".claude" / "CLAUDE.md",
             mock_home / ".claude" / "settings.json",
             mock_home / ".claude" / "agents" / "test-agent.md",
             mock_home / ".claude" / "commands" / "test-command.md",

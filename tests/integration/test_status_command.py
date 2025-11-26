@@ -3,6 +3,7 @@ from pathlib import Path
 
 import pytest
 import yaml
+
 from ai_rules.agents.claude import ClaudeAgent
 from ai_rules.agents.goose import GooseAgent
 from ai_rules.agents.shared import SharedAgent

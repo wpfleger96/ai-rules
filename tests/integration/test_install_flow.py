@@ -24,7 +24,7 @@ class TestInstallFlow:
                 target_path = Path(str(target).replace("~", str(mock_home)))
                 create_symlink(target_path, source, dry_run=False, force=False)
 
-        claude_md = mock_home / "CLAUDE.md"
+        claude_md = mock_home / ".claude" / "CLAUDE.md"
         assert claude_md.is_symlink()
         assert claude_md.resolve() == (test_repo / "config" / "AGENTS.md").resolve()
 
@@ -49,8 +49,9 @@ class TestInstallFlow:
         assert agents_md.resolve() == (test_repo / "config" / "AGENTS.md").resolve()
 
     def test_install_creates_backups_for_existing_files(self, test_repo, mock_home):
-        existing_file = mock_home / "CLAUDE.md"
-        existing_file.parent.mkdir(parents=True, exist_ok=True)
+        claude_dir = mock_home / ".claude"
+        claude_dir.mkdir(parents=True, exist_ok=True)
+        existing_file = claude_dir / "CLAUDE.md"
         existing_file.write_text("existing content")
 
         config = Config(exclude_symlinks=[])
@@ -61,7 +62,7 @@ class TestInstallFlow:
         create_symlink(target_path, source, force=True, dry_run=False)
 
         assert target_path.is_symlink()
-        backup_files = list(mock_home.glob("CLAUDE.md.ai-rules-backup.*"))
+        backup_files = list(claude_dir.glob("CLAUDE.md.ai-rules-backup.*"))
         assert len(backup_files) == 1
         assert backup_files[0].read_text() == "existing content"
 
@@ -97,7 +98,7 @@ class TestInstallFlow:
                 target_path = Path(str(target).replace("~", str(mock_home)))
                 create_symlink(target_path, source, dry_run=False, force=False)
 
-        assert (mock_home / "CLAUDE.md").exists()
+        assert (mock_home / ".claude" / "CLAUDE.md").exists()
         assert not (mock_home / ".claude" / "settings.json").exists()
         assert (mock_home / ".config" / "goose" / ".goosehints").exists()
         assert not (mock_home / ".config" / "goose" / "config.yaml").exists()

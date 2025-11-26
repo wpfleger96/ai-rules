@@ -209,6 +209,64 @@ def main():
     pass
 
 
+def cleanup_deprecated_symlinks(
+    selected_agents: List[Agent], config_dir: Path, force: bool, dry_run: bool
+) -> int:
+    """Remove deprecated symlinks that point to our config files.
+
+    Args:
+        selected_agents: List of agents to check for deprecated symlinks
+        config_dir: Path to the config directory (repo/config)
+        force: Skip confirmation prompts
+        dry_run: Don't actually remove symlinks
+
+    Returns:
+        Count of removed symlinks
+    """
+    removed_count = 0
+    agents_md = config_dir / "AGENTS.md"
+
+    for agent in selected_agents:
+        deprecated_paths = agent.get_deprecated_symlinks()
+
+        for deprecated_path in deprecated_paths:
+            target = deprecated_path.expanduser()
+
+            # Skip if doesn't exist
+            if not target.exists() and not target.is_symlink():
+                continue
+
+            # Only remove if it's a symlink (not a regular file)
+            if not target.is_symlink():
+                continue
+
+            # Check if it points to our AGENTS.md file
+            try:
+                resolved = target.resolve()
+                if resolved != agents_md:
+                    # Points to something else, don't touch it
+                    continue
+            except (OSError, RuntimeError):
+                # Broken symlink, but let's be conservative and skip it
+                continue
+
+            # Safe to remove - it's our deprecated symlink
+            if dry_run:
+                console.print(
+                    f"  [yellow]Would remove deprecated:[/yellow] {deprecated_path}"
+                )
+                removed_count += 1
+            else:
+                success, message = remove_symlink(target, force=True)
+                if success:
+                    console.print(
+                        f"  [dim]Cleaned up deprecated symlink:[/dim] {deprecated_path}"
+                    )
+                    removed_count += 1
+
+    return removed_count
+
+
 def install_user_symlinks(
     selected_agents: List[Agent], force: bool, dry_run: bool
 ) -> Dict[str, int]:
@@ -217,6 +275,11 @@ def install_user_symlinks(
     Returns dict with keys: created, updated, skipped, excluded, errors
     """
     console.print("[bold cyan]User-Level Configuration[/bold cyan]")
+
+    # Clean up deprecated symlinks first
+    if selected_agents:
+        config_dir = selected_agents[0].config_dir
+        cleanup_deprecated_symlinks(selected_agents, config_dir, force, dry_run)
 
     created = updated = skipped = excluded = errors = 0
 
@@ -440,7 +503,7 @@ def install(
 
     claude_agent = next((a for a in selected_agents if a.agent_id == "claude"), None)
     if claude_agent:
-        from ai_rules.mcp import OperationResult, MCPManager
+        from ai_rules.mcp import MCPManager, OperationResult
 
         result, message, conflicts = claude_agent.install_mcps(
             force=force, dry_run=dry_run
@@ -1520,6 +1583,7 @@ def config_show(merged: bool, agent: Optional[str]):
             if base_path.exists():
                 with open(base_path, "r") as f:
                     import json
+
                     import yaml
 
                     if agent_config["format"] == "json":

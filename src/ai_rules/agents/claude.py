@@ -2,13 +2,18 @@
 
 from pathlib import Path
 from typing import List, Tuple
+
 from ai_rules.agents.base import Agent
 from ai_rules.config import ProjectConfig
-from ai_rules.mcp import MCPManager, OperationResult, MCPStatus
+from ai_rules.mcp import MCPManager, MCPStatus, OperationResult
 
 
 class ClaudeAgent(Agent):
     """Agent for Claude Code configuration."""
+
+    DEPRECATED_SYMLINKS: List[Path] = [
+        Path("~/CLAUDE.md"),
+    ]
 
     @property
     def name(self) -> str:
@@ -30,7 +35,7 @@ class ClaudeAgent(Agent):
         """Get all Claude Code symlinks including dynamic agents/commands."""
         symlinks = []
 
-        symlinks.append((Path("~/CLAUDE.md"), self.config_dir / "AGENTS.md"))
+        symlinks.append((Path("~/.claude/CLAUDE.md"), self.config_dir / "AGENTS.md"))
 
         settings_file = self.config_dir / "claude" / "settings.json"
         if settings_file.exists():
@@ -85,6 +90,10 @@ class ClaudeAgent(Agent):
             symlinks.append((target, project_agents_file))
 
         return symlinks
+
+    def get_deprecated_symlinks(self) -> List[Path]:
+        """Return deprecated symlink locations for cleanup."""
+        return self.DEPRECATED_SYMLINKS
 
     def install_mcps(
         self, force: bool = False, dry_run: bool = False
