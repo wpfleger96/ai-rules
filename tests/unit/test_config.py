@@ -1,6 +1,7 @@
 from pathlib import Path
 
 import pytest
+import yaml
 
 from ai_rules.config import (
     Config,
@@ -72,7 +73,7 @@ class TestConfigLoading:
         repo_config = tmp_path / ".ai-rules-config.yaml"
         repo_config.write_text("invalid: yaml: content: [[[")
 
-        with pytest.raises(Exception):
+        with pytest.raises(yaml.YAMLError):
             Config.load(tmp_path)
 
 
@@ -299,7 +300,7 @@ settings_overrides:
 
         import json
 
-        with open(cache_path, "r") as f:
+        with open(cache_path) as f:
             cached = json.load(f)
 
         assert cached["model"] == "claude-sonnet-4-5-20250929"

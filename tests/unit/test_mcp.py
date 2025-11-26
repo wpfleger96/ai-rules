@@ -66,7 +66,7 @@ def test_install_mcps_fresh(manager, mock_home, test_repo):
     assert conflicts == []
 
     assert manager.CLAUDE_JSON.exists()
-    with open(manager.CLAUDE_JSON, "r") as f:
+    with open(manager.CLAUDE_JSON) as f:
         data = json.load(f)
         assert "mcpServers" in data
         assert "test-mcp" in data["mcpServers"]
@@ -80,7 +80,7 @@ def test_install_mcps_update(manager, mock_home, test_repo):
     manager.install_mcps(test_repo, config, force=True)
 
     mcps_file = test_repo / "config" / "claude" / "mcps.json"
-    with open(mcps_file, "r") as f:
+    with open(mcps_file) as f:
         mcps_data = json.load(f)
         mcps_data["test-mcp"]["args"] = ["modified"]
     with open(mcps_file, "w") as f:
@@ -89,7 +89,7 @@ def test_install_mcps_update(manager, mock_home, test_repo):
     result, message, conflicts = manager.install_mcps(test_repo, config, force=True)
     assert result == OperationResult.UPDATED
 
-    with open(manager.CLAUDE_JSON, "r") as f:
+    with open(manager.CLAUDE_JSON) as f:
         data = json.load(f)
         assert data["mcpServers"]["test-mcp"]["args"] == ["modified"]
 
@@ -100,7 +100,7 @@ def test_install_mcps_conflict_detection(manager, mock_home, test_repo):
 
     manager.install_mcps(test_repo, config, force=True)
 
-    with open(manager.CLAUDE_JSON, "r") as f:
+    with open(manager.CLAUDE_JSON) as f:
         data = json.load(f)
         data["mcpServers"]["test-mcp"]["args"] = ["user-modified"]
     with open(manager.CLAUDE_JSON, "w") as f:
@@ -120,7 +120,7 @@ def test_uninstall_mcps(manager, mock_home, test_repo):
     assert result == OperationResult.REMOVED
     assert "Removed" in message
 
-    with open(manager.CLAUDE_JSON, "r") as f:
+    with open(manager.CLAUDE_JSON) as f:
         data = json.load(f)
         assert "test-mcp" not in data.get("mcpServers", {})
 
@@ -130,7 +130,7 @@ def test_uninstall_preserves_user_mcps(manager, mock_home, test_repo):
     config = Config()
     manager.install_mcps(test_repo, config, force=True)
 
-    with open(manager.CLAUDE_JSON, "r") as f:
+    with open(manager.CLAUDE_JSON) as f:
         data = json.load(f)
         data["mcpServers"]["user-custom-mcp"] = {
             "type": "stdio",
@@ -142,7 +142,7 @@ def test_uninstall_preserves_user_mcps(manager, mock_home, test_repo):
 
     manager.uninstall_mcps(force=True)
 
-    with open(manager.CLAUDE_JSON, "r") as f:
+    with open(manager.CLAUDE_JSON) as f:
         data = json.load(f)
         assert "user-custom-mcp" in data["mcpServers"]
         assert "test-mcp" not in data["mcpServers"]
@@ -153,7 +153,7 @@ def test_status_shows_managed_vs_unmanaged(manager, mock_home, test_repo):
     config = Config()
     manager.install_mcps(test_repo, config, force=True)
 
-    with open(manager.CLAUDE_JSON, "r") as f:
+    with open(manager.CLAUDE_JSON) as f:
         data = json.load(f)
         data["mcpServers"]["user-mcp"] = {
             "type": "stdio",
@@ -178,7 +178,7 @@ def test_claude_json_missing(manager, mock_home, test_repo):
     assert result == OperationResult.UPDATED
     assert manager.CLAUDE_JSON.exists()
 
-    with open(manager.CLAUDE_JSON, "r") as f:
+    with open(manager.CLAUDE_JSON) as f:
         data = json.load(f)
         assert "mcpServers" in data
 
@@ -197,7 +197,7 @@ def test_atomic_write_backup(manager, mock_home, test_repo):
     backup_files = list(manager.CLAUDE_JSON.parent.glob("*.ai-rules-backup.*"))
     assert len(backup_files) == 1
 
-    with open(backup_files[0], "r") as f:
+    with open(backup_files[0]) as f:
         backup_data = json.load(f)
         assert backup_data == original_content
 
@@ -243,7 +243,7 @@ def test_status_sync_detection(manager, mock_home, test_repo):
     status = manager.get_status(test_repo, config)
     assert status.synced["test-mcp"] is True
 
-    with open(manager.CLAUDE_JSON, "r") as f:
+    with open(manager.CLAUDE_JSON) as f:
         data = json.load(f)
         data["mcpServers"]["test-mcp"]["args"] = ["modified"]
     with open(manager.CLAUDE_JSON, "w") as f:
@@ -269,7 +269,7 @@ def test_install_removes_mcps_no_longer_in_repo(manager, mock_home, test_repo):
     config = Config()
 
     manager.install_mcps(test_repo, config, force=True)
-    with open(manager.CLAUDE_JSON, "r") as f:
+    with open(manager.CLAUDE_JSON) as f:
         data = json.load(f)
         assert "test-mcp" in data["mcpServers"]
         assert data["mcpServers"]["test-mcp"]["_managedBy"] == "ai-rules"
@@ -281,6 +281,6 @@ def test_install_removes_mcps_no_longer_in_repo(manager, mock_home, test_repo):
     assert result == OperationResult.UPDATED
     assert "removed" in message
 
-    with open(manager.CLAUDE_JSON, "r") as f:
+    with open(manager.CLAUDE_JSON) as f:
         data = json.load(f)
         assert "test-mcp" not in data.get("mcpServers", {})

@@ -1,7 +1,6 @@
 """Goose agent implementation."""
 
 from pathlib import Path
-from typing import List, Tuple
 
 from ai_rules.agents.base import Agent
 from ai_rules.config import ProjectConfig
@@ -26,7 +25,7 @@ class GooseAgent(Agent):
     def config_file_format(self) -> str:
         return "yaml"
 
-    def get_symlinks(self) -> List[Tuple[Path, Path]]:
+    def get_symlinks(self) -> list[tuple[Path, Path]]:
         """Get all Goose symlinks."""
         symlinks = []
 
@@ -43,7 +42,7 @@ class GooseAgent(Agent):
 
         return symlinks
 
-    def get_project_symlinks(self, project: ProjectConfig) -> List[Tuple[Path, Path]]:
+    def get_project_symlinks(self, project: ProjectConfig) -> list[tuple[Path, Path]]:
         """Get Goose symlinks for a specific project.
 
         Creates symlink at <project>/.goosehints pointing to config/projects/<name>/AGENTS.md

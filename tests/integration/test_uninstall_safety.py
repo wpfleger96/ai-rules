@@ -20,12 +20,12 @@ class TestUninstallSafety:
             target_path = Path(str(target).replace("~", str(mock_home)))
             create_symlink(target_path, source, force=False, dry_run=False)
 
-        for target, source in claude.get_symlinks():
+        for target, _source in claude.get_symlinks():
             target_path = Path(str(target).replace("~", str(mock_home)))
             success, message = remove_symlink(target_path, force=True)
             assert success is True
 
-        for target, source in claude.get_symlinks():
+        for target, _source in claude.get_symlinks():
             target_path = Path(str(target).replace("~", str(mock_home)))
             assert not target_path.exists()
 
@@ -77,7 +77,7 @@ class TestUninstallSafety:
             assert file.is_symlink()
 
         for agent in [claude, goose]:
-            for target, source in agent.get_symlinks():
+            for target, _source in agent.get_symlinks():
                 target_path = Path(str(target).replace("~", str(mock_home)))
                 remove_symlink(target_path, force=True)
 
@@ -94,7 +94,7 @@ class TestUninstallSafety:
 
         source_files = [source for _, source in claude.get_symlinks()]
 
-        for target, source in claude.get_symlinks():
+        for target, _source in claude.get_symlinks():
             target_path = Path(str(target).replace("~", str(mock_home)))
             remove_symlink(target_path, force=True)
 

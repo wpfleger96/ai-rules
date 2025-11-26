@@ -2,7 +2,6 @@
 
 from abc import ABC, abstractmethod
 from pathlib import Path
-from typing import Dict, List, Tuple
 
 from ai_rules.config import Config, ProjectConfig
 
@@ -40,7 +39,7 @@ class Agent(ABC):
         pass
 
     @abstractmethod
-    def get_symlinks(self) -> List[Tuple[Path, Path]]:
+    def get_symlinks(self) -> list[tuple[Path, Path]]:
         """Get list of (target_path, source_path) tuples for symlinks.
 
         Returns:
@@ -50,7 +49,7 @@ class Agent(ABC):
         """
         pass
 
-    def get_filtered_symlinks(self) -> List[Tuple[Path, Path]]:
+    def get_filtered_symlinks(self) -> list[tuple[Path, Path]]:
         """Get symlinks filtered by config exclusions."""
         all_symlinks = self.get_symlinks()
         return [
@@ -59,7 +58,7 @@ class Agent(ABC):
             if not self.config.is_excluded(str(target))
         ]
 
-    def get_deprecated_symlinks(self) -> List[Path]:
+    def get_deprecated_symlinks(self) -> list[Path]:
         """Get list of deprecated symlink paths that should be cleaned up.
 
         Returns:
@@ -69,7 +68,7 @@ class Agent(ABC):
         return []
 
     @abstractmethod
-    def get_project_symlinks(self, project: ProjectConfig) -> List[Tuple[Path, Path]]:
+    def get_project_symlinks(self, project: ProjectConfig) -> list[tuple[Path, Path]]:
         """Get list of (target_path, source_path) tuples for project-level symlinks.
 
         Args:
@@ -82,7 +81,7 @@ class Agent(ABC):
         """
         pass
 
-    def get_all_project_symlinks(self) -> Dict[str, List[Tuple[Path, Path]]]:
+    def get_all_project_symlinks(self) -> dict[str, list[tuple[Path, Path]]]:
         """Get all project symlinks grouped by project name, filtered by exclusions.
 
         Returns:

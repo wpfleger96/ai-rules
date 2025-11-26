@@ -4,10 +4,11 @@ import copy
 import json
 import shutil
 import tempfile
+
 from datetime import datetime
 from enum import Enum
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 
 from .config import Config
 
@@ -23,12 +24,12 @@ class OperationResult(Enum):
 
 class MCPStatus:
     def __init__(self):
-        self.managed_mcps: Dict[str, Dict[str, Any]] = {}
-        self.unmanaged_mcps: Dict[str, Dict[str, Any]] = {}
-        self.pending_mcps: Dict[str, Dict[str, Any]] = {}
-        self.stale_mcps: Dict[str, Dict[str, Any]] = {}
-        self.synced: Dict[str, bool] = {}
-        self.has_overrides: Dict[str, bool] = {}
+        self.managed_mcps: dict[str, dict[str, Any]] = {}
+        self.unmanaged_mcps: dict[str, dict[str, Any]] = {}
+        self.pending_mcps: dict[str, dict[str, Any]] = {}
+        self.stale_mcps: dict[str, dict[str, Any]] = {}
+        self.synced: dict[str, bool] = {}
+        self.has_overrides: dict[str, bool] = {}
 
 
 MANAGED_BY_KEY = "_managedBy"
@@ -42,7 +43,7 @@ class MCPManager:
     def CLAUDE_JSON(self) -> Path:
         return Path.home() / ".claude.json"
 
-    def load_managed_mcps(self, repo_root: Path, config: Config) -> Dict[str, Any]:
+    def load_managed_mcps(self, repo_root: Path, config: Config) -> dict[str, Any]:
         """Load managed MCP definitions from repo and apply user overrides.
 
         Args:
@@ -56,13 +57,13 @@ class MCPManager:
         if not mcps_file.exists():
             return {}
 
-        with open(mcps_file, "r") as f:
+        with open(mcps_file) as f:
             base_mcps = json.load(f)
 
         mcp_overrides = config.mcp_overrides if hasattr(config, "mcp_overrides") else {}
 
         merged_mcps = {}
-        for name, mcp_config in {**base_mcps, **mcp_overrides}.items():
+        for name, _mcp_config in {**base_mcps, **mcp_overrides}.items():
             if name in base_mcps and name in mcp_overrides:
                 merged_mcps[name] = Config._deep_merge(
                     base_mcps[name], mcp_overrides[name]
@@ -74,7 +75,7 @@ class MCPManager:
 
         return merged_mcps
 
-    def load_claude_json(self) -> Dict[str, Any]:
+    def load_claude_json(self) -> dict[str, Any]:
         """Load ~/.claude.json file.
 
         Returns:
@@ -83,10 +84,10 @@ class MCPManager:
         if not self.CLAUDE_JSON.exists():
             return {}
 
-        with open(self.CLAUDE_JSON, "r") as f:
+        with open(self.CLAUDE_JSON) as f:
             return json.load(f)
 
-    def save_claude_json(self, data: Dict[str, Any]) -> None:
+    def save_claude_json(self, data: dict[str, Any]) -> None:
         """Save ~/.claude.json file atomically.
 
         Args:
@@ -110,7 +111,7 @@ class MCPManager:
                 Path(temp_path).unlink()
             raise
 
-    def create_backup(self) -> Optional[Path]:
+    def create_backup(self) -> Path | None:
         """Create a timestamped backup of ~/.claude.json.
 
         Returns:
@@ -127,8 +128,8 @@ class MCPManager:
         return backup_path
 
     def detect_conflicts(
-        self, expected: Dict[str, Any], installed: Dict[str, Any]
-    ) -> List[str]:
+        self, expected: dict[str, Any], installed: dict[str, Any]
+    ) -> list[str]:
         """Detect MCPs that have been modified locally.
 
         Args:
@@ -152,7 +153,7 @@ class MCPManager:
         return conflicts
 
     def format_diff(
-        self, name: str, expected: Dict[str, Any], installed: Dict[str, Any]
+        self, name: str, expected: dict[str, Any], installed: dict[str, Any]
     ) -> str:
         """Format a diff between expected and installed MCP config.
 
@@ -188,7 +189,7 @@ class MCPManager:
         config: Config,
         force: bool = False,
         dry_run: bool = False,
-    ) -> Tuple[OperationResult, str, List[str]]:
+    ) -> tuple[OperationResult, str, list[str]]:
         """Install managed MCPs into ~/.claude.json.
 
         Auto-removes MCPs that were previously tracked but are no longer in repo config.
@@ -204,7 +205,7 @@ class MCPManager:
         """
         managed_mcps = self.load_managed_mcps(repo_root, config)
 
-        for name, mcp_config in managed_mcps.items():
+        for _name, mcp_config in managed_mcps.items():
             mcp_config[MANAGED_BY_KEY] = MANAGED_BY_VALUE
 
         claude_data = self.load_claude_json()
@@ -265,7 +266,7 @@ class MCPManager:
 
     def uninstall_mcps(
         self, force: bool = False, dry_run: bool = False
-    ) -> Tuple[OperationResult, str]:
+    ) -> tuple[OperationResult, str]:
         """Uninstall managed MCPs from ~/.claude.json.
 
         Args:
@@ -321,7 +322,7 @@ class MCPManager:
         status = MCPStatus()
         managed_mcps = self.load_managed_mcps(repo_root, config)
 
-        for name, mcp_config in managed_mcps.items():
+        for _name, mcp_config in managed_mcps.items():
             mcp_config[MANAGED_BY_KEY] = MANAGED_BY_VALUE
 
         claude_data = self.load_claude_json()

@@ -80,7 +80,7 @@ class TestInstallFlow:
             )
             results.append((result, target_path))
 
-        for result, target_path in results:
+        for _result, target_path in results:
             assert not target_path.exists()
 
     def test_excluded_symlinks_are_skipped(self, test_repo, mock_home):

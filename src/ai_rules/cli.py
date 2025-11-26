@@ -1,11 +1,12 @@
 """Command-line interface for ai-rules."""
 
 import sys
+
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple
 
 import click
 import yaml
+
 from rich.console import Console
 from rich.prompt import Confirm
 from rich.table import Table
@@ -36,7 +37,7 @@ def get_repo_root() -> Path:
     return Path(__file__).parent.parent.parent.absolute()
 
 
-def get_agents(repo_root: Path, config: Config) -> List[Agent]:
+def get_agents(repo_root: Path, config: Config) -> list[Agent]:
     """Get all available agents."""
     return [
         ClaudeAgent(repo_root, config),
@@ -45,7 +46,7 @@ def get_agents(repo_root: Path, config: Config) -> List[Agent]:
     ]
 
 
-def select_agents(all_agents: List[Agent], filter_string: Optional[str]) -> List[Agent]:
+def select_agents(all_agents: list[Agent], filter_string: str | None) -> list[Agent]:
     """Select agents based on filter string.
 
     Args:
@@ -77,8 +78,8 @@ def select_agents(all_agents: List[Agent], filter_string: Optional[str]) -> List
 
 
 def filter_selected_projects(
-    config: Config, projects_filter: Optional[str], user_only: bool
-) -> Dict[str, ProjectConfig]:
+    config: Config, projects_filter: str | None, user_only: bool
+) -> dict[str, ProjectConfig]:
     """Filter and validate project selection.
 
     Args:
@@ -114,7 +115,7 @@ def filter_selected_projects(
 
 def get_filtered_project_symlinks(
     agent: Agent, project: ProjectConfig, config: Config, project_name: str
-) -> List[Tuple[Path, Path]]:
+) -> list[tuple[Path, Path]]:
     """Get project symlinks filtered by exclusions.
 
     Args:
@@ -171,7 +172,7 @@ def format_summary(
         console.print(f"  [red]{errors} error(s)[/red]")
 
 
-def check_first_run(agents: List[Agent], force: bool) -> bool:
+def check_first_run(agents: list[Agent], force: bool) -> bool:
     """Check if this is the first run and prompt user if needed.
 
     Returns:
@@ -210,7 +211,7 @@ def main():
 
 
 def cleanup_deprecated_symlinks(
-    selected_agents: List[Agent], config_dir: Path, force: bool, dry_run: bool
+    selected_agents: list[Agent], config_dir: Path, force: bool, dry_run: bool
 ) -> int:
     """Remove deprecated symlinks that point to our config files.
 
@@ -268,8 +269,8 @@ def cleanup_deprecated_symlinks(
 
 
 def install_user_symlinks(
-    selected_agents: List[Agent], force: bool, dry_run: bool
-) -> Dict[str, int]:
+    selected_agents: list[Agent], force: bool, dry_run: bool
+) -> dict[str, int]:
     """Install user-level symlinks for all selected agents.
 
     Returns dict with keys: created, updated, skipped, excluded, errors
@@ -325,13 +326,13 @@ def install_user_symlinks(
 
 
 def install_project_symlinks(
-    selected_agents: List[Agent],
-    selected_projects: Dict[str, ProjectConfig],
+    selected_agents: list[Agent],
+    selected_projects: dict[str, ProjectConfig],
     config: Config,
     repo_root: Path,
     force: bool,
     dry_run: bool,
-) -> Dict[str, int]:
+) -> dict[str, int]:
     """Install project-level symlinks for all selected projects.
 
     Returns dict with keys: created, updated, skipped, excluded, errors
@@ -437,8 +438,8 @@ def install(
     force: bool,
     dry_run: bool,
     rebuild_cache: bool,
-    agents: Optional[str],
-    projects: Optional[str],
+    agents: str | None,
+    projects: str | None,
     user_only: bool,
 ):
     """Install AI agent configs via symlinks."""
@@ -581,7 +582,7 @@ def _display_symlink_status(
     target: Path,
     source: Path,
     message: str,
-    agent_label: Optional[str] = None,
+    agent_label: str | None = None,
 ) -> bool:
     """Display symlink status with consistent formatting.
 
@@ -634,7 +635,7 @@ def _display_symlink_status(
     is_flag=True,
     help="Check only user-level configs, skip all projects",
 )
-def status(agents: Optional[str], projects: Optional[str], user_only: bool):
+def status(agents: str | None, projects: str | None, user_only: bool):
     """Check status of AI agent symlinks."""
     repo_root = get_repo_root()
     config = Config.load(repo_root)
@@ -836,9 +837,7 @@ def status(agents: Optional[str], projects: Optional[str], user_only: bool):
     is_flag=True,
     help="Uninstall only user-level configs, skip all projects",
 )
-def uninstall(
-    force: bool, agents: Optional[str], projects: Optional[str], user_only: bool
-):
+def uninstall(force: bool, agents: str | None, projects: str | None, user_only: bool):
     """Remove AI agent symlinks."""
     repo_root = get_repo_root()
     config = Config.load(repo_root)
@@ -979,7 +978,7 @@ def add_project_cmd(name: str, path: str):
 
     existing_config = {}
     if config_path.exists():
-        with open(config_path, "r") as f:
+        with open(config_path) as f:
             existing_config = yaml.safe_load(f) or {}
 
     projects = existing_config.get("projects", {})
@@ -1016,7 +1015,7 @@ def remove_project_cmd(name: str, force: bool):
         console.print("[yellow]No config file found[/yellow]")
         sys.exit(1)
 
-    with open(config_path, "r") as f:
+    with open(config_path) as f:
         existing_config = yaml.safe_load(f) or {}
 
     projects = existing_config.get("projects", {})
@@ -1105,7 +1104,7 @@ def update(force: bool):
     "--agents",
     help="Comma-separated list of agents to validate (default: all)",
 )
-def validate(agents: Optional[str]):
+def validate(agents: str | None):
     """Validate configuration and source files."""
     repo_root = get_repo_root()
     config = Config.load(repo_root)
@@ -1122,7 +1121,7 @@ def validate(agents: Optional[str]):
         console.print(f"[bold]{agent.name}:[/bold]")
         agent_issues = []
 
-        for target, source in agent.get_symlinks():
+        for _target, source in agent.get_symlinks():
             total_checked += 1
 
             if not source.exists():
@@ -1165,7 +1164,7 @@ def validate(agents: Optional[str]):
     "--agents",
     help="Comma-separated list of agents to check (default: all)",
 )
-def diff(agents: Optional[str]):
+def diff(agents: str | None):
     """Show differences between repo configs and installed symlinks."""
     repo_root = get_repo_root()
     config = Config.load(repo_root)
@@ -1308,12 +1307,12 @@ def exclude_list():
     repo_exclusions = []
 
     if user_config_path.exists():
-        with open(user_config_path, "r") as f:
+        with open(user_config_path) as f:
             data = yaml.safe_load(f) or {}
             user_exclusions = data.get("exclude_symlinks", [])
 
     if repo_config_path.exists():
-        with open(repo_config_path, "r") as f:
+        with open(repo_config_path) as f:
             data = yaml.safe_load(f) or {}
             repo_exclusions = data.get("exclude_symlinks", [])
 
@@ -1551,7 +1550,7 @@ def config():
     "--merged", is_flag=True, help="Show merged settings with overrides applied"
 )
 @click.option("--agent", help="Show config for specific agent only")
-def config_show(merged: bool, agent: Optional[str]):
+def config_show(merged: bool, agent: str | None):
     """Show current configuration."""
     repo_root = get_repo_root()
     cfg = Config.load(repo_root)
@@ -1581,7 +1580,7 @@ def config_show(merged: bool, agent: Optional[str]):
 
             base_path = repo_root / "config" / agent_name / agent_config["config_file"]
             if base_path.exists():
-                with open(base_path, "r") as f:
+                with open(base_path) as f:
                     import json
 
                     import yaml
@@ -1624,7 +1623,7 @@ def config_show(merged: bool, agent: Optional[str]):
         console.print("[bold]Configuration:[/bold]\n")
 
         if user_config_path.exists():
-            with open(user_config_path, "r") as f:
+            with open(user_config_path) as f:
                 content = f.read()
             console.print(f"[bold]User Config:[/bold] {user_config_path}")
             console.print(content)
@@ -1633,7 +1632,7 @@ def config_show(merged: bool, agent: Optional[str]):
 
         repo_config_path = repo_root / ".ai-rules-config.yaml"
         if repo_config_path.exists():
-            with open(repo_config_path, "r") as f:
+            with open(repo_config_path) as f:
                 content = f.read()
             console.print(f"\n[bold]Repo Config:[/bold] {repo_config_path}")
             console.print(content)
@@ -1661,7 +1660,7 @@ def config_edit():
         sys.exit(1)
 
 
-def _get_common_exclusions() -> List[Tuple[str, str, bool]]:
+def _get_common_exclusions() -> list[tuple[str, str, bool]]:
     """Get list of common exclusion patterns.
 
     Returns:
@@ -1675,7 +1674,7 @@ def _get_common_exclusions() -> List[Tuple[str, str, bool]]:
     ]
 
 
-def _collect_exclusion_patterns() -> List[str]:
+def _collect_exclusion_patterns() -> list[str]:
     """Collect exclusion patterns from user (Step 1).
 
     Returns:
@@ -1716,7 +1715,7 @@ def _collect_exclusion_patterns() -> List[str]:
     return selected_exclusions
 
 
-def _collect_settings_overrides() -> Dict[str, Dict[str, any]]:
+def _collect_settings_overrides() -> dict[str, dict[str, any]]:
     """Collect settings overrides from user (Step 2).
 
     Returns:
@@ -1789,7 +1788,7 @@ def _collect_settings_overrides() -> Dict[str, Dict[str, any]]:
     return settings_overrides
 
 
-def _collect_project_configurations() -> Dict[str, Dict[str, any]]:
+def _collect_project_configurations() -> dict[str, dict[str, any]]:
     """Collect project configurations from user (Step 3).
 
     Returns:
@@ -1843,7 +1842,7 @@ def _collect_project_configurations() -> Dict[str, Dict[str, any]]:
     return projects
 
 
-def _display_configuration_summary(config_data: Dict[str, any]) -> None:
+def _display_configuration_summary(config_data: dict[str, any]) -> None:
     """Display configuration summary before saving.
 
     Args:

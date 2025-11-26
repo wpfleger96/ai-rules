@@ -1,7 +1,6 @@
 """Claude Code agent implementation."""
 
 from pathlib import Path
-from typing import List, Tuple
 
 from ai_rules.agents.base import Agent
 from ai_rules.config import ProjectConfig
@@ -11,7 +10,7 @@ from ai_rules.mcp import MCPManager, MCPStatus, OperationResult
 class ClaudeAgent(Agent):
     """Agent for Claude Code configuration."""
 
-    DEPRECATED_SYMLINKS: List[Path] = [
+    DEPRECATED_SYMLINKS: list[Path] = [
         Path("~/CLAUDE.md"),
     ]
 
@@ -31,7 +30,7 @@ class ClaudeAgent(Agent):
     def config_file_format(self) -> str:
         return "json"
 
-    def get_symlinks(self) -> List[Tuple[Path, Path]]:
+    def get_symlinks(self) -> list[tuple[Path, Path]]:
         """Get all Claude Code symlinks including dynamic agents/commands."""
         symlinks = []
 
@@ -77,7 +76,7 @@ class ClaudeAgent(Agent):
 
         return symlinks
 
-    def get_project_symlinks(self, project: ProjectConfig) -> List[Tuple[Path, Path]]:
+    def get_project_symlinks(self, project: ProjectConfig) -> list[tuple[Path, Path]]:
         """Get Claude Code symlinks for a specific project.
 
         Creates symlink at <project>/CLAUDE.md pointing to config/projects/<name>/AGENTS.md
@@ -91,13 +90,13 @@ class ClaudeAgent(Agent):
 
         return symlinks
 
-    def get_deprecated_symlinks(self) -> List[Path]:
+    def get_deprecated_symlinks(self) -> list[Path]:
         """Return deprecated symlink locations for cleanup."""
         return self.DEPRECATED_SYMLINKS
 
     def install_mcps(
         self, force: bool = False, dry_run: bool = False
-    ) -> Tuple[OperationResult, str, List[str]]:
+    ) -> tuple[OperationResult, str, list[str]]:
         """Install managed MCPs into ~/.claude.json.
 
         Args:
@@ -112,7 +111,7 @@ class ClaudeAgent(Agent):
 
     def uninstall_mcps(
         self, force: bool = False, dry_run: bool = False
-    ) -> Tuple[OperationResult, str]:
+    ) -> tuple[OperationResult, str]:
         """Uninstall managed MCPs from ~/.claude.json.
 
         Args:

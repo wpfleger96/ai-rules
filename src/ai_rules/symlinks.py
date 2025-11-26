@@ -1,10 +1,10 @@
 """Symlink operations with safety checks."""
 
 import os
+
 from datetime import datetime
 from enum import Enum
 from pathlib import Path
-from typing import Tuple
 
 from rich.console import Console
 
@@ -39,7 +39,7 @@ def create_symlink(
     source_path: Path,
     force: bool = False,
     dry_run: bool = False,
-) -> Tuple[SymlinkResult, str]:
+) -> tuple[SymlinkResult, str]:
     """Create a symlink with safety checks.
 
     Args:
@@ -136,7 +136,7 @@ def create_symlink(
             )
 
 
-def check_symlink(target_path: Path, expected_source: Path) -> Tuple[str, str]:
+def check_symlink(target_path: Path, expected_source: Path) -> tuple[str, str]:
     """Check if a symlink is correct.
 
     Returns:
@@ -167,7 +167,7 @@ def check_symlink(target_path: Path, expected_source: Path) -> Tuple[str, str]:
         return ("wrong_target", f"Points to {actual} instead of {expected}")
 
 
-def remove_symlink(target_path: Path, force: bool = False) -> Tuple[bool, str]:
+def remove_symlink(target_path: Path, force: bool = False) -> tuple[bool, str]:
     """Remove a symlink safely.
 
     Args:

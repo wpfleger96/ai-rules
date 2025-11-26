@@ -4,9 +4,10 @@ import copy
 import json
 import re
 import shutil
+
 from fnmatch import fnmatch
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Any
 
 import yaml
 
@@ -22,7 +23,7 @@ AGENT_CONFIG_METADATA = {
 }
 
 
-def parse_setting_path(path: str) -> List[Union[str, int]]:
+def parse_setting_path(path: str) -> list[str | int]:
     """Parse a setting path with array indices into components.
 
     Examples:
@@ -66,9 +67,7 @@ def parse_setting_path(path: str) -> List[Union[str, int]]:
     return components
 
 
-def navigate_path(
-    data: Any, path_components: List[Union[str, int]]
-) -> Tuple[Any, bool, str]:
+def navigate_path(data: Any, path_components: list[str | int]) -> tuple[Any, bool, str]:
     """Navigate a data structure using path components.
 
     Args:
@@ -124,7 +123,7 @@ def navigate_path(
     return (current, True, "")
 
 
-def _format_path(components: List[Union[str, int]]) -> str:
+def _format_path(components: list[str | int]) -> str:
     """Format path components back into a string representation.
 
     Args:
@@ -153,7 +152,7 @@ def _format_path(components: List[Union[str, int]]) -> str:
 
 def validate_override_path(
     agent: str, setting: str, repo_root: Path
-) -> Tuple[bool, str, str, List[str]]:
+) -> tuple[bool, str, str, list[str]]:
     """Validate an override path against base settings.
 
     Args:
@@ -190,7 +189,7 @@ def validate_override_path(
         )
 
     try:
-        with open(settings_file, "r") as f:
+        with open(settings_file) as f:
             if config_format == "json":
                 base_settings = json.load(f)
             elif config_format == "yaml":
@@ -231,9 +230,7 @@ def validate_override_path(
 class ProjectConfig:
     """Configuration for a single project."""
 
-    def __init__(
-        self, name: str, path: str, exclude_symlinks: Optional[List[str]] = None
-    ):
+    def __init__(self, name: str, path: str, exclude_symlinks: list[str] | None = None):
         self.name = name
         self.path = Path(path).expanduser().resolve()
         self.exclude_symlinks = set(exclude_symlinks or [])
@@ -258,10 +255,10 @@ class Config:
 
     def __init__(
         self,
-        exclude_symlinks: Optional[List[str]] = None,
-        projects: Optional[Dict[str, ProjectConfig]] = None,
-        settings_overrides: Optional[Dict[str, Dict[str, Any]]] = None,
-        mcp_overrides: Optional[Dict[str, Dict[str, Any]]] = None,
+        exclude_symlinks: list[str] | None = None,
+        projects: dict[str, ProjectConfig] | None = None,
+        settings_overrides: dict[str, dict[str, Any]] | None = None,
+        mcp_overrides: dict[str, dict[str, Any]] | None = None,
     ):
         self.exclude_symlinks = set(exclude_symlinks or [])
         self.projects = projects or {}
@@ -288,7 +285,7 @@ class Config:
         mcp_overrides = {}
 
         if user_config_path.exists():
-            with open(user_config_path, "r") as f:
+            with open(user_config_path) as f:
                 data = yaml.safe_load(f) or {}
                 exclude_symlinks.extend(data.get("exclude_symlinks", []))
 
@@ -313,7 +310,7 @@ class Config:
                 mcp_overrides = data.get("mcp_overrides", {})
 
         if repo_config_path.exists():
-            with open(repo_config_path, "r") as f:
+            with open(repo_config_path) as f:
                 data = yaml.safe_load(f) or {}
                 exclude_symlinks.extend(data.get("exclude_symlinks", []))
 
@@ -360,7 +357,7 @@ class Config:
         return cache_dir
 
     @staticmethod
-    def _deep_merge(base: Dict[str, Any], override: Dict[str, Any]) -> Dict[str, Any]:
+    def _deep_merge(base: dict[str, Any], override: dict[str, Any]) -> dict[str, Any]:
         """Deep merge two dictionaries, with override values taking precedence.
 
         Supports merging nested dictionaries and arrays. Arrays are merged element-by-element,
@@ -390,8 +387,8 @@ class Config:
         return result
 
     def merge_settings(
-        self, agent: str, base_settings: Dict[str, Any]
-    ) -> Dict[str, Any]:
+        self, agent: str, base_settings: dict[str, Any]
+    ) -> dict[str, Any]:
         """Merge base settings with overrides for a specific agent.
 
         Args:
@@ -406,7 +403,7 @@ class Config:
 
         return self._deep_merge(base_settings, self.settings_overrides[agent])
 
-    def get_merged_settings_path(self, agent: str, repo_root: Path) -> Optional[Path]:
+    def get_merged_settings_path(self, agent: str, repo_root: Path) -> Path | None:
         """Get the path to cached merged settings for an agent.
 
         Returns None if agent has no overrides (should use repo file directly).
@@ -500,7 +497,7 @@ class Config:
         base_settings_path: Path,
         repo_root: Path,
         force_rebuild: bool = False,
-    ) -> Optional[Path]:
+    ) -> Path | None:
         """Build merged settings file in cache if overrides exist.
 
         Only rebuilds cache if:
@@ -534,7 +531,7 @@ class Config:
         if not base_settings_path.exists():
             base_settings = {}
         else:
-            with open(base_settings_path, "r") as f:
+            with open(base_settings_path) as f:
                 if config_format == "json":
                     base_settings = json.load(f)
                 elif config_format == "yaml":
@@ -552,7 +549,7 @@ class Config:
 
         return cache_path
 
-    def validate_projects(self) -> List[str]:
+    def validate_projects(self) -> list[str]:
         """Validate all project configurations.
 
         Returns list of error messages for invalid projects.
@@ -571,7 +568,7 @@ class Config:
         return errors
 
     @staticmethod
-    def load_user_config() -> Dict[str, Any]:
+    def load_user_config() -> dict[str, Any]:
         """Load user config file with defaults.
 
         Returns:
@@ -580,12 +577,12 @@ class Config:
         user_config_path = Path.home() / ".ai-rules-config.yaml"
 
         if user_config_path.exists():
-            with open(user_config_path, "r") as f:
+            with open(user_config_path) as f:
                 return yaml.safe_load(f) or {"version": 1}
         return {"version": 1}
 
     @staticmethod
-    def save_user_config(data: Dict[str, Any]) -> None:
+    def save_user_config(data: dict[str, Any]) -> None:
         """Save user config file with consistent formatting.
 
         Args:
@@ -597,7 +594,7 @@ class Config:
         with open(user_config_path, "w") as f:
             yaml.dump(data, f, default_flow_style=False, sort_keys=False)
 
-    def cleanup_orphaned_cache(self, repo_root: Path) -> List[str]:
+    def cleanup_orphaned_cache(self, repo_root: Path) -> list[str]:
         """Remove cache files for agents that no longer have overrides.
 
         Args:
