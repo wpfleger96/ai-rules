@@ -52,3 +52,24 @@ lines-between-types = 1
 [[tool.uv.index]]
 name = "pypi"
 url = "https://pypi.org/simple"
+
+[tool.mypy]
+python_version = "3.13"
+mypy_path = "src"
+namespace_packages = true
+explicit_package_bases = true
+strict = true
+
+[[tool.mypy.overrides]]
+module = ["yaml.*"]
+ignore_missing_imports = true  # Only for external libs without stubs
+
+[[tool.mypy.overrides]]
+module = "tests.*"
+disallow_untyped_defs = false
+disable_error_code = ["var-annotated", "type-arg"]
+
+[dependency-groups]
+dev = [
+    "mypy>=1.18.2",
+]

@@ -7,7 +7,7 @@ import sys
 from pathlib import Path
 
 
-def main():
+def main() -> None:
     try:
         event_data = json.loads(sys.stdin.read())
         transcript_path = event_data.get("transcript_path", "")

@@ -1,6 +1,7 @@
 import time
 
 from pathlib import Path
+from typing import Any
 
 import pytest
 import yaml
@@ -173,7 +174,7 @@ class TestStatusCacheValidation:
         monkeypatch.setattr(ai_rules.cli, "get_repo_root", lambda: test_repo)
 
         user_config_path = mock_home / ".ai-rules-config.yaml"
-        user_config = {
+        user_config: dict[str, Any] = {
             "version": 1,
             "settings_overrides": {"claude": {"test_override": "value"}},
         }

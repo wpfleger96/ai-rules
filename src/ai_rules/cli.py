@@ -3,6 +3,7 @@
 import sys
 
 from pathlib import Path
+from typing import Any
 
 import click
 import yaml
@@ -205,7 +206,7 @@ def check_first_run(agents: list[Agent], force: bool) -> bool:
 
 @click.group()
 @click.version_option(version="0.1.0")
-def main():
+def main() -> None:
     """AI Rules - Manage user-level AI agent configurations."""
     pass
 
@@ -441,7 +442,7 @@ def install(
     agents: str | None,
     projects: str | None,
     user_only: bool,
-):
+) -> None:
     """Install AI agent configs via symlinks."""
     repo_root = get_repo_root()
     config = Config.load(repo_root)
@@ -503,7 +504,7 @@ def install(
     )
 
     claude_agent = next((a for a in selected_agents if a.agent_id == "claude"), None)
-    if claude_agent:
+    if claude_agent and isinstance(claude_agent, ClaudeAgent):
         from ai_rules.mcp import MCPManager, OperationResult
 
         result, message, conflicts = claude_agent.install_mcps(
@@ -635,7 +636,7 @@ def _display_symlink_status(
     is_flag=True,
     help="Check only user-level configs, skip all projects",
 )
-def status(agents: str | None, projects: str | None, user_only: bool):
+def status(agents: str | None, projects: str | None, user_only: bool) -> None:
     """Check status of AI agent symlinks."""
     repo_root = get_repo_root()
     config = Config.load(repo_root)
@@ -675,7 +676,7 @@ def status(agents: str | None, projects: str | None, user_only: bool):
                 all_correct = False
                 cache_stale = True
 
-        if agent.agent_id == "claude":
+        if isinstance(agent, ClaudeAgent):
             mcp_status = agent.get_mcp_status()
             if (
                 mcp_status.managed_mcps
@@ -837,7 +838,9 @@ def status(agents: str | None, projects: str | None, user_only: bool):
     is_flag=True,
     help="Uninstall only user-level configs, skip all projects",
 )
-def uninstall(force: bool, agents: str | None, projects: str | None, user_only: bool):
+def uninstall(
+    force: bool, agents: str | None, projects: str | None, user_only: bool
+) -> None:
     """Remove AI agent symlinks."""
     repo_root = get_repo_root()
     config = Config.load(repo_root)
@@ -879,7 +882,7 @@ def uninstall(force: bool, agents: str | None, projects: str | None, user_only: 
                 console.print(f"  [yellow]○[/yellow] {target} [dim]({message})[/dim]")
                 total_skipped += 1
 
-        if agent.agent_id == "claude":
+        if isinstance(agent, ClaudeAgent):
             from ai_rules.mcp import OperationResult
 
             result, message = agent.uninstall_mcps(force=force, dry_run=False)
@@ -923,7 +926,7 @@ def uninstall(force: bool, agents: str | None, projects: str | None, user_only: 
 
 
 @main.command("list-projects")
-def list_projects_cmd():
+def list_projects_cmd() -> None:
     """List configured projects."""
     repo_root = get_repo_root()
     config = Config.load(repo_root)
@@ -959,7 +962,7 @@ def list_projects_cmd():
 @main.command("add-project")
 @click.argument("name")
 @click.argument("path")
-def add_project_cmd(name: str, path: str):
+def add_project_cmd(name: str, path: str) -> None:
     """Add a new project configuration."""
     from pathlib import Path as PathLib
 
@@ -976,7 +979,7 @@ def add_project_cmd(name: str, path: str):
         console.print(f"[red]Error:[/red] Path is not a directory: {project_path}")
         sys.exit(1)
 
-    existing_config = {}
+    existing_config: dict[str, Any] = {}
     if config_path.exists():
         with open(config_path) as f:
             existing_config = yaml.safe_load(f) or {}
@@ -1005,7 +1008,7 @@ def add_project_cmd(name: str, path: str):
 @main.command("remove-project")
 @click.argument("name")
 @click.option("--force", is_flag=True, help="Skip confirmation")
-def remove_project_cmd(name: str, force: bool):
+def remove_project_cmd(name: str, force: bool) -> None:
     """Remove a project configuration."""
     from pathlib import Path as PathLib
 
@@ -1048,7 +1051,7 @@ def remove_project_cmd(name: str, force: bool):
 
 
 @main.command("list-agents")
-def list_agents_cmd():
+def list_agents_cmd() -> None:
     """List available AI agents."""
     repo_root = get_repo_root()
     config = Config.load(repo_root)
@@ -1083,7 +1086,7 @@ def list_agents_cmd():
 
 @main.command()
 @click.option("--force", is_flag=True, help="Skip confirmations")
-def update(force: bool):
+def update(force: bool) -> None:
     """Re-sync symlinks (useful after adding new agents/commands)."""
     console.print("[bold]Updating AI Rules symlinks...[/bold]\n")
 
@@ -1104,7 +1107,7 @@ def update(force: bool):
     "--agents",
     help="Comma-separated list of agents to validate (default: all)",
 )
-def validate(agents: str | None):
+def validate(agents: str | None) -> None:
     """Validate configuration and source files."""
     repo_root = get_repo_root()
     config = Config.load(repo_root)
@@ -1164,7 +1167,7 @@ def validate(agents: str | None):
     "--agents",
     help="Comma-separated list of agents to check (default: all)",
 )
-def diff(agents: str | None):
+def diff(agents: str | None) -> None:
     """Show differences between repo configs and installed symlinks."""
     repo_root = get_repo_root()
     config = Config.load(repo_root)
@@ -1237,14 +1240,14 @@ def diff(agents: str | None):
 
 
 @main.group()
-def exclude():
+def exclude() -> None:
     """Manage exclusion patterns."""
     pass
 
 
 @exclude.command("add")
 @click.argument("pattern")
-def exclude_add(pattern: str):
+def exclude_add(pattern: str) -> None:
     """Add an exclusion pattern to user config.
 
     PATTERN can be an exact path or glob pattern (e.g., ~/.claude/*.json)
@@ -1268,7 +1271,7 @@ def exclude_add(pattern: str):
 
 @exclude.command("remove")
 @click.argument("pattern")
-def exclude_remove(pattern: str):
+def exclude_remove(pattern: str) -> None:
     """Remove an exclusion pattern from user config."""
     user_config_path = Path.home() / ".ai-rules-config.yaml"
 
@@ -1290,7 +1293,7 @@ def exclude_remove(pattern: str):
 
 
 @exclude.command("list")
-def exclude_list():
+def exclude_list() -> None:
     """List all exclusion patterns."""
     repo_root = get_repo_root()
     config = Config.load(repo_root)
@@ -1327,7 +1330,7 @@ def exclude_list():
 
 
 @main.group()
-def override():
+def override() -> None:
     """Manage settings overrides."""
     pass
 
@@ -1335,7 +1338,7 @@ def override():
 @override.command("set")
 @click.argument("key")
 @click.argument("value")
-def override_set(key: str, value: str):
+def override_set(key: str, value: str) -> None:
     """Set a settings override for an agent.
 
     KEY should be in format 'agent.setting' (e.g., 'claude.model')
@@ -1454,7 +1457,7 @@ def override_set(key: str, value: str):
 
 @override.command("unset")
 @click.argument("key")
-def override_unset(key: str):
+def override_unset(key: str) -> None:
     """Remove a settings override.
 
     KEY should be in format 'agent.setting' (e.g., 'claude.model')
@@ -1521,7 +1524,7 @@ def override_unset(key: str):
 
 
 @override.command("list")
-def override_list():
+def override_list() -> None:
     """List all settings overrides."""
     repo_root = get_repo_root()
     config = Config.load(repo_root)
@@ -1540,7 +1543,7 @@ def override_list():
 
 
 @main.group()
-def config():
+def config() -> None:
     """Manage ai-rules configuration."""
     pass
 
@@ -1550,7 +1553,7 @@ def config():
     "--merged", is_flag=True, help="Show merged settings with overrides applied"
 )
 @click.option("--agent", help="Show config for specific agent only")
-def config_show(merged: bool, agent: str | None):
+def config_show(merged: bool, agent: str | None) -> None:
     """Show current configuration."""
     repo_root = get_repo_root()
     cfg = Config.load(repo_root)
@@ -1639,7 +1642,7 @@ def config_show(merged: bool, agent: str | None):
 
 
 @config.command("edit")
-def config_edit():
+def config_edit() -> None:
     """Edit user configuration file in $EDITOR."""
     import os
     import subprocess
@@ -1715,7 +1718,7 @@ def _collect_exclusion_patterns() -> list[str]:
     return selected_exclusions
 
 
-def _collect_settings_overrides() -> dict[str, dict[str, any]]:
+def _collect_settings_overrides() -> dict[str, dict[str, Any]]:
     """Collect settings overrides from user (Step 2).
 
     Returns:
@@ -1788,7 +1791,7 @@ def _collect_settings_overrides() -> dict[str, dict[str, any]]:
     return settings_overrides
 
 
-def _collect_project_configurations() -> dict[str, dict[str, any]]:
+def _collect_project_configurations() -> dict[str, dict[str, Any]]:
     """Collect project configurations from user (Step 3).
 
     Returns:
@@ -1815,7 +1818,7 @@ def _collect_project_configurations() -> dict[str, dict[str, any]]:
             console.print("[yellow]Path required[/yellow]")
             continue
 
-        project_config = {"path": project_path}
+        project_config: dict[str, Any] = {"path": project_path}
 
         console.print(f"\n[dim]Project-specific exclusions for '{project_name}':[/dim]")
         console.print("[dim]One per line, empty line to finish:[/dim]")
@@ -1842,7 +1845,7 @@ def _collect_project_configurations() -> dict[str, dict[str, any]]:
     return projects
 
 
-def _display_configuration_summary(config_data: dict[str, any]) -> None:
+def _display_configuration_summary(config_data: dict[str, Any]) -> None:
     """Display configuration summary before saving.
 
     Args:
@@ -1879,7 +1882,7 @@ def _display_configuration_summary(config_data: dict[str, any]) -> None:
 
 
 @config.command("init")
-def config_init():
+def config_init() -> None:
     """Interactive configuration wizard."""
     user_config_path = Path.home() / ".ai-rules-config.yaml"
 
@@ -1893,7 +1896,7 @@ def config_init():
             console.print("[dim]Cancelled[/dim]")
             return
 
-    config_data = {"version": 1}
+    config_data: dict[str, Any] = {"version": 1}
 
     selected_exclusions = _collect_exclusion_patterns()
     if selected_exclusions:

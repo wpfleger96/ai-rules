@@ -85,17 +85,17 @@ class TestExcludeSymlinks:
     def test_exact_match_excluded(self, tmp_path):
         config = Config(exclude_symlinks=["~/.claude/settings.json"])
 
-        assert config.is_excluded(Path("~/.claude/settings.json"))
+        assert config.is_excluded("~/.claude/settings.json")
 
     def test_non_matching_path_not_excluded(self, tmp_path):
         config = Config(exclude_symlinks=["~/.claude/settings.json"])
 
-        assert not config.is_excluded(Path("~/.claude/agents/test.md"))
+        assert not config.is_excluded("~/.claude/agents/test.md")
 
     def test_empty_exclude_list_excludes_nothing(self, tmp_path):
         config = Config(exclude_symlinks=[])
 
-        assert not config.is_excluded(Path("~/.claude/settings.json"))
+        assert not config.is_excluded("~/.claude/settings.json")
 
     def test_path_normalization_with_tilde(self, tmp_path, monkeypatch):
         home = tmp_path / "home"
@@ -104,8 +104,8 @@ class TestExcludeSymlinks:
 
         config = Config(exclude_symlinks=["~/.claude/settings.json"])
 
-        assert config.is_excluded(Path("~/.claude/settings.json"))
-        assert config.is_excluded(home / ".claude" / "settings.json")
+        assert config.is_excluded("~/.claude/settings.json")
+        assert config.is_excluded(str(home / ".claude" / "settings.json"))
 
     def test_multiple_exclusions(self, tmp_path):
         config = Config(
@@ -115,9 +115,9 @@ class TestExcludeSymlinks:
             ]
         )
 
-        assert config.is_excluded(Path("~/.claude/settings.json"))
-        assert config.is_excluded(Path("~/.config/goose/config.yaml"))
-        assert not config.is_excluded(Path("~/.claude/agents/test.md"))
+        assert config.is_excluded("~/.claude/settings.json")
+        assert config.is_excluded("~/.config/goose/config.yaml")
+        assert not config.is_excluded("~/.claude/agents/test.md")
 
     def test_absolute_path_exclusion(self, tmp_path, monkeypatch):
         home = tmp_path / "home"
@@ -126,7 +126,7 @@ class TestExcludeSymlinks:
 
         config = Config(exclude_symlinks=[str(home / ".claude" / "settings.json")])
 
-        assert config.is_excluded(home / ".claude" / "settings.json")
+        assert config.is_excluded(str(home / ".claude" / "settings.json"))
 
     def test_glob_pattern_matching(self, tmp_path, monkeypatch):
         """Test that glob patterns work for exclusions."""
@@ -136,9 +136,9 @@ class TestExcludeSymlinks:
 
         config = Config(exclude_symlinks=["~/.claude/*.json"])
 
-        assert config.is_excluded(Path("~/.claude/settings.json"))
-        assert config.is_excluded(Path("~/.claude/debug.json"))
-        assert not config.is_excluded(Path("~/.claude/agents/test.md"))
+        assert config.is_excluded("~/.claude/settings.json")
+        assert config.is_excluded("~/.claude/debug.json")
+        assert not config.is_excluded("~/.claude/agents/test.md")
 
     def test_glob_pattern_with_recursive(self, tmp_path, monkeypatch):
         """Test recursive glob patterns."""
@@ -148,9 +148,9 @@ class TestExcludeSymlinks:
 
         config = Config(exclude_symlinks=["~/.config/**/*.yaml"])
 
-        assert config.is_excluded(Path("~/.config/goose/config.yaml"))
-        assert config.is_excluded(Path("~/.config/deep/nested/file.yaml"))
-        assert not config.is_excluded(Path("~/.config/goose/file.json"))
+        assert config.is_excluded("~/.config/goose/config.yaml")
+        assert config.is_excluded("~/.config/deep/nested/file.yaml")
+        assert not config.is_excluded("~/.config/goose/file.json")
 
     def test_exact_match_preferred_over_glob(self, tmp_path, monkeypatch):
         """Test that exact matches still work when glob patterns are also present."""
@@ -165,8 +165,8 @@ class TestExcludeSymlinks:
             ]
         )
 
-        assert config.is_excluded(Path("~/.claude/settings.json"))
-        assert config.is_excluded(Path("~/.claude/readme.md"))
+        assert config.is_excluded("~/.claude/settings.json")
+        assert config.is_excluded("~/.claude/readme.md")
 
 
 @pytest.mark.unit
@@ -402,6 +402,7 @@ settings_overrides:
         cache_path1 = config.build_merged_settings(
             "claude", base_settings_path, tmp_path
         )
+        assert cache_path1 is not None
         mtime1 = cache_path1.stat().st_mtime
 
         time.sleep(0.01)
@@ -409,6 +410,7 @@ settings_overrides:
         cache_path2 = config.build_merged_settings(
             "claude", base_settings_path, tmp_path
         )
+        assert cache_path2 is not None
         mtime2 = cache_path2.stat().st_mtime
 
         assert mtime1 == mtime2
@@ -431,6 +433,7 @@ settings_overrides:
         cache_path1 = config.build_merged_settings(
             "claude", base_settings_path, tmp_path
         )
+        assert cache_path1 is not None
         mtime1 = cache_path1.stat().st_mtime
 
         time.sleep(0.01)
@@ -438,6 +441,7 @@ settings_overrides:
         cache_path2 = config.build_merged_settings(
             "claude", base_settings_path, tmp_path, force_rebuild=True
         )
+        assert cache_path2 is not None
         mtime2 = cache_path2.stat().st_mtime
 
         assert mtime2 > mtime1
@@ -763,7 +767,6 @@ class TestCacheCleanup:
 
     def test_cleanup_orphaned_cache(self, tmp_path, monkeypatch):
         """Test that orphaned cache files are removed."""
-        from pathlib import Path
 
         home = tmp_path / "home"
         home.mkdir()
@@ -782,7 +785,6 @@ class TestCacheCleanup:
 
     def test_cleanup_preserves_cache_with_overrides(self, tmp_path, monkeypatch):
         """Test that cache files with active overrides are preserved."""
-        from pathlib import Path
 
         home = tmp_path / "home"
         home.mkdir()
@@ -801,7 +803,6 @@ class TestCacheCleanup:
 
     def test_cleanup_when_no_cache_dir(self, tmp_path, monkeypatch):
         """Test cleanup when cache directory doesn't exist."""
-        from pathlib import Path
 
         home = tmp_path / "home"
         home.mkdir()

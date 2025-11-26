@@ -8,7 +8,7 @@ import tempfile
 from datetime import datetime
 from enum import Enum
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 from .config import Config
 
@@ -23,7 +23,7 @@ class OperationResult(Enum):
 
 
 class MCPStatus:
-    def __init__(self):
+    def __init__(self) -> None:
         self.managed_mcps: dict[str, dict[str, Any]] = {}
         self.unmanaged_mcps: dict[str, dict[str, Any]] = {}
         self.pending_mcps: dict[str, dict[str, Any]] = {}
@@ -85,7 +85,7 @@ class MCPManager:
             return {}
 
         with open(self.CLAUDE_JSON) as f:
-            return json.load(f)
+            return cast(dict[str, Any], json.load(f))
 
     def save_claude_json(self, data: dict[str, Any]) -> None:
         """Save ~/.claude.json file atomically.

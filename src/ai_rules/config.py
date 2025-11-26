@@ -603,7 +603,7 @@ class Config:
         Returns:
             List of agent IDs whose caches were removed
         """
-        removed = []
+        removed: list[str] = []
         cache_dir = self.get_cache_dir()
         if not cache_dir.exists():
             return removed
