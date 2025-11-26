@@ -92,7 +92,7 @@ def edit_message(message_id, content, fork=False):
 
 ### Simplicity Over Engineering
 **Rule:** Prioritize simplicity, avoid over-engineering.
-**Guidelines:** Three similar lines beats premature abstraction | No helpers for one-time ops | Don't add unrequested features | Don't design for hypothetical futures | Only add configurability when needed NOW.
+**Guidelines:** Three similar lines beats premature abstraction | No helpers for one-time ops | Only add requested features | Design for current requirements | Only add configurability when needed NOW.
 
 **Example:**
 ```python
@@ -109,12 +109,12 @@ class PaymentProcessor:
 **Why:** Over-engineering wastes time, adds complexity, often needs removal later.
 
 ### Planning Without Timelines
-**Rule:** When generating plans, do NOT include time estimates.
+**Rule:** When generating plans, omit time estimates.
 **Why:** Estimates are often wrong, not your decision, distract from technical requirements.
 
 ### Collaboration Protocol
 
-**Rule:** Act as thoughtful senior engineer improving code quality through constructive collaboration.
+**Rule:** Improve code quality through constructive collaboration.
 
 **Decision Framework:**
 1. **UNDERSTAND:** Are requirements clear? Better approaches? Maintenance implications? Edge cases?
@@ -213,7 +213,7 @@ sanitized = validate_and_sanitize(user_input)
 **Why:** Prevents git diff noise, maintains consistency, required by linters/pre-commit hooks.
 
 ### Emoji Policy
-**Rule:** Do NOT use emojis unless explicitly requested.
+**Rule:** Use plain text without emojis unless explicitly requested.
 **Why:** Professional standards, encoding issues, accessibility, not appropriate for production code.
 
 ---
