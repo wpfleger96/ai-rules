@@ -4,19 +4,16 @@ Instructions organized by priority level to ensure critical requirements are nev
 
 ---
 
-## Priority 1: Critical Safety & Security Requirements
+## Priority 1: Core Operating Principles
 
-**Security-First Code Generation:** For ALL code handling external input, authentication, or sensitive data, apply this two-stage approach:
+### Security-First Code Generation
+**Rule:** For ALL code handling external input, authentication, or sensitive data, apply this two-stage approach:
 
 **Stage 1:** Implement functional requirements
 **Stage 2:** Security hardening checklist:
 - Validate input at boundaries | Prevent SQL injection (parameterized queries) | Block XSS (output encoding) | Verify authentication | Check authorization | Rate limit APIs | Sanitize error messages | No hardcoded secrets | Audit log sensitive operations
 
 **Why:** 40%+ of LLM-generated code contains vulnerabilities when security isn't explicitly prompted.
-
----
-
-## Priority 2: Core Operating Principles
 
 ### Workflow Management
 **Rule:** Create TODO list before multi-step tasks, keep updated as you complete each task.
@@ -62,6 +59,36 @@ except: pass
 **5. Input Validation:** Validate ALL user input and external API responses at system boundaries.
 
 **Why:** Reduces bugs 60%, improves maintainability, makes code reviewable.
+
+### Explore Before Implement
+**Rule:** Before implementing new functionality, explore the codebase for existing code that can be extended or reused.
+
+**Mandatory Exploration Phase:**
+1. Search for similar endpoints, functions, or patterns in the codebase
+2. Identify existing abstractions that handle related concerns
+3. Evaluate if requirements can be met by extending existing code vs. creating new
+
+**Decision Framework:**
+| Scenario | Action |
+|----------|--------|
+| Existing endpoint can handle the use case with minor changes | Extend existing code |
+| Existing abstraction covers 80%+ of requirements | Add to existing, don't duplicate |
+| Truly novel functionality with no overlap | Create new (document why) |
+
+**Example:**
+```python
+# ❌ Bad: Created new /fork_session endpoint with duplicate logic
+def fork_session(session_id, from_message_id):
+    # 50 lines duplicating message handling, validation, state management
+
+# ✅ Good: Extended existing edit_message to support forking
+def edit_message(message_id, content, fork=False):
+    # Reuses existing validation, state management, adds fork parameter
+```
+
+**Why:** LLMs tend to implement "clean" new solutions rather than integrate with existing code. This creates duplication, increases maintenance burden, and misses opportunities to leverage battle-tested implementations.
+
+**Relationship to Simplicity:** This rule complements "Simplicity Over Engineering" - both avoid unnecessary code. Simplicity says "don't over-abstract NEW code"; this rule says "don't ignore EXISTING code that already solves the problem."
 
 ### Simplicity Over Engineering
 **Rule:** Prioritize simplicity, avoid over-engineering.
@@ -109,7 +136,7 @@ O(log n) database index query - 1000x faster. Should I use indexed approach?"
 
 ---
 
-## Priority 3: Technical Implementation Standards
+## Priority 2: Technical Implementation Standards
 
 ### Python Requirements
 **Dependency management:** `uv add pkg`, `uv sync`, `uv run pytest`
@@ -156,7 +183,7 @@ def test_register_user_calls_hash_password():
 
 ---
 
-## Priority 4: Style & Formatting Guidelines
+## Priority 3: Style & Formatting Guidelines
 
 ### Code Comment Standards
 **Rule:** ONLY add comments explaining WHY, NOT WHAT.
@@ -216,8 +243,6 @@ Structure prompts for large codebases:
 ## Quick Reference Checklist
 
 Before completing tasks:
-☐ Read README & docs | ☐ Create TODO list (multi-step) | ☐ Apply security checklist (external-facing code) | ☐ Use project tooling (Makefile/Justfile) | ☐ Follow DRY & single responsibility | ☐ Add only WHY comments | ☐ Remove trailing whitespace | ☐ File ends with newline | ☐ Test behavior not implementation | ☐ AWS has --profile & --region | ☐ Keep simple, avoid over-engineering | ☐ Ask clarifying questions
+☐ Read README & docs | ☐ Create TODO list (multi-step) | ☐ Explore codebase before implementing new features | ☐ Apply security checklist (external-facing code) | ☐ Use project tooling (Makefile/Justfile) | ☐ Follow DRY & single responsibility | ☐ Add only WHY comments | ☐ Remove trailing whitespace | ☐ File ends with newline | ☐ Test behavior not implementation | ☐ AWS has --profile & --region | ☐ Keep simple, avoid over-engineering | ☐ Ask clarifying questions
 
 ---
-
-**Version 2.1** | **Enhanced with prompt engineering, condensed for token efficiency** | **November 2025**
