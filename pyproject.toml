@@ -13,6 +13,7 @@ dependencies = [
     "hatch>=1.15.1",
     "pytest>=8.4.2",
     "pytest-cov>=7.0.0",
+    "pytest-xdist>=3.8.0",
     "pyyaml>=6.0",
     "rich>=13.0",
     "ruff>=0.14.3",
@@ -72,4 +73,15 @@ disable_error_code = ["var-annotated", "type-arg"]
 [dependency-groups]
 dev = [
     "mypy>=1.18.2",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = "-v --cov=ai_rules --cov-report=term-missing -n auto"
+markers = [
+    "unit: marks tests as unit tests",
+    "integration: marks tests as integration tests",
 ]
