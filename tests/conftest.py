@@ -17,6 +17,7 @@ def pytest_configure(config):
     config.addinivalue_line("markers", "cli: Tests for the CLI sub-module")
     config.addinivalue_line("markers", "config: Tests for the config sub-module")
     config.addinivalue_line("markers", "agents: Tests for the agents sub-module")
+    config.addinivalue_line("markers", "bootstrap: Tests for the bootstrap sub-module")
 
 
 @pytest.fixture

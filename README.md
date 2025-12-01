@@ -16,19 +16,50 @@ Consolidates config files for AI coding agents (Claude Code, Goose) into a singl
 
 **Supported:** Claude Code (settings, agents, commands), Goose (hints, config), Shared (AGENTS.md)
 
-## Getting Started
+## Installation
 
 **Requirements:** Python 3.10+, [uv](https://github.com/astral-sh/uv)
 
-1. Clone the repository:
+### Quick Start (Recommended)
+
+One-command setup from PyPI:
+
 ```bash
-git clone https://github.com/wpfleger96/ai-rules.git
+uvx ai-rules setup
 ```
 
-2. Install dependencies:
+This will:
+1. Install AI agent configuration symlinks
+2. Make `ai-rules` available system-wide
+
+After setup, you can run `ai-rules` from any directory.
+
+### Developer Installation
+
+For contributing or local development:
+
 ```bash
+git clone https://github.com/wpfleger96/ai-rules.git
 cd ai-rules
-uv sync
+uv tool install -e .
+ai-rules install
+```
+
+### Updating
+
+Check for and install updates:
+
+```bash
+ai-rules upgrade              # Check and install updates
+ai-rules upgrade --check      # Only check for updates
+```
+
+Auto-update checks run weekly by default. Configure in `~/.ai-rules/update_config.yaml`:
+
+```yaml
+enabled: true
+frequency: weekly  # daily, weekly, never
+notify_only: false
 ```
 
 ## Usage
@@ -36,6 +67,10 @@ uv sync
 ### User-Level Configuration
 
 ```bash
+ai-rules setup                      # One-time setup: install symlinks + make available system-wide
+ai-rules upgrade                    # Upgrade to latest version
+ai-rules upgrade --check            # Check for updates without installing
+
 ai-rules install                    # Install all agents (user + projects)
 ai-rules install --user-only        # Install only user-level configs
 ai-rules install --agents claude    # Install specific agents

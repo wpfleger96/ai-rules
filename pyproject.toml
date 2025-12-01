@@ -1,16 +1,31 @@
 [project]
 name = "ai-rules"
-version = "v0.3.0"
+version = "0.3.0"
 description = "Manage user-level AI agent configurations"
 readme = "README.md"
 requires-python = ">=3.10"
-license = "MIT"
+license = { text = "MIT" }
 authors = [
     { name = "Will Pfleger", email = "pfleger.will@gmail.com" }
+]
+keywords = ["ai", "cli", "configuration", "claude", "goose", "llm", "agent"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Environment :: Console",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Topic :: Utilities",
 ]
 dependencies = [
     "click>=8.1",
     "hatch>=1.15.1",
+    "packaging>=21.0",
     "pytest>=8.4.2",
     "pytest-cov>=7.0.0",
     "pytest-xdist>=3.8.0",
@@ -18,6 +33,11 @@ dependencies = [
     "rich>=13.0",
     "ruff>=0.14.3",
 ]
+
+[project.urls]
+Homepage = "https://github.com/willpfleger/ai-rules"
+Repository = "https://github.com/willpfleger/ai-rules"
+Issues = "https://github.com/willpfleger/ai-rules/issues"
 
 [project.scripts]
 ai-rules = "ai_rules.cli:main"

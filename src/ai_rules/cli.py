@@ -2,6 +2,8 @@
 
 import sys
 
+from importlib.metadata import PackageNotFoundError
+from importlib.metadata import version as get_version
 from pathlib import Path
 from typing import Any
 
@@ -31,6 +33,15 @@ from ai_rules.symlinks import (
 )
 
 console = Console()
+
+# Get version from package metadata
+try:
+    __version__ = get_version("ai-rules")
+except PackageNotFoundError:
+    __version__ = "dev"
+
+# Flags that indicate non-interactive mode (no prompts should be shown)
+_NON_INTERACTIVE_FLAGS = frozenset({"--dry-run", "--help", "-h"})
 
 
 def get_repo_root() -> Path:
@@ -204,11 +215,116 @@ def check_first_run(agents: list[Agent], force: bool) -> bool:
     return Confirm.ask("Continue?", default=False)
 
 
+def _background_update_check() -> None:
+    """Run update check in background thread.
+
+    This runs silently and saves results for display on next CLI invocation.
+    """
+    from datetime import datetime
+
+    from ai_rules.bootstrap import (
+        check_git_updates,
+        check_pypi_updates,
+        get_installation_info,
+        get_package_version,
+        load_auto_update_config,
+        save_auto_update_config,
+        save_pending_update,
+    )
+
+    try:
+        info = get_installation_info()
+        current = get_package_version("ai-rules")
+
+        if info.source in ("git", "editable") and info.repo_path:
+            update_info = check_git_updates(info.repo_path)
+        else:
+            update_info = check_pypi_updates("ai-rules", current)
+
+        if update_info.has_update:
+            save_pending_update(update_info)
+
+        # Update last_check timestamp
+        config = load_auto_update_config()
+        config.last_check = datetime.now().isoformat()
+        save_auto_update_config(config)
+    except Exception:
+        pass  # Silent failure for background checks
+
+
+def _is_interactive_context() -> bool:
+    """Determine if we're in an interactive CLI context.
+
+    Returns False when prompts should be suppressed:
+    - Click is in resilient_parsing mode (--help, shell completion)
+    - Non-interactive flags are present (--dry-run, --help, -h)
+    - stdin/stdout are not TTYs (piped or scripted)
+    """
+    import sys
+
+    try:
+        ctx = click.get_current_context(silent=True)
+        if ctx and ctx.resilient_parsing:
+            return False
+    except RuntimeError:
+        pass
+
+    if _NON_INTERACTIVE_FLAGS & set(sys.argv):
+        return False
+
+    return sys.stdin.isatty() and sys.stdout.isatty()
+
+
+def _check_pending_updates() -> None:
+    """Check for and display pending update notifications.
+
+    Shows interactive prompt in normal TTY contexts, non-interactive message
+    for --help, --dry-run, or non-TTY contexts.
+    """
+    from ai_rules.bootstrap import clear_pending_update, load_pending_update
+
+    try:
+        pending = load_pending_update()
+        if not pending or not pending.has_update:
+            return
+
+        console.print(
+            f"\n[cyan]Update available:[/cyan] {pending.current_version} → {pending.latest_version}"
+        )
+
+        if _is_interactive_context():
+            if Confirm.ask("Install now?", default=False):
+                ctx = click.get_current_context()
+                ctx.invoke(upgrade, check=False, force=False)
+            else:
+                console.print("[dim]Run 'ai-rules upgrade' when ready[/dim]")
+        else:
+            console.print("[dim]Run 'ai-rules upgrade' to install[/dim]")
+
+        clear_pending_update()
+    except Exception:
+        pass  # Silent failure on errors
+
+
 @click.group()
-@click.version_option(version="0.1.0")
+@click.version_option(version=__version__)
 def main() -> None:
     """AI Rules - Manage user-level AI agent configurations."""
-    pass
+    import threading
+
+    from ai_rules.bootstrap import load_auto_update_config, should_check_now
+
+    # Check for pending updates from previous background check
+    _check_pending_updates()
+
+    # Start background check if due
+    try:
+        config = load_auto_update_config()
+        if config.enabled and should_check_now(config):
+            thread = threading.Thread(target=_background_update_check, daemon=True)
+            thread.start()
+    except Exception:
+        pass  # Silent failure for background operations
 
 
 def cleanup_deprecated_symlinks(
@@ -412,6 +528,123 @@ def install_project_symlinks(
         "excluded": excluded,
         "errors": errors,
     }
+
+
+@main.command()
+@click.option("--force", is_flag=True, help="Skip confirmation prompts")
+@click.option("--dry-run", is_flag=True, help="Show what would be done")
+@click.option("--skip-symlinks", is_flag=True, help="Skip symlink installation step")
+@click.pass_context
+def setup(ctx: click.Context, force: bool, dry_run: bool, skip_symlinks: bool) -> None:
+    """One-time setup: install symlinks and make ai-rules available system-wide.
+
+    This is the recommended way to install ai-rules for first-time users.
+
+    Example:
+        uvx ai-rules setup
+    """
+    from ai_rules.bootstrap import (
+        get_existing_tool_info,
+        get_installation_info,
+        install_from_pypi,
+        install_tool,
+        is_tool_installed,
+    )
+
+    # Step 1: Install symlinks (reuse existing install logic)
+    if not skip_symlinks:
+        console.print(
+            "[bold cyan]Step 1/2: Installing AI agent configuration symlinks[/bold cyan]\n"
+        )
+        ctx.invoke(
+            install,
+            force=force,
+            dry_run=dry_run,
+            rebuild_cache=False,
+            agents=None,
+            projects=None,
+            user_only=False,
+        )
+
+    # Step 2: Check for existing uv tool installation and offer migration if needed
+    if is_tool_installed("ai-rules"):
+        existing_info = get_existing_tool_info("ai-rules")
+
+        # Only consider it "already installed" if it's a uv tool
+        # (not just in PATH from local venv)
+        if existing_info:
+            if existing_info.source in ("git", "editable"):
+                # Existing git-based install - offer migration
+                console.print(
+                    "\n[yellow]⚠[/yellow] You have a development install from:"
+                )
+                console.print(f"   [dim]{existing_info.repo_path}[/dim]\n")
+                console.print(
+                    "Migrating to PyPI will allow automatic updates but you'll lose\n"
+                    "the ability to modify source code directly.\n"
+                )
+
+                if not force:
+                    if not Confirm.ask("Replace with PyPI version?", default=True):
+                        console.print("\n[yellow]Keeping development install.[/yellow]")
+                        console.print(
+                            "[dim]Run 'ai-rules upgrade' to update from git[/dim]"
+                        )
+                        return
+
+                # User confirmed - install from PyPI with force
+                console.print(
+                    "\n[bold cyan]Migrating to PyPI installation...[/bold cyan]"
+                )
+                success, message = install_from_pypi(force=True, dry_run=dry_run)
+
+                if success:
+                    console.print("\n[green]✓ Migration complete![/green]")
+                    console.print("You can now update via 'ai-rules upgrade'")
+                else:
+                    console.print(f"\n[red]Error:[/red] {message}")
+                return
+
+            # Non-git install (already PyPI) - nothing to do
+            console.print(
+                "\n[green]✓[/green] ai-rules is already installed system-wide"
+            )
+            console.print("[dim]You can run 'ai-rules' from any directory[/dim]")
+            return
+
+    # Step 3: Fresh install - offer persistent installation
+    console.print("\n[bold cyan]Step 2/2: Install ai-rules system-wide[/bold cyan]")
+    console.print("This allows you to run 'ai-rules' from any directory.\n")
+
+    if not force:
+        if not Confirm.ask("Install ai-rules permanently?", default=True):
+            console.print(
+                "\n[yellow]Skipped.[/yellow] You can still run via: uvx ai-rules <command>"
+            )
+            return
+
+    # Step 4: Perform installation
+    try:
+        info = get_installation_info()
+        success, message = install_tool(info, force=force, dry_run=dry_run)
+
+        if dry_run:
+            console.print(f"\n[dim]{message}[/dim]")
+            return
+
+        if success:
+            console.print("\n[green]✓ Setup complete![/green]")
+            console.print("You can now run [bold]ai-rules[/bold] from anywhere.")
+        else:
+            console.print(f"\n[red]Error:[/red] {message}")
+            console.print("\n[yellow]Manual installation:[/yellow]")
+            if info.source in ("git", "editable") and info.repo_path:
+                console.print(f"  uv tool install -e {info.repo_path}")
+            else:
+                console.print("  uv tool install ai-rules")
+    except Exception as e:
+        console.print(f"\n[red]Error:[/red] {e}")
+        console.print("\nFor help, visit: https://github.com/willpfleger/ai-rules")
 
 
 @main.command()
@@ -1100,6 +1333,83 @@ def update(force: bool) -> None:
         projects=None,
         user_only=False,
     )
+
+
+@main.command()
+@click.option("--check", is_flag=True, help="Check for updates without installing")
+@click.option("--force", is_flag=True, help="Force reinstall even if up to date")
+def upgrade(check: bool, force: bool) -> None:
+    """Upgrade ai-rules to the latest version.
+
+    Automatically detects installation source (git or PyPI) and updates accordingly.
+
+    Examples:
+        ai-rules upgrade        # Check and install updates
+        ai-rules upgrade --check  # Only check for updates
+    """
+    from ai_rules.bootstrap import (
+        check_git_updates,
+        check_pypi_updates,
+        get_installation_info,
+        get_package_version,
+        perform_update,
+    )
+
+    try:
+        info = get_installation_info()
+        current = get_package_version("ai-rules")
+    except Exception as e:
+        console.print(f"[red]Error:[/red] Could not detect installation: {e}")
+        sys.exit(1)
+
+    console.print(f"[dim]Current version: {current}[/dim]")
+    console.print(f"[dim]Installation source: {info.source}[/dim]\n")
+
+    # Check for updates
+    with console.status("Checking for updates..."):
+        try:
+            if info.source in ("git", "editable") and info.repo_path:
+                update_info = check_git_updates(info.repo_path)
+            else:
+                update_info = check_pypi_updates("ai-rules", current)
+        except Exception as e:
+            console.print(f"[red]Error:[/red] Failed to check for updates: {e}")
+            sys.exit(1)
+
+    if not update_info.has_update and not force:
+        console.print("[green]✓[/green] Already up to date!")
+        return
+
+    if update_info.has_update:
+        console.print(
+            f"[cyan]Update available:[/cyan] {update_info.current_version} → {update_info.latest_version}"
+        )
+
+    if check:
+        if update_info.has_update:
+            console.print("\nRun [bold]ai-rules upgrade[/bold] to install")
+        return
+
+    # Confirm upgrade
+    if not force:
+        if not Confirm.ask("\nInstall update?", default=True):
+            console.print("[yellow]Cancelled.[/yellow]")
+            return
+
+    # Perform upgrade
+    with console.status("Upgrading..."):
+        try:
+            success, message = perform_update(info)
+        except Exception as e:
+            console.print(f"\n[red]Error:[/red] Upgrade failed: {e}")
+            sys.exit(1)
+
+    if success:
+        console.print("\n[green]✓[/green] Upgrade successful!")
+        console.print("[dim]Restart your terminal if the command doesn't work[/dim]")
+    else:
+        console.print(f"\n[red]Error:[/red] {message}")
+        sys.exit(1)
 
 
 @main.command()
