@@ -59,6 +59,7 @@
       "Bash(just:*)",
       "Bash(ls:*)",
       "Bash(lsof:*)",
+      "Bash(mkdir:*)",
       "Bash(npm install:*)",
       "Bash(npm run:*)",
       "Bash(npm view:*)",
