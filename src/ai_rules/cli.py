@@ -34,7 +34,6 @@ from ai_rules.symlinks import (
 
 console = Console()
 
-# Get version from package metadata
 try:
     __version__ = get_version("ai-rules")
 except PackageNotFoundError:
@@ -314,10 +313,8 @@ def main() -> None:
 
     from ai_rules.bootstrap import load_auto_update_config, should_check_now
 
-    # Check for pending updates from previous background check
     _check_pending_updates()
 
-    # Start background check if due
     try:
         config = load_auto_update_config()
         if config.enabled and should_check_now(config):
@@ -551,7 +548,6 @@ def setup(ctx: click.Context, force: bool, dry_run: bool, skip_symlinks: bool) -
         is_tool_installed,
     )
 
-    # Step 1: Install symlinks (reuse existing install logic)
     if not skip_symlinks:
         console.print(
             "[bold cyan]Step 1/2: Installing AI agent configuration symlinks[/bold cyan]\n"
@@ -566,7 +562,6 @@ def setup(ctx: click.Context, force: bool, dry_run: bool, skip_symlinks: bool) -
             user_only=False,
         )
 
-    # Step 2: Check for existing uv tool installation and offer migration if needed
     if is_tool_installed("ai-rules"):
         existing_info = get_existing_tool_info("ai-rules")
 
@@ -574,7 +569,6 @@ def setup(ctx: click.Context, force: bool, dry_run: bool, skip_symlinks: bool) -
         # (not just in PATH from local venv)
         if existing_info:
             if existing_info.source in ("git", "editable"):
-                # Existing git-based install - offer migration
                 console.print(
                     "\n[yellow]⚠[/yellow] You have a development install from:"
                 )
@@ -592,7 +586,6 @@ def setup(ctx: click.Context, force: bool, dry_run: bool, skip_symlinks: bool) -
                         )
                         return
 
-                # User confirmed - install from PyPI with force
                 console.print(
                     "\n[bold cyan]Migrating to PyPI installation...[/bold cyan]"
                 )
@@ -605,14 +598,12 @@ def setup(ctx: click.Context, force: bool, dry_run: bool, skip_symlinks: bool) -
                     console.print(f"\n[red]Error:[/red] {message}")
                 return
 
-            # Non-git install (already PyPI) - nothing to do
             console.print(
                 "\n[green]✓[/green] ai-rules is already installed system-wide"
             )
             console.print("[dim]You can run 'ai-rules' from any directory[/dim]")
             return
 
-    # Step 3: Fresh install - offer persistent installation
     console.print("\n[bold cyan]Step 2/2: Install ai-rules system-wide[/bold cyan]")
     console.print("This allows you to run 'ai-rules' from any directory.\n")
 
@@ -623,7 +614,6 @@ def setup(ctx: click.Context, force: bool, dry_run: bool, skip_symlinks: bool) -
             )
             return
 
-    # Step 4: Perform installation
     try:
         info = get_installation_info()
         success, message = install_tool(info, force=force, dry_run=dry_run)
@@ -1365,7 +1355,6 @@ def upgrade(check: bool, force: bool) -> None:
     console.print(f"[dim]Current version: {current}[/dim]")
     console.print(f"[dim]Installation source: {info.source}[/dim]\n")
 
-    # Check for updates
     with console.status("Checking for updates..."):
         try:
             if info.source in ("git", "editable") and info.repo_path:

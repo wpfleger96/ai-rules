@@ -101,14 +101,11 @@ def get_installation_info(package_name: str = "ai-rules") -> InstallationInfo:
 
     package_path = Path(str(package_path_simple)).resolve()
 
-    # Check for editable install
     is_edit, edit_path = is_editable_install(package_name)
 
-    # Find git repo
     search_path = edit_path if edit_path else package_path
     repo_path = find_git_repo(search_path)
 
-    # Determine source
     if is_edit:
         source = "editable"
     elif repo_path:
@@ -203,10 +200,8 @@ def get_existing_tool_info(command_name: str = "ai-rules") -> InstallationInfo |
         venv_path = None
 
         for i, line in enumerate(lines):
-            # Check if this line is the tool header
             if line.startswith(command_name):
                 tool_found = True
-                # Next line should have the path
                 if i + 1 < len(lines):
                     path_line = lines[i + 1].strip()
                     if "(" in path_line and ")" in path_line:
@@ -221,7 +216,6 @@ def get_existing_tool_info(command_name: str = "ai-rules") -> InstallationInfo |
         if not tool_found or not venv_path:
             return None
 
-        # Now check if the package in this venv is editable
         # The venv structure is: ~/.local/share/uv/tools/ai-rules/
         # Python packages are in: lib/pythonX.Y/site-packages/
         site_packages = None
@@ -237,13 +231,11 @@ def get_existing_tool_info(command_name: str = "ai-rules") -> InstallationInfo |
         if not site_packages:
             return None
 
-        # Check for editable install markers
         package_name = command_name
         is_edit = False
         edit_path = None
         repo_path = None
 
-        # Check for direct_url.json
         dist_info = None
         for item in site_packages.iterdir():
             if item.name.startswith(

@@ -83,7 +83,6 @@ def check_git_updates(repo_path: Path) -> UpdateInfo:
             check=True,
         )
 
-        # Get current commit
         result = subprocess.run(
             ["git", "-C", str(repo_path), "rev-parse", "HEAD"],
             capture_output=True,
@@ -93,7 +92,6 @@ def check_git_updates(repo_path: Path) -> UpdateInfo:
         )
         current_commit = result.stdout.strip()
 
-        # Get remote HEAD commit
         result = subprocess.run(
             ["git", "-C", str(repo_path), "rev-parse", f"origin/{default_branch}"],
             capture_output=True,

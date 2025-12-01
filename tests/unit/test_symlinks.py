@@ -136,28 +136,32 @@ class TestCheckSymlink:
 
         assert status == "missing"
 
-    def test_detects_broken_symlink(self, tmp_path):
+    @pytest.mark.parametrize(
+        "symlink_type,expected_status",
+        [
+            (
+                "broken",
+                ["broken", "wrong_target"],
+            ),  # Broken symlink (nonexistent target)
+            ("wrong_target", ["wrong_target"]),  # Wrong target (different file)
+        ],
+    )
+    def test_detects_symlink_issues(self, tmp_path, symlink_type, expected_status):
+        """Test detection of broken symlinks and wrong targets."""
         source = tmp_path / "source.txt"
         source.write_text("test")
-        nonexistent = tmp_path / "nonexistent.txt"
         target = tmp_path / "target.txt"
-        target.symlink_to(nonexistent)
+
+        if symlink_type == "broken":
+            nonexistent = tmp_path / "nonexistent.txt"
+            target.symlink_to(nonexistent)
+        elif symlink_type == "wrong_target":
+            wrong = tmp_path / "wrong.txt"
+            wrong.write_text("wrong")
+            target.symlink_to(wrong)
 
         status, message = check_symlink(target, source)
-
-        assert status in ["broken", "wrong_target"]
-
-    def test_detects_wrong_target(self, tmp_path):
-        source = tmp_path / "source.txt"
-        source.write_text("test")
-        wrong = tmp_path / "wrong.txt"
-        wrong.write_text("wrong")
-        target = tmp_path / "target.txt"
-        target.symlink_to(wrong)
-
-        status, message = check_symlink(target, source)
-
-        assert status == "wrong_target"
+        assert status in expected_status
 
     def test_detects_regular_file_instead_of_symlink(self, tmp_path):
         source = tmp_path / "source.txt"
@@ -216,16 +220,13 @@ class TestCleanupDeprecatedSymlinks:
         self, test_repo, tmp_path, monkeypatch
     ):
         """Test that deprecated symlinks pointing to our AGENTS.md are removed."""
-        # Set up: create AGENTS.md in config
         agents_md = test_repo / "config" / "AGENTS.md"
         agents_md.parent.mkdir(parents=True, exist_ok=True)
         agents_md.write_text("# Test Agents")
 
-        # Create deprecated symlink at ~/CLAUDE.md pointing to our AGENTS.md
         deprecated_path = tmp_path / "CLAUDE.md"
         deprecated_path.symlink_to(agents_md)
 
-        # Mock expanduser to use tmp_path instead of actual home
         def mock_expanduser(self):
             if str(self) == "~/CLAUDE.md":
                 return deprecated_path
@@ -233,14 +234,12 @@ class TestCleanupDeprecatedSymlinks:
 
         monkeypatch.setattr(Path, "expanduser", mock_expanduser)
 
-        # Create agent and run cleanup
         config = Config(exclude_symlinks=[])
         agent = ClaudeAgent(test_repo, config)
         removed = cleanup_deprecated_symlinks(
             [agent], test_repo / "config", force=True, dry_run=False
         )
 
-        # Verify symlink was removed
         assert removed == 1
         assert not deprecated_path.exists()
 
@@ -248,16 +247,13 @@ class TestCleanupDeprecatedSymlinks:
         self, test_repo, tmp_path, monkeypatch
     ):
         """Test that regular files at deprecated locations are NOT removed."""
-        # Set up: create AGENTS.md in config
         agents_md = test_repo / "config" / "AGENTS.md"
         agents_md.parent.mkdir(parents=True, exist_ok=True)
         agents_md.write_text("# Test Agents")
 
-        # Create regular file (not symlink) at deprecated location
         deprecated_path = tmp_path / "CLAUDE.md"
         deprecated_path.write_text("# User's own file")
 
-        # Mock expanduser
         def mock_expanduser(self):
             if str(self) == "~/CLAUDE.md":
                 return deprecated_path
@@ -265,14 +261,12 @@ class TestCleanupDeprecatedSymlinks:
 
         monkeypatch.setattr(Path, "expanduser", mock_expanduser)
 
-        # Create agent and run cleanup
         config = Config(exclude_symlinks=[])
         agent = ClaudeAgent(test_repo, config)
         removed = cleanup_deprecated_symlinks(
             [agent], test_repo / "config", force=True, dry_run=False
         )
 
-        # Verify file was NOT removed
         assert removed == 0
         assert deprecated_path.exists()
         assert deprecated_path.read_text() == "# User's own file"
@@ -281,18 +275,15 @@ class TestCleanupDeprecatedSymlinks:
         self, test_repo, tmp_path, monkeypatch
     ):
         """Test that symlinks pointing to other files are NOT removed."""
-        # Set up: create AGENTS.md in config
         agents_md = test_repo / "config" / "AGENTS.md"
         agents_md.parent.mkdir(parents=True, exist_ok=True)
         agents_md.write_text("# Test Agents")
 
-        # Create different file and symlink to it
         other_file = tmp_path / "other.md"
         other_file.write_text("# Other file")
         deprecated_path = tmp_path / "CLAUDE.md"
         deprecated_path.symlink_to(other_file)
 
-        # Mock expanduser
         def mock_expanduser(self):
             if str(self) == "~/CLAUDE.md":
                 return deprecated_path
@@ -300,30 +291,25 @@ class TestCleanupDeprecatedSymlinks:
 
         monkeypatch.setattr(Path, "expanduser", mock_expanduser)
 
-        # Create agent and run cleanup
         config = Config(exclude_symlinks=[])
         agent = ClaudeAgent(test_repo, config)
         removed = cleanup_deprecated_symlinks(
             [agent], test_repo / "config", force=True, dry_run=False
         )
 
-        # Verify symlink was NOT removed
         assert removed == 0
         assert deprecated_path.exists()
         assert deprecated_path.is_symlink()
 
     def test_dry_run_does_not_remove_symlinks(self, test_repo, tmp_path, monkeypatch):
         """Test that dry run doesn't actually remove symlinks."""
-        # Set up: create AGENTS.md in config
         agents_md = test_repo / "config" / "AGENTS.md"
         agents_md.parent.mkdir(parents=True, exist_ok=True)
         agents_md.write_text("# Test Agents")
 
-        # Create deprecated symlink
         deprecated_path = tmp_path / "CLAUDE.md"
         deprecated_path.symlink_to(agents_md)
 
-        # Mock expanduser
         def mock_expanduser(self):
             if str(self) == "~/CLAUDE.md":
                 return deprecated_path
@@ -331,13 +317,11 @@ class TestCleanupDeprecatedSymlinks:
 
         monkeypatch.setattr(Path, "expanduser", mock_expanduser)
 
-        # Create agent and run cleanup in dry run mode
         config = Config(exclude_symlinks=[])
         agent = ClaudeAgent(test_repo, config)
         removed = cleanup_deprecated_symlinks(
             [agent], test_repo / "config", force=True, dry_run=True
         )
 
-        # Verify count is correct but symlink still exists
         assert removed == 1
         assert deprecated_path.exists()

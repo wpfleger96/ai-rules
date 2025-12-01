@@ -96,34 +96,31 @@ class TestLoadAutoUpdateConfig:
         assert config.last_check is None
         assert config.notify_only is False
 
-    def test_load_invalid_yaml_returns_defaults(self, mock_home, monkeypatch):
-        """Test that invalid YAML returns default config."""
-        config_file = mock_home / ".ai-rules" / "update_config.yaml"
-        config_file.parent.mkdir(parents=True)
-        config_file.write_text("invalid: yaml: content:")
-
-        monkeypatch.setattr(
-            "ai_rules.bootstrap.config.get_config_path",
-            lambda pkg="ai-rules": config_file,
-        )
-        config = load_auto_update_config()
-        assert config.enabled is True  # Defaults
-
-    def test_load_with_oserror_returns_defaults(self, mock_home, monkeypatch):
-        """Test that OSError returns default config."""
+    @pytest.mark.parametrize(
+        "error_type",
+        ["invalid_yaml", "os_error"],
+    )
+    def test_load_errors_return_defaults(self, mock_home, monkeypatch, error_type):
+        """Test that errors during loading return default config."""
         config_file = mock_home / ".ai-rules" / "update_config.yaml"
 
-        def mock_open_error(*args, **kwargs):
-            raise OSError("Permission denied")
+        if error_type == "invalid_yaml":
+            config_file.parent.mkdir(parents=True)
+            config_file.write_text("invalid: yaml: content:")
+        elif error_type == "os_error":
 
-        monkeypatch.setattr("builtins.open", mock_open_error)
+            def mock_open_error(*args, **kwargs):
+                raise OSError("Permission denied")
+
+            monkeypatch.setattr("builtins.open", mock_open_error)
+
         monkeypatch.setattr(
             "ai_rules.bootstrap.config.get_config_path",
             lambda pkg="ai-rules": config_file,
         )
 
         config = load_auto_update_config()
-        assert config.enabled is True
+        assert config.enabled is True  # Defaults
 
 
 @pytest.mark.unit

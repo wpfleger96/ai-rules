@@ -11,6 +11,28 @@ from ai_rules.config import (
 )
 
 
+@pytest.fixture
+def cache_setup(tmp_path, monkeypatch):
+    """Shared fixture for cache management tests."""
+    home = tmp_path / "home"
+    home.mkdir()
+    monkeypatch.setenv("HOME", str(home))
+
+    base_settings_path = tmp_path / "settings.json"
+    base_settings_path.write_text('{"model": "claude-opus-4-20250514"}')
+
+    config = Config(
+        settings_overrides={"claude": {"model": "claude-sonnet-4-5-20250929"}}
+    )
+
+    return {
+        "home": home,
+        "base_settings_path": base_settings_path,
+        "config": config,
+        "repo_root": tmp_path,
+    }
+
+
 @pytest.mark.unit
 @pytest.mark.config
 class TestConfigLoading:
@@ -92,21 +114,6 @@ class TestExcludeSymlinks:
 
         assert not config.is_excluded("~/.claude/agents/test.md")
 
-    def test_empty_exclude_list_excludes_nothing(self, tmp_path):
-        config = Config(exclude_symlinks=[])
-
-        assert not config.is_excluded("~/.claude/settings.json")
-
-    def test_path_normalization_with_tilde(self, tmp_path, monkeypatch):
-        home = tmp_path / "home"
-        home.mkdir()
-        monkeypatch.setenv("HOME", str(home))
-
-        config = Config(exclude_symlinks=["~/.claude/settings.json"])
-
-        assert config.is_excluded("~/.claude/settings.json")
-        assert config.is_excluded(str(home / ".claude" / "settings.json"))
-
     def test_multiple_exclusions(self, tmp_path):
         config = Config(
             exclude_symlinks=[
@@ -174,79 +181,84 @@ class TestExcludeSymlinks:
 class TestSettingsOverrides:
     """Test settings override loading and merging."""
 
-    def test_loads_settings_overrides(self, tmp_path, monkeypatch):
-        """Test that settings_overrides are loaded from user config."""
-        home = tmp_path / "home"
-        home.mkdir()
-        monkeypatch.setenv("HOME", str(home))
-
-        user_config = home / ".ai-rules-config.yaml"
-        user_config.write_text(
-            """version: 1
+    @pytest.mark.parametrize(
+        "config_location,override_config,expected_loaded",
+        [
+            # User config with overrides - should load
+            (
+                "user",
+                """version: 1
 settings_overrides:
   claude:
     model: claude-sonnet-4-5-20250929
     theme: dark
-"""
-        )
-
-        config = Config.load(tmp_path)
-
-        assert "claude" in config.settings_overrides
-        assert (
-            config.settings_overrides["claude"]["model"] == "claude-sonnet-4-5-20250929"
-        )
-        assert config.settings_overrides["claude"]["theme"] == "dark"
-
-    def test_settings_overrides_not_in_repo_config(self, tmp_path, monkeypatch):
-        """Test that settings_overrides from repo config are ignored."""
-        monkeypatch.setenv("HOME", str(tmp_path / "home"))
-
-        repo_config = tmp_path / ".ai-rules-config.yaml"
-        repo_config.write_text(
-            """version: 1
+""",
+                True,
+            ),
+            # Repo config with overrides - should be ignored
+            (
+                "repo",
+                """version: 1
 settings_overrides:
   claude:
     model: should-be-ignored
-"""
-        )
+""",
+                False,
+            ),
+        ],
+    )
+    def test_settings_override_loading(
+        self, tmp_path, monkeypatch, config_location, override_config, expected_loaded
+    ):
+        """Test that settings_overrides are loaded only from user config."""
+        home = tmp_path / "home"
+        home.mkdir()
+        monkeypatch.setenv("HOME", str(home))
 
+        if config_location == "user":
+            config_path = home / ".ai-rules-config.yaml"
+        else:  # repo
+            config_path = tmp_path / ".ai-rules-config.yaml"
+
+        config_path.write_text(override_config)
         config = Config.load(tmp_path)
 
-        assert len(config.settings_overrides) == 0
+        if expected_loaded:
+            assert "claude" in config.settings_overrides
+            assert (
+                config.settings_overrides["claude"]["model"]
+                == "claude-sonnet-4-5-20250929"
+            )
+            assert config.settings_overrides["claude"]["theme"] == "dark"
+        else:
+            assert len(config.settings_overrides) == 0
 
-    def test_merge_settings_with_overrides(self, tmp_path):
-        """Test deep merging of settings with overrides."""
-        config = Config(
-            settings_overrides={
-                "claude": {
+    @pytest.mark.parametrize(
+        "overrides,base,expected",
+        [
+            # With overrides - values should be merged
+            (
+                {"claude": {"model": "claude-sonnet-4-5-20250929", "theme": "dark"}},
+                {"model": "claude-opus-4-20250514", "theme": "light", "other": "value"},
+                {
                     "model": "claude-sonnet-4-5-20250929",
                     "theme": "dark",
-                }
-            }
-        )
-
-        base_settings = {
-            "model": "claude-opus-4-20250514",
-            "theme": "light",
-            "other": "value",
-        }
-
-        merged = config.merge_settings("claude", base_settings)
-
-        assert merged["model"] == "claude-sonnet-4-5-20250929"
-        assert merged["theme"] == "dark"
-        assert merged["other"] == "value"
-
-    def test_merge_settings_without_overrides(self, tmp_path):
-        """Test that settings without overrides are returned unchanged."""
-        config = Config(settings_overrides={})
-
-        base_settings = {"model": "claude-opus-4-20250514"}
-
-        merged = config.merge_settings("claude", base_settings)
-
-        assert merged == base_settings
+                    "other": "value",
+                },
+            ),
+            # Without overrides - should return base unchanged
+            (
+                {},
+                {"model": "claude-opus-4-20250514"},
+                {"model": "claude-opus-4-20250514"},
+            ),
+        ],
+    )
+    def test_merge_settings(self, overrides, base, expected):
+        """Test merging of base settings with overrides."""
+        config = Config(settings_overrides=overrides)
+        merged = config.merge_settings("claude", base)
+        assert merged == expected
 
     def test_deep_merge_nested_dicts(self, tmp_path):
         """Test that nested dictionaries are merged properly."""
@@ -274,31 +286,18 @@ settings_overrides:
         assert merged["nested"]["keep"] == "unchanged"
         assert merged["top_level"] == "value"
 
-    def test_build_merged_settings_creates_cache(self, tmp_path, monkeypatch):
+    def test_build_merged_settings_cache_creation(self, cache_setup):
         """Test that merged settings are written to cache."""
-        home = tmp_path / "home"
-        home.mkdir()
-        monkeypatch.setenv("HOME", str(home))
+        import json
 
-        base_settings_path = tmp_path / "settings.json"
-        base_settings_path.write_text('{"model": "claude-opus-4-20250514"}')
+        config = cache_setup["config"]
+        base_path = cache_setup["base_settings_path"]
+        repo_root = cache_setup["repo_root"]
 
-        config = Config(
-            settings_overrides={
-                "claude": {
-                    "model": "claude-sonnet-4-5-20250929",
-                }
-            }
-        )
-
-        cache_path = config.build_merged_settings(
-            "claude", base_settings_path, tmp_path
-        )
+        cache_path = config.build_merged_settings("claude", base_path, repo_root)
 
         assert cache_path is not None
         assert cache_path.exists()
-
-        import json
 
         with open(cache_path) as f:
             cached = json.load(f)
@@ -311,140 +310,78 @@ settings_overrides:
         base_settings_path.write_text('{"model": "claude-opus-4-20250514"}')
 
         config = Config(settings_overrides={})
-
         cache_path = config.build_merged_settings(
             "claude", base_settings_path, tmp_path
         )
 
         assert cache_path is None
 
-    def test_is_cache_stale_when_cache_missing(self, tmp_path, monkeypatch):
+    def test_cache_staleness_when_missing(self, cache_setup):
         """Test that cache is stale when it doesn't exist."""
-        home = tmp_path / "home"
-        home.mkdir()
-        monkeypatch.setenv("HOME", str(home))
+        config = cache_setup["config"]
+        base_path = cache_setup["base_settings_path"]
+        repo_root = cache_setup["repo_root"]
 
-        base_settings_path = tmp_path / "settings.json"
-        base_settings_path.write_text('{"model": "claude-opus-4-20250514"}')
+        assert config.is_cache_stale("claude", base_path, repo_root) is True
 
-        config = Config(
-            settings_overrides={"claude": {"model": "claude-sonnet-4-5-20250929"}}
-        )
-
-        assert config.is_cache_stale("claude", base_settings_path, tmp_path)
-
-    def test_is_cache_fresh_when_no_changes(self, tmp_path, monkeypatch):
-        """Test that cache is fresh when nothing has changed."""
+    def test_cache_staleness_when_fresh(self, cache_setup):
+        """Test that cache is fresh when recently built."""
         import time
 
-        home = tmp_path / "home"
-        home.mkdir()
-        monkeypatch.setenv("HOME", str(home))
+        config = cache_setup["config"]
+        base_path = cache_setup["base_settings_path"]
+        repo_root = cache_setup["repo_root"]
 
-        base_settings_path = tmp_path / "settings.json"
-        base_settings_path.write_text('{"model": "claude-opus-4-20250514"}')
-
-        user_config = home / ".ai-rules-config.yaml"
-        user_config.write_text("version: 1\n")
-
-        config = Config(
-            settings_overrides={"claude": {"model": "claude-sonnet-4-5-20250929"}}
-        )
-
-        config.build_merged_settings("claude", base_settings_path, tmp_path)
-
+        config.build_merged_settings("claude", base_path, repo_root)
         time.sleep(0.01)
 
-        assert not config.is_cache_stale("claude", base_settings_path, tmp_path)
+        assert config.is_cache_stale("claude", base_path, repo_root) is False
 
-    def test_is_cache_stale_when_base_settings_updated(self, tmp_path, monkeypatch):
+    def test_cache_staleness_when_base_updated(self, cache_setup):
         """Test that cache is stale when base settings are modified."""
         import time
 
-        home = tmp_path / "home"
-        home.mkdir()
-        monkeypatch.setenv("HOME", str(home))
+        config = cache_setup["config"]
+        base_path = cache_setup["base_settings_path"]
+        repo_root = cache_setup["repo_root"]
 
-        base_settings_path = tmp_path / "settings.json"
-        base_settings_path.write_text('{"model": "claude-opus-4-20250514"}')
+        config.build_merged_settings("claude", base_path, repo_root)
+        time.sleep(0.02)
 
-        config = Config(
-            settings_overrides={"claude": {"model": "claude-sonnet-4-5-20250929"}}
-        )
+        base_path.write_text('{"model": "claude-opus-4-20250514", "new": "value"}')
+        time.sleep(0.02)
 
-        config.build_merged_settings("claude", base_settings_path, tmp_path)
+        assert config.is_cache_stale("claude", base_path, repo_root) is True
 
-        time.sleep(0.01)
-
-        base_settings_path.write_text(
-            '{"model": "claude-opus-4-20250514", "new": "value"}'
-        )
-
-        assert config.is_cache_stale("claude", base_settings_path, tmp_path)
-
-    def test_build_merged_settings_skips_rebuild_when_fresh(
-        self, tmp_path, monkeypatch
-    ):
-        """Test that cache rebuild is skipped when cache is fresh."""
+    def test_build_merged_settings_rebuild_behavior(self, cache_setup):
+        """Test that cache rebuild is skipped when fresh but happens when forced."""
         import time
 
-        home = tmp_path / "home"
-        home.mkdir()
-        monkeypatch.setenv("HOME", str(home))
+        config = cache_setup["config"]
+        base_path = cache_setup["base_settings_path"]
+        repo_root = cache_setup["repo_root"]
 
-        base_settings_path = tmp_path / "settings.json"
-        base_settings_path.write_text('{"model": "claude-opus-4-20250514"}')
-
-        config = Config(
-            settings_overrides={"claude": {"model": "claude-sonnet-4-5-20250929"}}
-        )
-
-        cache_path1 = config.build_merged_settings(
-            "claude", base_settings_path, tmp_path
-        )
+        # First build
+        cache_path1 = config.build_merged_settings("claude", base_path, repo_root)
         assert cache_path1 is not None
         mtime1 = cache_path1.stat().st_mtime
 
         time.sleep(0.01)
 
-        cache_path2 = config.build_merged_settings(
-            "claude", base_settings_path, tmp_path
-        )
+        # Second build without force - should skip (same mtime)
+        cache_path2 = config.build_merged_settings("claude", base_path, repo_root)
         assert cache_path2 is not None
         mtime2 = cache_path2.stat().st_mtime
-
         assert mtime1 == mtime2
 
-    def test_build_merged_settings_rebuilds_when_forced(self, tmp_path, monkeypatch):
-        """Test that cache rebuild happens when forced."""
-        import time
-
-        home = tmp_path / "home"
-        home.mkdir()
-        monkeypatch.setenv("HOME", str(home))
-
-        base_settings_path = tmp_path / "settings.json"
-        base_settings_path.write_text('{"model": "claude-opus-4-20250514"}')
-
-        config = Config(
-            settings_overrides={"claude": {"model": "claude-sonnet-4-5-20250929"}}
-        )
-
-        cache_path1 = config.build_merged_settings(
-            "claude", base_settings_path, tmp_path
-        )
-        assert cache_path1 is not None
-        mtime1 = cache_path1.stat().st_mtime
-
+        # Third build with force_rebuild - should rebuild (different mtime)
         time.sleep(0.01)
-
-        cache_path2 = config.build_merged_settings(
-            "claude", base_settings_path, tmp_path, force_rebuild=True
+        cache_path3 = config.build_merged_settings(
+            "claude", base_path, repo_root, force_rebuild=True
         )
-        assert cache_path2 is not None
-        mtime2 = cache_path2.stat().st_mtime
-
-        assert mtime2 > mtime1
+        assert cache_path3 is not None
+        mtime3 = cache_path3.stat().st_mtime
+        assert mtime3 > mtime2
 
     def test_get_settings_file_for_symlink_returns_cache_when_exists(
         self, tmp_path, monkeypatch

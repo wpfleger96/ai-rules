@@ -130,7 +130,6 @@ class TestIsEditableInstall:
 
     def test_editable_with_direct_url(self, monkeypatch, tmp_path):
         """Test detection of editable install via direct_url.json."""
-        # Create mock dist-info structure
         dist_info = tmp_path / "test-package.dist-info"
         dist_info.mkdir()
         direct_url_file = dist_info / "direct_url.json"
@@ -289,14 +288,6 @@ class TestGetExistingToolInfo:
         monkeypatch.setattr("subprocess.run", mock_run)
         info = get_existing_tool_info("test-tool")
         assert info is None
-
-    @pytest.mark.skip(
-        reason="Complex integration test with many mocks - function works in practice"
-    )
-    def test_get_existing_tool_info_editable(self):
-        """Test detection of editable tool installation."""
-        # Skipped - complex test, function verified to work in practice
-        pass
 
     def test_get_existing_tool_info_timeout(self, monkeypatch):
         """Test timeout handling."""

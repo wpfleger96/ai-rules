@@ -83,25 +83,54 @@ class TestInstallFlow:
         for _result, target_path in results:
             assert not target_path.exists()
 
-    def test_excluded_symlinks_are_skipped(self, test_repo, mock_home):
-        config = Config(
-            exclude_symlinks=[
-                "~/.claude/settings.json",
-                "~/.config/goose/config.yaml",
-            ]
-        )
-        claude = ClaudeAgent(test_repo, config)
-        goose = GooseAgent(test_repo, config)
+    @pytest.mark.parametrize(
+        "agent_type,exclusions,expected_created,expected_skipped",
+        [
+            # Claude and Goose with specific exclusions
+            (
+                "multi",
+                ["~/.claude/settings.json", "~/.config/goose/config.yaml"],
+                ["~/.claude/CLAUDE.md", "~/.config/goose/.goosehints"],
+                ["~/.claude/settings.json", "~/.config/goose/config.yaml"],
+            ),
+            # Shared agent with AGENTS.md excluded
+            (
+                "shared",
+                ["~/AGENTS.md"],
+                [],
+                ["~/AGENTS.md"],
+            ),
+        ],
+    )
+    def test_excluded_symlinks_are_skipped(
+        self,
+        test_repo,
+        mock_home,
+        agent_type,
+        exclusions,
+        expected_created,
+        expected_skipped,
+    ):
+        """Test that excluded symlinks are properly skipped for different agents."""
+        config = Config(exclude_symlinks=exclusions)
 
-        for agent in [claude, goose]:
+        if agent_type == "multi":
+            agents = [ClaudeAgent(test_repo, config), GooseAgent(test_repo, config)]
+        else:  # shared
+            agents = [SharedAgent(test_repo, config)]
+
+        for agent in agents:
             for target, source in agent.get_filtered_symlinks():
                 target_path = Path(str(target).replace("~", str(mock_home)))
                 create_symlink(target_path, source, dry_run=False, force=False)
 
-        assert (mock_home / ".claude" / "CLAUDE.md").exists()
-        assert not (mock_home / ".claude" / "settings.json").exists()
-        assert (mock_home / ".config" / "goose" / ".goosehints").exists()
-        assert not (mock_home / ".config" / "goose" / "config.yaml").exists()
+        # Verify created symlinks exist
+        for path in expected_created:
+            assert (Path(str(path).replace("~", str(mock_home)))).exists()
+
+        # Verify excluded symlinks don't exist
+        for path in expected_skipped:
+            assert not (Path(str(path).replace("~", str(mock_home)))).exists()
 
     def test_install_with_multiple_agent_files(self, test_repo, mock_home):
         agents_dir = test_repo / "config" / "claude" / "agents"
@@ -156,14 +185,3 @@ class TestInstallFlow:
         new_mtime = target_path.lstat().st_mtime
         assert result.name == "ALREADY_CORRECT"
         assert original_mtime == new_mtime
-
-    def test_shared_agent_excluded_symlinks_are_skipped(self, test_repo, mock_home):
-        config = Config(exclude_symlinks=["~/AGENTS.md"])
-        shared = SharedAgent(test_repo, config)
-
-        for target, source in shared.get_filtered_symlinks():
-            target_path = Path(str(target).replace("~", str(mock_home)))
-            create_symlink(target_path, source, dry_run=False, force=False)
-
-        agents_md = mock_home / "AGENTS.md"
-        assert not agents_md.exists()
