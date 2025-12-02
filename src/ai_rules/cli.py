@@ -610,6 +610,20 @@ def install(
         if cache_dir.exists():
             shutil.rmtree(cache_dir)
             console.print("[dim]✓ Cleared settings cache[/dim]")
+
+    if not dry_run:
+        claude_settings = config_dir / "claude" / "settings.json"
+        if claude_settings.exists():
+            config.build_merged_settings(
+                "claude", claude_settings, force_rebuild=rebuild_cache
+            )
+
+        goose_settings = config_dir / "goose" / "config.yaml"
+        if goose_settings.exists():
+            config.build_merged_settings(
+                "goose", goose_settings, force_rebuild=rebuild_cache
+            )
+
     all_agents = get_agents(config_dir, config)
     selected_agents = select_agents(all_agents, agents)
 
@@ -646,16 +660,6 @@ def install(
         console.print("[bold]Dry run mode - no changes will be made[/bold]\n")
 
     if not dry_run:
-        for agent in selected_agents:
-            if agent.agent_id in ["claude", "goose"]:
-                settings_file = config_dir / agent.agent_id / agent.config_file_name
-                if settings_file.exists():
-                    config.build_merged_settings(
-                        agent.agent_id,
-                        settings_file,
-                        force_rebuild=rebuild_cache,
-                    )
-
         orphaned = config.cleanup_orphaned_cache()
         if orphaned:
             console.print(
