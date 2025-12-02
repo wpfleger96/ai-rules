@@ -38,7 +38,6 @@ try:
 except PackageNotFoundError:
     __version__ = "dev"
 
-# Flags that indicate non-interactive mode (no prompts should be shown)
 _NON_INTERACTIVE_FLAGS = frozenset({"--dry-run", "--help", "-h"})
 
 
@@ -177,12 +176,11 @@ def _background_update_check() -> None:
         if update_info.has_update:
             save_pending_update(update_info)
 
-        # Update last_check timestamp
         config = load_auto_update_config()
         config.last_check = datetime.now().isoformat()
         save_auto_update_config(config)
     except Exception:
-        pass  # Silent failure for background checks
+        pass
 
 
 def _is_interactive_context() -> bool:
@@ -236,7 +234,7 @@ def _check_pending_updates() -> None:
 
         clear_pending_update()
     except Exception:
-        pass  # Silent failure on errors
+        pass
 
 
 @click.group()
@@ -250,12 +248,15 @@ def main() -> None:
     _check_pending_updates()
 
     try:
-        config = load_auto_update_config()
-        if config.enabled and should_check_now(config):
-            thread = threading.Thread(target=_background_update_check, daemon=True)
-            thread.start()
+        import os
+
+        if "PYTEST_CURRENT_TEST" not in os.environ:
+            config = load_auto_update_config()
+            if config.enabled and should_check_now(config):
+                thread = threading.Thread(target=_background_update_check, daemon=True)
+                thread.start()
     except Exception:
-        pass  # Silent failure for background operations
+        pass
 
 
 def cleanup_deprecated_symlinks(
@@ -281,25 +282,19 @@ def cleanup_deprecated_symlinks(
         for deprecated_path in deprecated_paths:
             target = deprecated_path.expanduser()
 
-            # Skip if doesn't exist
             if not target.exists() and not target.is_symlink():
                 continue
 
-            # Only remove if it's a symlink (not a regular file)
             if not target.is_symlink():
                 continue
 
-            # Check if it points to our AGENTS.md file
             try:
                 resolved = target.resolve()
                 if resolved != agents_md:
-                    # Points to something else, don't touch it
                     continue
             except (OSError, RuntimeError):
-                # Broken symlink, but let's be conservative and skip it
                 continue
 
-            # Safe to remove - it's our deprecated symlink
             if dry_run:
                 console.print(
                     f"  [yellow]Would remove deprecated:[/yellow] {deprecated_path}"
@@ -325,7 +320,6 @@ def install_user_symlinks(
     """
     console.print("[bold cyan]User-Level Configuration[/bold cyan]")
 
-    # Clean up deprecated symlinks first
     if selected_agents:
         config_dir = selected_agents[0].config_dir
         cleanup_deprecated_symlinks(selected_agents, config_dir, force, dry_run)
@@ -894,13 +888,11 @@ def upgrade(check: bool, force: bool) -> None:
             console.print("\nRun [bold]ai-rules upgrade[/bold] to install")
         return
 
-    # Confirm upgrade
     if not force:
         if not Confirm.ask("\nInstall update?", default=True):
             console.print("[yellow]Cancelled.[/yellow]")
             return
 
-    # Perform upgrade
     with console.status("Upgrading..."):
         try:
             success, message = perform_pypi_update("ai-agent-rules")

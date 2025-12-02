@@ -124,7 +124,6 @@ def should_check_now(config: AutoUpdateConfig) -> bool:
             return now - last_check > timedelta(days=7)
 
     except (ValueError, TypeError):
-        # Invalid timestamp, trigger check
         return True
 
     return False
