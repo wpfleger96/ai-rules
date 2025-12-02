@@ -70,6 +70,7 @@
       "Bash(sort:*)",
       "Bash(stat:*)",
       "Bash(tail:*)",
+      "Bash(tar:*)",
       "Bash(tee:*)",
       "Bash(test:*)",
       "Bash(touch:*)",

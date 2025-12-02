@@ -69,17 +69,20 @@ def check_pypi_updates(package_name: str, current_version: str) -> UpdateInfo:
         )
 
 
-def perform_pypi_update(package_name: str) -> tuple[bool, str]:
+def perform_pypi_update(package_name: str) -> tuple[bool, str, bool]:
     """Upgrade via uv tool upgrade.
 
     Args:
         package_name: Name of package to upgrade
 
     Returns:
-        Tuple of (success, message)
+        Tuple of (success, message, was_upgraded)
+        - success: Whether command succeeded
+        - message: Human-readable status message
+        - was_upgraded: True if package was actually upgraded (not already up-to-date)
     """
     if not is_uv_available():
-        return False, UV_NOT_FOUND_ERROR
+        return False, UV_NOT_FOUND_ERROR, False
 
     try:
         result = subprocess.run(
@@ -90,15 +93,43 @@ def perform_pypi_update(package_name: str) -> tuple[bool, str]:
         )
 
         if result.returncode == 0:
-            return True, "Upgrade successful"
+            output = result.stdout + result.stderr
+
+            upgrade_patterns = [
+                r"Upgraded .+ from .+ to .+",
+                r"Installed .+ \d+\.\d+",
+                r"Successfully installed",
+            ]
+
+            already_up_to_date_patterns = [
+                r"Nothing to upgrade",
+                r"already.*installed",
+                r"already.*up.*to.*date",
+            ]
+
+            was_upgraded = False
+            if any(
+                re.search(pattern, output, re.IGNORECASE)
+                for pattern in upgrade_patterns
+            ):
+                was_upgraded = True
+            elif any(
+                re.search(pattern, output, re.IGNORECASE)
+                for pattern in already_up_to_date_patterns
+            ):
+                was_upgraded = False
+            else:
+                was_upgraded = True
+
+            return True, "Upgrade successful", was_upgraded
 
         error_msg = result.stderr.strip()
         if not error_msg:
             error_msg = "Upgrade failed with no error message"
 
-        return False, error_msg
+        return False, error_msg, False
 
     except subprocess.TimeoutExpired:
-        return False, "Upgrade timed out after 60 seconds"
+        return False, "Upgrade timed out after 60 seconds", False
     except Exception as e:
-        return False, f"Unexpected error: {e}"
+        return False, f"Unexpected error: {e}", False

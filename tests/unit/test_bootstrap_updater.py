@@ -141,9 +141,10 @@ class TestPerformPyPIUpdate:
     def test_perform_pypi_update_without_uv(self, monkeypatch):
         """Test that missing uv returns error."""
         monkeypatch.setattr("ai_rules.bootstrap.updater.is_uv_available", lambda: False)
-        success, message = perform_pypi_update("test-package")
+        success, message, was_upgraded = perform_pypi_update("test-package")
         assert success is False
         assert message == UV_NOT_FOUND_ERROR
+        assert was_upgraded is False
 
     def test_perform_pypi_update_success(self, monkeypatch):
         """Test successful upgrade."""
@@ -153,14 +154,15 @@ class TestPerformPyPIUpdate:
             class Result:
                 returncode = 0
                 stderr = ""
-                stdout = ""
+                stdout = "Upgraded test-package from 1.0.0 to 1.1.0"
 
             return Result()
 
         monkeypatch.setattr("ai_rules.bootstrap.updater.subprocess.run", mock_run)
-        success, message = perform_pypi_update("test-package")
+        success, message, was_upgraded = perform_pypi_update("test-package")
         assert success is True
         assert "successful" in message.lower()
+        assert was_upgraded is True
 
     def test_perform_pypi_update_failure(self, monkeypatch):
         """Test upgrade failure."""
@@ -175,9 +177,10 @@ class TestPerformPyPIUpdate:
             return Result()
 
         monkeypatch.setattr("ai_rules.bootstrap.updater.subprocess.run", mock_run)
-        success, message = perform_pypi_update("nonexistent")
+        success, message, was_upgraded = perform_pypi_update("nonexistent")
         assert success is False
         assert "Package not found" in message
+        assert was_upgraded is False
 
     def test_perform_pypi_update_timeout(self, monkeypatch):
         """Test handling of timeout."""
@@ -187,9 +190,10 @@ class TestPerformPyPIUpdate:
             raise subprocess.TimeoutExpired("uv", 60)
 
         monkeypatch.setattr("ai_rules.bootstrap.updater.subprocess.run", mock_run)
-        success, message = perform_pypi_update("test-package")
+        success, message, was_upgraded = perform_pypi_update("test-package")
         assert success is False
         assert "timed out" in message.lower()
+        assert was_upgraded is False
 
     def test_perform_pypi_update_unexpected_exception(self, monkeypatch):
         """Test handling of unexpected errors."""
@@ -199,9 +203,10 @@ class TestPerformPyPIUpdate:
             raise ValueError("Unexpected error")
 
         monkeypatch.setattr("ai_rules.bootstrap.updater.subprocess.run", mock_run)
-        success, message = perform_pypi_update("test-package")
+        success, message, was_upgraded = perform_pypi_update("test-package")
         assert success is False
         assert "Unexpected error" in message
+        assert was_upgraded is False
 
     def test_perform_pypi_update_empty_stderr(self, monkeypatch):
         """Test handling of failures with no stderr."""
@@ -216,6 +221,7 @@ class TestPerformPyPIUpdate:
             return Result()
 
         monkeypatch.setattr("ai_rules.bootstrap.updater.subprocess.run", mock_run)
-        success, message = perform_pypi_update("test-package")
+        success, message, was_upgraded = perform_pypi_update("test-package")
         assert success is False
         assert "failed" in message.lower()
+        assert was_upgraded is False

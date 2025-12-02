@@ -846,7 +846,12 @@ def update(force: bool) -> None:
 @main.command()
 @click.option("--check", is_flag=True, help="Check for updates without installing")
 @click.option("--force", is_flag=True, help="Force reinstall even if up to date")
-def upgrade(check: bool, force: bool) -> None:
+@click.option(
+    "--skip-install",
+    is_flag=True,
+    help="Skip running 'install --rebuild-cache' after upgrade",
+)
+def upgrade(check: bool, force: bool, skip_install: bool) -> None:
     """Upgrade ai-rules to the latest version from PyPI.
 
     Examples:
@@ -895,13 +900,64 @@ def upgrade(check: bool, force: bool) -> None:
 
     with console.status("Upgrading..."):
         try:
-            success, message = perform_pypi_update("ai-agent-rules")
+            success, message, was_upgraded = perform_pypi_update("ai-agent-rules")
         except Exception as e:
             console.print(f"\n[red]Error:[/red] Upgrade failed: {e}")
             sys.exit(1)
 
     if success:
         console.print("\n[green]✓[/green] Upgrade successful!")
+
+        if (was_upgraded or force) and not skip_install:
+            try:
+                import subprocess
+
+                try:
+                    repo_root = get_repo_root()
+                except Exception:
+                    console.print(
+                        "\n[dim]Not in ai-rules repository - skipping install[/dim]"
+                    )
+                    console.print(
+                        "[dim]Run 'ai-rules install --rebuild-cache' from repo to update[/dim]"
+                    )
+                    console.print(
+                        "[dim]Restart your terminal if the command doesn't work[/dim]"
+                    )
+                    return
+
+                console.print(
+                    "\n[dim]Running 'ai-rules install --rebuild-cache'...[/dim]"
+                )
+
+                result = subprocess.run(
+                    ["ai-rules", "install", "--rebuild-cache"],
+                    capture_output=False,
+                    text=True,
+                    cwd=str(repo_root),
+                    timeout=30,
+                )
+
+                if result.returncode == 0:
+                    console.print("[dim]✓ Install completed successfully[/dim]")
+                else:
+                    console.print(
+                        f"[yellow]⚠[/yellow] Install failed with exit code {result.returncode}"
+                    )
+                    console.print(
+                        "[dim]Run 'ai-rules install --rebuild-cache' manually to retry[/dim]"
+                    )
+            except subprocess.TimeoutExpired:
+                console.print("[yellow]⚠[/yellow] Install timed out after 30 seconds")
+                console.print(
+                    "[dim]Run 'ai-rules install --rebuild-cache' manually to retry[/dim]"
+                )
+            except Exception as e:
+                console.print(f"[yellow]⚠[/yellow] Could not run install: {e}")
+                console.print(
+                    "[dim]Run 'ai-rules install --rebuild-cache' manually[/dim]"
+                )
+
         console.print("[dim]Restart your terminal if the command doesn't work[/dim]")
     else:
         console.print(f"\n[red]Error:[/red] {message}")
