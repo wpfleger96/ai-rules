@@ -1,6 +1,19 @@
 # CHANGELOG
 
 
+## v0.5.2 (2025-12-02)
+
+### Bug Fixes
+
+- Symlink to tool install dir instead of uvx cache
+  ([`9b9a617`](https://github.com/wpfleger96/ai-rules/commit/9b9a61730912c7378178d6db7c5b338a4481f149))
+
+### Continuous Integration
+
+- Fix publish workflow not running
+  ([`3e184d6`](https://github.com/wpfleger96/ai-rules/commit/3e184d6c6fde4a1983a3929d2106ef3d0a1107ef))
+
+
 ## v0.5.1 (2025-12-02)
 
 ### Bug Fixes
