@@ -1,6 +1,22 @@
 # CHANGELOG
 
 
+## v0.4.1 (2025-12-02)
+
+### Bug Fixes
+
+- Expose both package names
+  ([`dc78525`](https://github.com/wpfleger96/ai-rules/commit/dc78525b2ad019cdeaf4b713fa7ec054bc4ec77d))
+
+### Chores
+
+- Only run publish workflow if we released a new version tag
+  ([`5b8488b`](https://github.com/wpfleger96/ai-rules/commit/5b8488b0d37aa38236bcfae466d96c88a1b41dd4))
+
+- Readme badges
+  ([`274b949`](https://github.com/wpfleger96/ai-rules/commit/274b949ce9d91a39bc23b861a6aa879be0c2bb3e))
+
+
 ## v0.4.0 (2025-12-02)
 
 ### Chores
