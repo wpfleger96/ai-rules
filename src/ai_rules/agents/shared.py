@@ -1,5 +1,6 @@
 """Shared agent implementation for agent-agnostic configurations."""
 
+from functools import cached_property
 from pathlib import Path
 
 from ai_rules.agents.base import Agent
@@ -24,10 +25,11 @@ class SharedAgent(Agent):
     def config_file_format(self) -> str:
         return ""
 
-    def get_symlinks(self) -> list[tuple[Path, Path]]:
-        """Get shared symlinks for agent-agnostic configurations."""
-        symlinks = []
+    @cached_property
+    def symlinks(self) -> list[tuple[Path, Path]]:
+        """Cached list of shared symlinks for agent-agnostic configurations."""
+        result = []
 
-        symlinks.append((Path("~/AGENTS.md"), self.config_dir / "AGENTS.md"))
+        result.append((Path("~/AGENTS.md"), self.config_dir / "AGENTS.md"))
 
-        return symlinks
+        return result

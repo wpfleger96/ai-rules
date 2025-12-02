@@ -5,6 +5,18 @@ import pytest
 from click.testing import CliRunner
 
 
+@pytest.fixture(autouse=True)
+def clear_config_cache():
+    """Clear Config.load() cache before each test to prevent cache pollution."""
+    from ai_rules.config import Config
+
+    if hasattr(Config.load, "cache_clear"):
+        Config.load.cache_clear()
+    yield
+    if hasattr(Config.load, "cache_clear"):
+        Config.load.cache_clear()
+
+
 def pytest_configure(config):
     """Register custom test markers to make testing and iterating easier on the developer."""
     config.addinivalue_line(

@@ -14,7 +14,7 @@ class TestClaudeAgent:
     def test_discovers_all_symlinks(self, test_repo):
         agent = ClaudeAgent(test_repo, Config(exclude_symlinks=[]))
 
-        symlinks = agent.get_symlinks()
+        symlinks = agent.symlinks
 
         targets = [str(target) for target, _ in symlinks]
         assert "~/.claude/CLAUDE.md" in targets
@@ -28,7 +28,7 @@ class TestClaudeAgent:
         (agents_dir / "third-agent.md").write_text("# Third Agent")
 
         agent = ClaudeAgent(test_repo, Config(exclude_symlinks=[]))
-        symlinks = agent.get_symlinks()
+        symlinks = agent.symlinks
 
         agent_targets = [
             str(target) for target, _ in symlinks if "/agents/" in str(target)
@@ -43,7 +43,7 @@ class TestClaudeAgent:
         (commands_dir / "another-command.md").write_text("# Another Command")
 
         agent = ClaudeAgent(test_repo, Config(exclude_symlinks=[]))
-        symlinks = agent.get_symlinks()
+        symlinks = agent.symlinks
 
         command_targets = [
             str(target) for target, _ in symlinks if "/commands/" in str(target)
@@ -78,7 +78,7 @@ class TestGooseAgent:
     def test_discovers_all_symlinks(self, test_repo):
         agent = GooseAgent(test_repo, Config(exclude_symlinks=[]))
 
-        symlinks = agent.get_symlinks()
+        symlinks = agent.symlinks
 
         targets = [str(target) for target, _ in symlinks]
         assert "~/.config/goose/.goosehints" in targets
@@ -104,7 +104,7 @@ class TestSharedAgent:
     def test_discovers_all_symlinks(self, test_repo):
         agent = SharedAgent(test_repo, Config(exclude_symlinks=[]))
 
-        symlinks = agent.get_symlinks()
+        symlinks = agent.symlinks
 
         targets = [str(target) for target, _ in symlinks]
         assert "~/AGENTS.md" in targets

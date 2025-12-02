@@ -26,6 +26,7 @@ dependencies = [
     "hatch>=1.15.1",
     "packaging>=21.0",
     "pytest>=8.4.2",
+    "pytest-benchmark>=4.0.0",
     "pytest-cov>=7.0.0",
     "pytest-xdist>=3.8.0",
     "pyyaml>=6.0",
@@ -109,8 +110,9 @@ testpaths = ["tests"]
 python_files = ["test_*.py"]
 python_classes = ["Test*"]
 python_functions = ["test_*"]
-addopts = "-v --cov=ai_rules --cov-report=term-missing -n auto"
+addopts = "-v --cov=ai_rules --cov-report=term-missing -n auto -m 'not performance'"
 markers = [
     "unit: marks tests as unit tests",
     "integration: marks tests as integration tests",
+    "performance: Performance benchmarks (opt-in, slow)",
 ]

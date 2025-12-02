@@ -48,6 +48,7 @@
       "Bash(git diff:*)",
       "Bash(git fetch:*)",
       "Bash(git log:*)",
+      "Bash(git merge-base:*)",
       "Bash(git pull:*)",
       "Bash(git push:*)",
       "Bash(git remote:*)",

@@ -1,0 +1,113 @@
+{
+    "machine_info": {
+        "node": "wpfleger-mac-m3.local",
+        "processor": "arm",
+        "machine": "arm64",
+        "python_compiler": "Clang 20.1.4 ",
+        "python_implementation": "CPython",
+        "python_implementation_version": "3.13.9",
+        "python_version": "3.13.9",
+        "python_build": [
+            "main",
+            "Oct 14 2025 21:10:40"
+        ],
+        "release": "25.1.0",
+        "system": "Darwin",
+        "cpu": {
+            "python_version": "3.13.9.final.0 (64 bit)",
+            "cpuinfo_version": [
+                9,
+                0,
+                0
+            ],
+            "cpuinfo_version_string": "9.0.0",
+            "arch": "ARM_8",
+            "bits": 64,
+            "count": 16,
+            "arch_string_raw": "arm64",
+            "brand_raw": "Apple M3 Max"
+        }
+    },
+    "commit_info": {
+        "id": "9b9a61730912c7378178d6db7c5b338a4481f149",
+        "time": "2025-12-02T15:03:56-05:00",
+        "author_time": "2025-12-02T15:03:56-05:00",
+        "dirty": true,
+        "project": "ai-rules",
+        "branch": "main"
+    },
+    "benchmarks": [
+        {
+            "group": null,
+            "name": "test_install_dry_run",
+            "fullname": "tests/performance/test_install_performance.py::TestInstallPerformance::test_install_dry_run",
+            "params": null,
+            "param": null,
+            "extra_info": {},
+            "options": {
+                "disable_gc": false,
+                "timer": "perf_counter",
+                "min_rounds": 5,
+                "max_time": 1.0,
+                "min_time": 5e-06,
+                "warmup": false
+            },
+            "stats": {
+                "min": 0.004379208025056869,
+                "max": 0.00727266602916643,
+                "mean": 0.005349494218451624,
+                "stddev": 0.0004449611873103324,
+                "rounds": 87,
+                "median": 0.005253916024230421,
+                "iqr": 0.00036342721432447433,
+                "q1": 0.005134666746016592,
+                "q3": 0.005498093960341066,
+                "iqr_outliers": 10,
+                "stddev_outliers": 15,
+                "outliers": "15;10",
+                "ld15iqr": 0.0046012080274522305,
+                "hd15iqr": 0.00608908396679908,
+                "ops": 186.9335602888909,
+                "total": 0.4654059970052913,
+                "iterations": 1
+            }
+        },
+        {
+            "group": null,
+            "name": "test_install_dry_run_with_rebuild_cache",
+            "fullname": "tests/performance/test_install_performance.py::TestInstallPerformance::test_install_dry_run_with_rebuild_cache",
+            "params": null,
+            "param": null,
+            "extra_info": {},
+            "options": {
+                "disable_gc": false,
+                "timer": "perf_counter",
+                "min_rounds": 5,
+                "max_time": 1.0,
+                "min_time": 5e-06,
+                "warmup": false
+            },
+            "stats": {
+                "min": 0.004513999971095473,
+                "max": 0.007035624992568046,
+                "mean": 0.005290717979564245,
+                "stddev": 0.0003667363183113439,
+                "rounds": 194,
+                "median": 0.005245625012321398,
+                "iqr": 0.0002912500058300793,
+                "q1": 0.005105874966830015,
+                "q3": 0.0053971249726600945,
+                "iqr_outliers": 18,
+                "stddev_outliers": 38,
+                "outliers": "38;18",
+                "ld15iqr": 0.004691042006015778,
+                "hd15iqr": 0.005906542006414384,
+                "ops": 189.0102636093187,
+                "total": 1.0263992880354635,
+                "iterations": 1
+            }
+        }
+    ],
+    "datetime": "2025-12-02T20:19:48.837522+00:00",
+    "version": "5.2.3"
+}

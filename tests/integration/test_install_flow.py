@@ -20,7 +20,7 @@ class TestInstallFlow:
         shared = SharedAgent(test_repo, config)
 
         for agent in [claude, goose, shared]:
-            for target, source in agent.get_symlinks():
+            for target, source in agent.symlinks:
                 target_path = Path(str(target).replace("~", str(mock_home)))
                 create_symlink(target_path, source, dry_run=False, force=False)
 
@@ -56,7 +56,7 @@ class TestInstallFlow:
 
         config = Config(exclude_symlinks=[])
         claude = ClaudeAgent(test_repo, config)
-        target, source = claude.get_symlinks()[0]
+        target, source = claude.symlinks[0]
         target_path = Path(str(target).replace("~", str(mock_home)))
 
         create_symlink(target_path, source, force=True, dry_run=False)
@@ -73,7 +73,7 @@ class TestInstallFlow:
         claude = ClaudeAgent(test_repo, config)
 
         results = []
-        for target, source in claude.get_symlinks():
+        for target, source in claude.symlinks:
             target_path = Path(str(target).replace("~", str(mock_home)))
             result, message = create_symlink(
                 target_path, source, dry_run=True, force=False
@@ -141,7 +141,7 @@ class TestInstallFlow:
         config = Config(exclude_symlinks=[])
         claude = ClaudeAgent(test_repo, config)
 
-        for target, source in claude.get_symlinks():
+        for target, source in claude.symlinks:
             target_path = Path(str(target).replace("~", str(mock_home)))
             create_symlink(target_path, source, dry_run=False, force=False)
 
@@ -160,7 +160,7 @@ class TestInstallFlow:
 
         config = Config(exclude_symlinks=[])
         claude = ClaudeAgent(test_repo, config)
-        target, source = claude.get_symlinks()[0]
+        target, source = claude.symlinks[0]
         target_path = Path(str(target).replace("~", str(mock_home)))
 
         result, message = create_symlink(target_path, source, force=True, dry_run=False)
@@ -171,7 +171,7 @@ class TestInstallFlow:
     def test_install_leaves_correct_symlinks_unchanged(self, test_repo, mock_home):
         config = Config(exclude_symlinks=[])
         claude = ClaudeAgent(test_repo, config)
-        target, source = claude.get_symlinks()[0]
+        target, source = claude.symlinks[0]
         target_path = Path(str(target).replace("~", str(mock_home)))
         target_path.parent.mkdir(parents=True, exist_ok=True)
         target_path.symlink_to(source)

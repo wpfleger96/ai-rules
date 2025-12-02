@@ -22,12 +22,12 @@ class TestStatusValidation:
         config = Config(exclude_symlinks=[])
         claude = ClaudeAgent(test_repo, config)
 
-        for target, source in claude.get_symlinks():
+        for target, source in claude.symlinks:
             target_path = Path(str(target).replace("~", str(mock_home)))
             create_symlink(target_path, source, force=False, dry_run=False)
 
         all_correct = True
-        for target, source in claude.get_symlinks():
+        for target, source in claude.symlinks:
             target_path = Path(str(target).replace("~", str(mock_home)))
             status, message = check_symlink(target_path, source)
             if status != "correct":
@@ -41,7 +41,7 @@ class TestStatusValidation:
         claude = ClaudeAgent(test_repo, config)
 
         issues = []
-        for target, source in claude.get_symlinks():
+        for target, source in claude.symlinks:
             target_path = Path(str(target).replace("~", str(mock_home)))
             status, message = check_symlink(target_path, source)
             if status != "correct":
@@ -53,7 +53,7 @@ class TestStatusValidation:
     def test_status_identifies_broken_symlinks(self, test_repo, mock_home):
         config = Config(exclude_symlinks=[])
         claude = ClaudeAgent(test_repo, config)
-        target, source = claude.get_symlinks()[0]
+        target, source = claude.symlinks[0]
         target_path = Path(str(target).replace("~", str(mock_home)))
 
         target_path.parent.mkdir(parents=True, exist_ok=True)
@@ -67,7 +67,7 @@ class TestStatusValidation:
     def test_status_identifies_wrong_target_symlinks(self, test_repo, mock_home):
         config = Config(exclude_symlinks=[])
         claude = ClaudeAgent(test_repo, config)
-        target, source = claude.get_symlinks()[0]
+        target, source = claude.symlinks[0]
         target_path = Path(str(target).replace("~", str(mock_home)))
 
         wrong_file = test_repo / "wrong.txt"
@@ -84,7 +84,7 @@ class TestStatusValidation:
     ):
         config = Config(exclude_symlinks=[])
         claude = ClaudeAgent(test_repo, config)
-        target, source = claude.get_symlinks()[0]
+        target, source = claude.symlinks[0]
         target_path = Path(str(target).replace("~", str(mock_home)))
 
         target_path.parent.mkdir(parents=True, exist_ok=True)
@@ -97,7 +97,7 @@ class TestStatusValidation:
     def test_status_handles_mixed_symlink_states(self, test_repo, mock_home):
         config = Config(exclude_symlinks=[])
         claude = ClaudeAgent(test_repo, config)
-        symlinks = claude.get_symlinks()
+        symlinks = claude.symlinks
 
         target1, source1 = symlinks[0]
         target1_path = Path(str(target1).replace("~", str(mock_home)))
@@ -257,7 +257,7 @@ class TestStatusCacheValidation:
         goose = GooseAgent(test_repo, config)
         shared = SharedAgent(test_repo, config)
         for agent in [claude, goose, shared]:
-            for target, source in agent.get_symlinks():
+            for target, source in agent.symlinks:
                 target_path = Path(str(target).replace("~", str(mock_home)))
                 create_symlink(target_path, source, force=False, dry_run=False)
 
@@ -288,7 +288,7 @@ class TestStatusCacheValidation:
         goose = GooseAgent(test_repo, config)
         shared = SharedAgent(test_repo, config)
         for agent in [claude, goose, shared]:
-            for target, source in agent.get_symlinks():
+            for target, source in agent.symlinks:
                 target_path = Path(str(target).replace("~", str(mock_home)))
                 create_symlink(target_path, source, force=False, dry_run=False)
 
@@ -326,7 +326,7 @@ class TestStatusCacheValidation:
         goose = GooseAgent(test_repo, config)
         shared = SharedAgent(test_repo, config)
         for agent in [claude, goose, shared]:
-            for target, source in agent.get_symlinks():
+            for target, source in agent.symlinks:
                 target_path = Path(str(target).replace("~", str(mock_home)))
                 create_symlink(target_path, source, force=False, dry_run=False)
 

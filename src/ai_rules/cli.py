@@ -42,6 +42,8 @@ except PackageNotFoundError:
 
 _NON_INTERACTIVE_FLAGS = frozenset({"--dry-run", "--help", "-h"})
 
+GIT_SUBPROCESS_TIMEOUT = 5
+
 
 def get_config_dir() -> Path:
     """Get the config directory.
@@ -68,6 +70,7 @@ def get_git_repo_root() -> Path:
             capture_output=True,
             text=True,
             check=False,
+            timeout=GIT_SUBPROCESS_TIMEOUT,
         )
         if result.returncode == 0:
             return Path(result.stdout.strip())
@@ -119,7 +122,12 @@ def detect_old_config_symlinks() -> list[tuple[Path, Path]]:
     Returns list of (symlink_path, old_target) tuples for broken symlinks.
     This is used for migration from v0.4.1 to v0.5.0 when config moved
     from repo root to src/ai_rules/config/.
+
+    Optimization: For versions >= 0.5.0, only check top-level symlinks
+    to avoid expensive recursive directory scanning.
     """
+    from packaging.version import Version
+
     old_patterns = [
         "/config/AGENTS.md",
         "/config/claude/",
@@ -135,6 +143,11 @@ def detect_old_config_symlinks() -> list[tuple[Path, Path]]:
         Path.home() / "AGENTS.md",
     ]
 
+    try:
+        use_fast_check = Version(__version__) >= Version("0.5.0")
+    except Exception:
+        use_fast_check = False
+
     for base_path in check_paths:
         if not base_path.exists():
             continue
@@ -148,7 +161,7 @@ def detect_old_config_symlinks() -> list[tuple[Path, Path]]:
             except (OSError, ValueError):
                 pass
 
-        if base_path.is_dir():
+        if base_path.is_dir() and not use_fast_check:
             for item in base_path.rglob("*"):
                 if item.is_symlink():
                     try:
@@ -436,9 +449,8 @@ def install_user_symlinks(
     for agent in selected_agents:
         console.print(f"\n[bold]{agent.name}[/bold]")
 
-        all_symlinks = agent.get_symlinks()
         filtered_symlinks = agent.get_filtered_symlinks()
-        excluded_count = len(all_symlinks) - len(filtered_symlinks)
+        excluded_count = len(agent.symlinks) - len(filtered_symlinks)
 
         if excluded_count > 0:
             console.print(
@@ -664,7 +676,7 @@ def install(
             console.print("\n[bold yellow]MCP Conflicts Detected:[/bold yellow]")
             mgr = MCPManager()
             expected_mcps = mgr.load_managed_mcps(config_dir, config)
-            claude_data = mgr.load_claude_json()
+            claude_data = mgr.claude_json
             installed_mcps = claude_data.get("mcpServers", {})
 
             for conflict_name in conflicts:
@@ -711,6 +723,7 @@ def install(
                         cwd=git_repo_root,
                         check=True,
                         capture_output=True,
+                        timeout=GIT_SUBPROCESS_TIMEOUT,
                     )
                     console.print("\n[dim]✓ Configured git hooks[/dim]")
                 except subprocess.CalledProcessError:
@@ -796,7 +809,7 @@ def status(agents: str | None) -> None:
     for agent in selected_agents:
         console.print(f"[bold]{agent.name}:[/bold]")
 
-        all_symlinks = agent.get_symlinks()
+        all_symlinks = agent.symlinks
         filtered_symlinks = agent.get_filtered_symlinks()
         excluded_symlinks = [
             (t, s) for t, s in all_symlinks if (t, s) not in filtered_symlinks
@@ -988,7 +1001,7 @@ def list_agents_cmd() -> None:
     table.add_column("Status")
 
     for agent in agents:
-        all_symlinks = agent.get_symlinks()
+        all_symlinks = agent.symlinks
         filtered_symlinks = agent.get_filtered_symlinks()
         excluded_count = len(all_symlinks) - len(filtered_symlinks)
 
@@ -1169,7 +1182,7 @@ def validate(agents: str | None) -> None:
         console.print(f"[bold]{agent.name}:[/bold]")
         agent_issues = []
 
-        for _target, source in agent.get_symlinks():
+        for _target, source in agent.symlinks:
             total_checked += 1
 
             if not source.exists():
@@ -1183,7 +1196,7 @@ def validate(agents: str | None) -> None:
 
         excluded_symlinks = [
             (t, s)
-            for t, s in agent.get_symlinks()
+            for t, s in agent.symlinks
             if (t, s) not in agent.get_filtered_symlinks()
         ]
         if excluded_symlinks:

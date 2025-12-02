@@ -1,5 +1,6 @@
 """Goose agent implementation."""
 
+from functools import cached_property
 from pathlib import Path
 
 from ai_rules.agents.base import Agent
@@ -24,11 +25,12 @@ class GooseAgent(Agent):
     def config_file_format(self) -> str:
         return "yaml"
 
-    def get_symlinks(self) -> list[tuple[Path, Path]]:
-        """Get all Goose symlinks."""
-        symlinks = []
+    @cached_property
+    def symlinks(self) -> list[tuple[Path, Path]]:
+        """Cached list of all Goose symlinks."""
+        result = []
 
-        symlinks.append(
+        result.append(
             (Path("~/.config/goose/.goosehints"), self.config_dir / "AGENTS.md")
         )
 
@@ -37,6 +39,6 @@ class GooseAgent(Agent):
             target_file = self.config.get_settings_file_for_symlink(
                 "goose", config_file
             )
-            symlinks.append((Path("~/.config/goose/config.yaml"), target_file))
+            result.append((Path("~/.config/goose/config.yaml"), target_file))
 
-        return symlinks
+        return result

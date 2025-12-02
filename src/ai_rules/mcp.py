@@ -7,6 +7,7 @@ import tempfile
 
 from datetime import datetime
 from enum import Enum
+from functools import cached_property
 from pathlib import Path
 from typing import Any, cast
 
@@ -75,8 +76,9 @@ class MCPManager:
 
         return merged_mcps
 
-    def load_claude_json(self) -> dict[str, Any]:
-        """Load ~/.claude.json file.
+    @cached_property
+    def claude_json(self) -> dict[str, Any]:
+        """Cached ~/.claude.json file contents.
 
         Returns:
             Dictionary containing Claude Code config
@@ -86,6 +88,11 @@ class MCPManager:
 
         with open(self.CLAUDE_JSON) as f:
             return cast(dict[str, Any], json.load(f))
+
+    def invalidate_cache(self) -> None:
+        """Clear cached claude_json after writes to ensure fresh reads."""
+        if "claude_json" in self.__dict__:
+            del self.__dict__["claude_json"]
 
     def save_claude_json(self, data: dict[str, Any]) -> None:
         """Save ~/.claude.json file atomically.
@@ -106,6 +113,9 @@ class MCPManager:
                 shutil.copystat(self.CLAUDE_JSON, temp_path)
 
             shutil.move(temp_path, self.CLAUDE_JSON)
+
+            # Invalidate cache after write
+            self.invalidate_cache()
         except Exception:
             if Path(temp_path).exists():
                 Path(temp_path).unlink()
@@ -208,7 +218,7 @@ class MCPManager:
         for _name, mcp_config in managed_mcps.items():
             mcp_config[MANAGED_BY_KEY] = MANAGED_BY_VALUE
 
-        claude_data = self.load_claude_json()
+        claude_data = self.claude_json
         current_mcps = claude_data.get("mcpServers", {})
 
         tracked_mcps = {
@@ -276,7 +286,7 @@ class MCPManager:
         Returns:
             Tuple of (result, message)
         """
-        claude_data = self.load_claude_json()
+        claude_data = self.claude_json
         if not claude_data or "mcpServers" not in claude_data:
             return (OperationResult.NOT_FOUND, "No MCPs found in ~/.claude.json")
 
@@ -319,13 +329,15 @@ class MCPManager:
         Returns:
             MCPStatus object with categorized MCPs
         """
+        self.invalidate_cache()
+
         status = MCPStatus()
         managed_mcps = self.load_managed_mcps(config_dir, config)
 
         for _name, mcp_config in managed_mcps.items():
             mcp_config[MANAGED_BY_KEY] = MANAGED_BY_VALUE
 
-        claude_data = self.load_claude_json()
+        claude_data = self.claude_json
         installed_mcps = claude_data.get("mcpServers", {})
 
         mcp_overrides = config.mcp_overrides if hasattr(config, "mcp_overrides") else {}

@@ -1,6 +1,7 @@
 """Base agent class."""
 
 from abc import ABC, abstractmethod
+from functools import cached_property
 from pathlib import Path
 
 from ai_rules.config import Config
@@ -37,9 +38,10 @@ class Agent(ABC):
         """Config file format ('json' or 'yaml')."""
         pass
 
+    @cached_property
     @abstractmethod
-    def get_symlinks(self) -> list[tuple[Path, Path]]:
-        """Get list of (target_path, source_path) tuples for symlinks.
+    def symlinks(self) -> list[tuple[Path, Path]]:
+        """Cached list of (target_path, source_path) tuples for symlinks.
 
         Returns:
             List of tuples where:
@@ -50,10 +52,9 @@ class Agent(ABC):
 
     def get_filtered_symlinks(self) -> list[tuple[Path, Path]]:
         """Get symlinks filtered by config exclusions."""
-        all_symlinks = self.get_symlinks()
         return [
             (target, source)
-            for target, source in all_symlinks
+            for target, source in self.symlinks
             if not self.config.is_excluded(str(target))
         ]
 

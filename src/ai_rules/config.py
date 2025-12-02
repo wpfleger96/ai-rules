@@ -6,6 +6,7 @@ import re
 import shutil
 
 from fnmatch import fnmatch
+from functools import lru_cache
 from pathlib import Path
 from typing import Any
 
@@ -249,8 +250,11 @@ class Config:
         self.mcp_overrides = mcp_overrides or {}
 
     @classmethod
+    @lru_cache(maxsize=1)
     def load(cls) -> "Config":
         """Load configuration from ~/.ai-rules-config.yaml.
+
+        Cached to avoid redundant YAML parsing within a single CLI invocation.
 
         Returns empty config if file doesn't exist.
 

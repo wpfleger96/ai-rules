@@ -16,16 +16,16 @@ class TestUninstallSafety:
         config = Config(exclude_symlinks=[])
         claude = ClaudeAgent(test_repo, config)
 
-        for target, source in claude.get_symlinks():
+        for target, source in claude.symlinks:
             target_path = Path(str(target).replace("~", str(mock_home)))
             create_symlink(target_path, source, force=False, dry_run=False)
 
-        for target, _source in claude.get_symlinks():
+        for target, _source in claude.symlinks:
             target_path = Path(str(target).replace("~", str(mock_home)))
             success, message = remove_symlink(target_path, force=True)
             assert success is True
 
-        for target, _source in claude.get_symlinks():
+        for target, _source in claude.symlinks:
             target_path = Path(str(target).replace("~", str(mock_home)))
             assert not target_path.exists()
 
@@ -58,7 +58,7 @@ class TestUninstallSafety:
         goose = GooseAgent(test_repo, config)
 
         for agent in [claude, goose]:
-            for target, source in agent.get_symlinks():
+            for target, source in agent.symlinks:
                 target_path = Path(str(target).replace("~", str(mock_home)))
                 create_symlink(target_path, source, force=False, dry_run=False)
 
@@ -77,7 +77,7 @@ class TestUninstallSafety:
             assert file.is_symlink()
 
         for agent in [claude, goose]:
-            for target, _source in agent.get_symlinks():
+            for target, _source in agent.symlinks:
                 target_path = Path(str(target).replace("~", str(mock_home)))
                 remove_symlink(target_path, force=True)
 
@@ -88,13 +88,13 @@ class TestUninstallSafety:
         config = Config(exclude_symlinks=[])
         claude = ClaudeAgent(test_repo, config)
 
-        for target, source in claude.get_symlinks():
+        for target, source in claude.symlinks:
             target_path = Path(str(target).replace("~", str(mock_home)))
             create_symlink(target_path, source, force=False, dry_run=False)
 
-        source_files = [source for _, source in claude.get_symlinks()]
+        source_files = [source for _, source in claude.symlinks]
 
-        for target, _source in claude.get_symlinks():
+        for target, _source in claude.symlinks:
             target_path = Path(str(target).replace("~", str(mock_home)))
             remove_symlink(target_path, force=True)
 

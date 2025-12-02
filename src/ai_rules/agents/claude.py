@@ -1,5 +1,6 @@
 """Claude Code agent implementation."""
 
+from functools import cached_property
 from pathlib import Path
 
 from ai_rules.agents.base import Agent
@@ -29,23 +30,24 @@ class ClaudeAgent(Agent):
     def config_file_format(self) -> str:
         return "json"
 
-    def get_symlinks(self) -> list[tuple[Path, Path]]:
-        """Get all Claude Code symlinks including dynamic agents/commands."""
-        symlinks = []
+    @cached_property
+    def symlinks(self) -> list[tuple[Path, Path]]:
+        """Cached list of all Claude Code symlinks including dynamic agents/commands."""
+        result = []
 
-        symlinks.append((Path("~/.claude/CLAUDE.md"), self.config_dir / "AGENTS.md"))
+        result.append((Path("~/.claude/CLAUDE.md"), self.config_dir / "AGENTS.md"))
 
         settings_file = self.config_dir / "claude" / "settings.json"
         if settings_file.exists():
             target_file = self.config.get_settings_file_for_symlink(
                 "claude", settings_file
             )
-            symlinks.append((Path("~/.claude/settings.json"), target_file))
+            result.append((Path("~/.claude/settings.json"), target_file))
 
         agents_dir = self.config_dir / "claude" / "agents"
         if agents_dir.exists():
             for agent_file in sorted(agents_dir.glob("*.md")):
-                symlinks.append(
+                result.append(
                     (
                         Path(f"~/.claude/agents/{agent_file.name}"),
                         agent_file,
@@ -55,7 +57,7 @@ class ClaudeAgent(Agent):
         commands_dir = self.config_dir / "claude" / "commands"
         if commands_dir.exists():
             for command_file in sorted(commands_dir.glob("*.md")):
-                symlinks.append(
+                result.append(
                     (
                         Path(f"~/.claude/commands/{command_file.name}"),
                         command_file,
@@ -66,14 +68,14 @@ class ClaudeAgent(Agent):
         if skills_dir.exists():
             for skill_folder in sorted(skills_dir.glob("*")):
                 if skill_folder.is_dir():
-                    symlinks.append(
+                    result.append(
                         (
                             Path(f"~/.claude/skills/{skill_folder.name}"),
                             skill_folder,
                         )
                     )
 
-        return symlinks
+        return result
 
     def get_deprecated_symlinks(self) -> list[Path]:
         """Return deprecated symlink locations for cleanup."""
