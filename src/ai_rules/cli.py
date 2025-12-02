@@ -222,9 +222,7 @@ def _background_update_check() -> None:
     from datetime import datetime
 
     from ai_rules.bootstrap import (
-        check_git_updates,
         check_pypi_updates,
-        get_installation_info,
         get_package_version,
         load_auto_update_config,
         save_auto_update_config,
@@ -232,13 +230,8 @@ def _background_update_check() -> None:
     )
 
     try:
-        info = get_installation_info()
         current = get_package_version("ai-rules")
-
-        if info.source in ("git", "editable") and info.repo_path:
-            update_info = check_git_updates(info.repo_path)
-        else:
-            update_info = check_pypi_updates("ai-rules", current)
+        update_info = check_pypi_updates("ai-rules", current)
 
         if update_info.has_update:
             save_pending_update(update_info)
@@ -540,13 +533,7 @@ def setup(ctx: click.Context, force: bool, dry_run: bool, skip_symlinks: bool) -
     Example:
         uvx ai-rules setup
     """
-    from ai_rules.bootstrap import (
-        get_existing_tool_info,
-        get_installation_info,
-        install_from_pypi,
-        install_tool,
-        is_tool_installed,
-    )
+    from ai_rules.bootstrap import install_tool
 
     if not skip_symlinks:
         console.print(
@@ -562,48 +549,6 @@ def setup(ctx: click.Context, force: bool, dry_run: bool, skip_symlinks: bool) -
             user_only=False,
         )
 
-    if is_tool_installed("ai-rules"):
-        existing_info = get_existing_tool_info("ai-rules")
-
-        # Only consider it "already installed" if it's a uv tool
-        # (not just in PATH from local venv)
-        if existing_info:
-            if existing_info.source in ("git", "editable"):
-                console.print(
-                    "\n[yellow]⚠[/yellow] You have a development install from:"
-                )
-                console.print(f"   [dim]{existing_info.repo_path}[/dim]\n")
-                console.print(
-                    "Migrating to PyPI will allow automatic updates but you'll lose\n"
-                    "the ability to modify source code directly.\n"
-                )
-
-                if not force:
-                    if not Confirm.ask("Replace with PyPI version?", default=True):
-                        console.print("\n[yellow]Keeping development install.[/yellow]")
-                        console.print(
-                            "[dim]Run 'ai-rules upgrade' to update from git[/dim]"
-                        )
-                        return
-
-                console.print(
-                    "\n[bold cyan]Migrating to PyPI installation...[/bold cyan]"
-                )
-                success, message = install_from_pypi(force=True, dry_run=dry_run)
-
-                if success:
-                    console.print("\n[green]✓ Migration complete![/green]")
-                    console.print("You can now update via 'ai-rules upgrade'")
-                else:
-                    console.print(f"\n[red]Error:[/red] {message}")
-                return
-
-            console.print(
-                "\n[green]✓[/green] ai-rules is already installed system-wide"
-            )
-            console.print("[dim]You can run 'ai-rules' from any directory[/dim]")
-            return
-
     console.print("\n[bold cyan]Step 2/2: Install ai-rules system-wide[/bold cyan]")
     console.print("This allows you to run 'ai-rules' from any directory.\n")
 
@@ -615,8 +560,7 @@ def setup(ctx: click.Context, force: bool, dry_run: bool, skip_symlinks: bool) -
             return
 
     try:
-        info = get_installation_info()
-        success, message = install_tool(info, force=force, dry_run=dry_run)
+        success, message = install_tool("ai-rules", force=force, dry_run=dry_run)
 
         if dry_run:
             console.print(f"\n[dim]{message}[/dim]")
@@ -628,10 +572,7 @@ def setup(ctx: click.Context, force: bool, dry_run: bool, skip_symlinks: bool) -
         else:
             console.print(f"\n[red]Error:[/red] {message}")
             console.print("\n[yellow]Manual installation:[/yellow]")
-            if info.source in ("git", "editable") and info.repo_path:
-                console.print(f"  uv tool install -e {info.repo_path}")
-            else:
-                console.print("  uv tool install ai-rules")
+            console.print("  uv tool install ai-rules")
     except Exception as e:
         console.print(f"\n[red]Error:[/red] {e}")
         console.print("\nFor help, visit: https://github.com/willpfleger/ai-rules")
@@ -1329,38 +1270,29 @@ def update(force: bool) -> None:
 @click.option("--check", is_flag=True, help="Check for updates without installing")
 @click.option("--force", is_flag=True, help="Force reinstall even if up to date")
 def upgrade(check: bool, force: bool) -> None:
-    """Upgrade ai-rules to the latest version.
-
-    Automatically detects installation source (git or PyPI) and updates accordingly.
+    """Upgrade ai-rules to the latest version from PyPI.
 
     Examples:
         ai-rules upgrade        # Check and install updates
         ai-rules upgrade --check  # Only check for updates
     """
     from ai_rules.bootstrap import (
-        check_git_updates,
         check_pypi_updates,
-        get_installation_info,
         get_package_version,
-        perform_update,
+        perform_pypi_update,
     )
 
     try:
-        info = get_installation_info()
         current = get_package_version("ai-rules")
     except Exception as e:
-        console.print(f"[red]Error:[/red] Could not detect installation: {e}")
+        console.print(f"[red]Error:[/red] Could not get current version: {e}")
         sys.exit(1)
 
-    console.print(f"[dim]Current version: {current}[/dim]")
-    console.print(f"[dim]Installation source: {info.source}[/dim]\n")
+    console.print(f"[dim]Current version: {current}[/dim]\n")
 
     with console.status("Checking for updates..."):
         try:
-            if info.source in ("git", "editable") and info.repo_path:
-                update_info = check_git_updates(info.repo_path)
-            else:
-                update_info = check_pypi_updates("ai-rules", current)
+            update_info = check_pypi_updates("ai-rules", current)
         except Exception as e:
             console.print(f"[red]Error:[/red] Failed to check for updates: {e}")
             sys.exit(1)
@@ -1388,7 +1320,7 @@ def upgrade(check: bool, force: bool) -> None:
     # Perform upgrade
     with console.status("Upgrading..."):
         try:
-            success, message = perform_update(info)
+            success, message = perform_pypi_update("ai-rules")
         except Exception as e:
             console.print(f"\n[red]Error:[/red] Upgrade failed: {e}")
             sys.exit(1)

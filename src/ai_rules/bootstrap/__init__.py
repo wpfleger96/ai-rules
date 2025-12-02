@@ -1,15 +1,13 @@
 """Bootstrap module for system-wide installation and auto-update functionality.
 
 This module provides utilities for:
-- Detecting installation source (git, PyPI, editable)
-- Installing tools via uv
-- Checking for and applying updates
+- Installing tools via uv (PyPI-based)
+- Checking for and applying updates from PyPI
 - Managing auto-update configuration
 
 Designed to be self-contained and easily extractable for use in other projects.
 """
 
-# Version utilities
 # Configuration utilities
 from .config import (
     AutoUpdateConfig,
@@ -24,31 +22,13 @@ from .config import (
     should_check_now,
 )
 
-# Detection utilities
-from .detection import (
-    UV_NOT_FOUND_ERROR,
-    InstallationInfo,
-    find_git_repo,
-    get_existing_tool_info,
-    get_installation_info,
-    get_uv_tool_dir,
-    is_editable_install,
-    is_tool_installed,
-    is_uv_available,
-)
-
 # Installation utilities
-from .installer import install_from_pypi, install_tool, uninstall_tool
+from .installer import UV_NOT_FOUND_ERROR, install_tool, is_uv_available, uninstall_tool
 
 # Update utilities
-from .updater import (
-    UpdateInfo,
-    check_git_updates,
-    check_pypi_updates,
-    perform_git_update,
-    perform_pypi_update,
-    perform_update,
-)
+from .updater import UpdateInfo, check_pypi_updates, perform_pypi_update
+
+# Version utilities
 from .version import get_package_version, is_newer, parse_version
 
 __all__ = [
@@ -56,27 +36,15 @@ __all__ = [
     "get_package_version",
     "is_newer",
     "parse_version",
-    # Detection
-    "UV_NOT_FOUND_ERROR",
-    "InstallationInfo",
-    "find_git_repo",
-    "get_existing_tool_info",
-    "get_installation_info",
-    "get_uv_tool_dir",
-    "is_editable_install",
-    "is_tool_installed",
-    "is_uv_available",
     # Installation
-    "install_from_pypi",
+    "UV_NOT_FOUND_ERROR",
     "install_tool",
+    "is_uv_available",
     "uninstall_tool",
     # Updates
     "UpdateInfo",
-    "check_git_updates",
     "check_pypi_updates",
-    "perform_git_update",
     "perform_pypi_update",
-    "perform_update",
     # Configuration
     "AutoUpdateConfig",
     "clear_pending_update",
