@@ -39,16 +39,17 @@ def runner():
 
 @pytest.fixture
 def test_repo(tmp_path):
-    """Create a test repository structure with config files."""
-    repo_root = tmp_path / "test-repo"
-    repo_root.mkdir()
+    """Create a test repository structure with config files.
 
-    config_dir = repo_root / "config"
-    config_dir.mkdir()
+    Note: As of v0.4.2, config structure changed from repo/config/* to package/config/*.
+    This fixture mimics the new package structure for testing.
+    """
+    config_root = tmp_path / "test-config"
+    config_root.mkdir()
 
-    (config_dir / "AGENTS.md").write_text("# Shared Agent Rules\nTest content")
+    (config_root / "AGENTS.md").write_text("# Shared Agent Rules\nTest content")
 
-    claude_dir = config_dir / "claude"
+    claude_dir = config_root / "claude"
     claude_dir.mkdir()
     (claude_dir / "settings.json").write_text('{"test": "settings"}')
 
@@ -60,11 +61,11 @@ def test_repo(tmp_path):
     claude_commands.mkdir()
     (claude_commands / "test-command.md").write_text("# Test Command\nCommand content")
 
-    goose_dir = config_dir / "goose"
+    goose_dir = config_root / "goose"
     goose_dir.mkdir()
     (goose_dir / "config.yaml").write_text("test: config")
 
     mcps_file = claude_dir / "mcps.json"
     mcps_file.write_text("{}")
 
-    return repo_root
+    return config_root

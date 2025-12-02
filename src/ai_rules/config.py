@@ -11,6 +11,14 @@ from typing import Any
 
 import yaml
 
+__all__ = [
+    "Config",
+    "AGENT_CONFIG_METADATA",
+    "parse_setting_path",
+    "navigate_path",
+    "validate_override_path",
+]
+
 AGENT_CONFIG_METADATA = {
     "claude": {
         "config_file": "settings.json",
@@ -151,14 +159,14 @@ def _format_path(components: list[str | int]) -> str:
 
 
 def validate_override_path(
-    agent: str, setting: str, repo_root: Path
+    agent: str, setting: str, config_dir: Path
 ) -> tuple[bool, str, str, list[str]]:
     """Validate an override path against base settings.
 
     Args:
         agent: Agent name (e.g., 'claude', 'goose')
         setting: Setting path (e.g., 'hooks.SubagentStop[0].command')
-        repo_root: Repository root path
+        config_dir: Config directory path
 
     Returns:
         Tuple of (is_valid, error_message, warning_message, suggestions)
@@ -179,7 +187,7 @@ def validate_override_path(
     config_file = agent_config["config_file"]
     config_format = agent_config["format"]
 
-    settings_file = repo_root / "config" / agent / config_file
+    settings_file = config_dir / agent / config_file
     if not settings_file.exists():
         return (
             False,
@@ -241,18 +249,15 @@ class Config:
         self.mcp_overrides = mcp_overrides or {}
 
     @classmethod
-    def load(cls, repo_root: Path) -> "Config":
-        """Load configuration from available config files.
+    def load(cls) -> "Config":
+        """Load configuration from ~/.ai-rules-config.yaml.
 
-        Checks in order:
-        1. ~/.ai-rules-config.yaml (user-specific) - for user exclusions and settings overrides
-        2. <repo_root>/.ai-rules-config.yaml (repo default) - for global exclusions
-        3. Empty config if neither exists
+        Returns empty config if file doesn't exist.
 
-        Note: settings_overrides are only loaded from user config, not repo config.
+        Note: Repo-level config support was removed in v0.4.2.
+        All configuration is now user-specific.
         """
         user_config_path = Path.home() / ".ai-rules-config.yaml"
-        repo_config_path = repo_root / ".ai-rules-config.yaml"
 
         exclude_symlinks = []
         settings_overrides = {}
@@ -261,14 +266,9 @@ class Config:
         if user_config_path.exists():
             with open(user_config_path) as f:
                 data = yaml.safe_load(f) or {}
-                exclude_symlinks.extend(data.get("exclude_symlinks", []))
+                exclude_symlinks = data.get("exclude_symlinks", [])
                 settings_overrides = data.get("settings_overrides", {})
                 mcp_overrides = data.get("mcp_overrides", {})
-
-        if repo_config_path.exists():
-            with open(repo_config_path) as f:
-                data = yaml.safe_load(f) or {}
-                exclude_symlinks.extend(data.get("exclude_symlinks", []))
 
         return cls(
             exclude_symlinks=exclude_symlinks,
@@ -344,14 +344,13 @@ class Config:
 
         return self._deep_merge(base_settings, self.settings_overrides[agent])
 
-    def get_merged_settings_path(self, agent: str, repo_root: Path) -> Path | None:
+    def get_merged_settings_path(self, agent: str) -> Path | None:
         """Get the path to cached merged settings for an agent.
 
-        Returns None if agent has no overrides (should use repo file directly).
+        Returns None if agent has no overrides (should use base file directly).
 
         Args:
             agent: Agent name (e.g., 'claude', 'goose')
-            repo_root: Repository root path
 
         Returns:
             Path to cached merged settings file, or None if no overrides exist
@@ -368,7 +367,7 @@ class Config:
         return cache_dir / agent_config["config_file"]
 
     def get_settings_file_for_symlink(
-        self, agent: str, base_settings_path: Path, repo_root: Path
+        self, agent: str, base_settings_path: Path
     ) -> Path:
         """Get the appropriate settings file to use for symlinking.
 
@@ -379,8 +378,7 @@ class Config:
 
         Args:
             agent: Agent name (e.g., 'claude', 'goose')
-            base_settings_path: Path to base settings.json in repo
-            repo_root: Repository root path
+            base_settings_path: Path to base settings file
 
         Returns:
             Path to settings file to use (either cached or base)
@@ -388,15 +386,13 @@ class Config:
         if agent not in self.settings_overrides:
             return base_settings_path
 
-        cache_path = self.get_merged_settings_path(agent, repo_root)
+        cache_path = self.get_merged_settings_path(agent)
         if cache_path and cache_path.exists():
             return cache_path
 
         return base_settings_path
 
-    def is_cache_stale(
-        self, agent: str, base_settings_path: Path, repo_root: Path
-    ) -> bool:
+    def is_cache_stale(self, agent: str, base_settings_path: Path) -> bool:
         """Check if cached merged settings are stale.
 
         Cache is considered stale if:
@@ -406,8 +402,7 @@ class Config:
 
         Args:
             agent: Agent name (e.g., 'claude', 'goose')
-            base_settings_path: Path to base settings.json in repo
-            repo_root: Repository root path
+            base_settings_path: Path to base settings file
 
         Returns:
             True if cache needs rebuilding, False otherwise
@@ -415,7 +410,7 @@ class Config:
         if agent not in self.settings_overrides:
             return False
 
-        cache_path = self.get_merged_settings_path(agent, repo_root)
+        cache_path = self.get_merged_settings_path(agent)
         if not cache_path or not cache_path.exists():
             return True
 
@@ -436,7 +431,6 @@ class Config:
         self,
         agent: str,
         base_settings_path: Path,
-        repo_root: Path,
         force_rebuild: bool = False,
     ) -> Path | None:
         """Build merged settings file in cache if overrides exist.
@@ -447,8 +441,7 @@ class Config:
 
         Args:
             agent: Agent name (e.g., 'claude', 'goose')
-            base_settings_path: Path to base config file in repo
-            repo_root: Repository root path
+            base_settings_path: Path to base config file
             force_rebuild: Force rebuild even if cache exists and is fresh
 
         Returns:
@@ -457,10 +450,10 @@ class Config:
         if agent not in self.settings_overrides:
             return None
 
-        cache_path = self.get_merged_settings_path(agent, repo_root)
+        cache_path = self.get_merged_settings_path(agent)
 
         if not force_rebuild and cache_path and cache_path.exists():
-            if not self.is_cache_stale(agent, base_settings_path, repo_root):
+            if not self.is_cache_stale(agent, base_settings_path):
                 return cache_path
 
         agent_config = AGENT_CONFIG_METADATA.get(agent)
@@ -517,11 +510,8 @@ class Config:
         with open(user_config_path, "w") as f:
             yaml.dump(data, f, default_flow_style=False, sort_keys=False)
 
-    def cleanup_orphaned_cache(self, repo_root: Path) -> list[str]:
+    def cleanup_orphaned_cache(self) -> list[str]:
         """Remove cache files for agents that no longer have overrides.
-
-        Args:
-            repo_root: Repository root path
 
         Returns:
             List of agent IDs whose caches were removed

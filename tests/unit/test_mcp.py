@@ -11,7 +11,7 @@ from ai_rules.mcp import MCPManager, OperationResult
 @pytest.fixture(autouse=True)
 def setup_test_mcp(test_repo):
     """Add test-mcp to mcps.json for MCP-specific tests."""
-    mcps_file = test_repo / "config" / "claude" / "mcps.json"
+    mcps_file = test_repo / "claude" / "mcps.json"
     mcps_data = {"test-mcp": {"type": "stdio", "command": "test", "args": []}}
     mcps_file.write_text(json.dumps(mcps_data, indent=2))
     return test_repo
@@ -79,7 +79,7 @@ def test_install_mcps_update(manager, mock_home, test_repo):
 
     manager.install_mcps(test_repo, config, force=True)
 
-    mcps_file = test_repo / "config" / "claude" / "mcps.json"
+    mcps_file = test_repo / "claude" / "mcps.json"
     with open(mcps_file) as f:
         mcps_data = json.load(f)
         mcps_data["test-mcp"]["args"] = ["modified"]
@@ -274,7 +274,7 @@ def test_install_removes_mcps_no_longer_in_repo(manager, mock_home, test_repo):
         assert "test-mcp" in data["mcpServers"]
         assert data["mcpServers"]["test-mcp"]["_managedBy"] == "ai-rules"
 
-    mcps_file = test_repo / "config" / "claude" / "mcps.json"
+    mcps_file = test_repo / "claude" / "mcps.json"
     mcps_file.write_text("{}")
 
     result, message, _ = manager.install_mcps(test_repo, config, force=True)

@@ -26,7 +26,7 @@ class TestInstallFlow:
 
         claude_md = mock_home / ".claude" / "CLAUDE.md"
         assert claude_md.is_symlink()
-        assert claude_md.resolve() == (test_repo / "config" / "AGENTS.md").resolve()
+        assert claude_md.resolve() == (test_repo / "AGENTS.md").resolve()
 
         claude_settings = mock_home / ".claude" / "settings.json"
         assert claude_settings.is_symlink()
@@ -39,14 +39,14 @@ class TestInstallFlow:
 
         goose_hints = mock_home / ".config" / "goose" / ".goosehints"
         assert goose_hints.is_symlink()
-        assert goose_hints.resolve() == (test_repo / "config" / "AGENTS.md").resolve()
+        assert goose_hints.resolve() == (test_repo / "AGENTS.md").resolve()
 
         goose_config = mock_home / ".config" / "goose" / "config.yaml"
         assert goose_config.is_symlink()
 
         agents_md = mock_home / "AGENTS.md"
         assert agents_md.is_symlink()
-        assert agents_md.resolve() == (test_repo / "config" / "AGENTS.md").resolve()
+        assert agents_md.resolve() == (test_repo / "AGENTS.md").resolve()
 
     def test_install_creates_backups_for_existing_files(self, test_repo, mock_home):
         claude_dir = mock_home / ".claude"
@@ -133,7 +133,7 @@ class TestInstallFlow:
             assert not (Path(str(path).replace("~", str(mock_home)))).exists()
 
     def test_install_with_multiple_agent_files(self, test_repo, mock_home):
-        agents_dir = test_repo / "config" / "claude" / "agents"
+        agents_dir = test_repo / "claude" / "agents"
         (agents_dir / "agent1.md").write_text("# Agent 1")
         (agents_dir / "agent2.md").write_text("# Agent 2")
         (agents_dir / "agent3.md").write_text("# Agent 3")
@@ -166,7 +166,7 @@ class TestInstallFlow:
         result, message = create_symlink(target_path, source, force=True, dry_run=False)
 
         assert target_path.is_symlink()
-        assert target_path.resolve() == (test_repo / "config" / "AGENTS.md").resolve()
+        assert target_path.resolve() == (test_repo / "AGENTS.md").resolve()
 
     def test_install_leaves_correct_symlinks_unchanged(self, test_repo, mock_home):
         config = Config(exclude_symlinks=[])

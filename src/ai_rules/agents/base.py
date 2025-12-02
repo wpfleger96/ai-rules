@@ -9,9 +9,8 @@ from ai_rules.config import Config
 class Agent(ABC):
     """Base class for AI agent configuration managers."""
 
-    def __init__(self, repo_root: Path, config: Config):
-        self.repo_root = repo_root
-        self.config_dir = repo_root / "config"
+    def __init__(self, config_dir: Path, config: Config):
+        self.config_dir = config_dir
         self.config = config
 
     @property

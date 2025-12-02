@@ -135,7 +135,7 @@ class TestStatusCacheValidation:
         """Test that status detects stale cache when base settings are modified."""
         import ai_rules.cli
 
-        monkeypatch.setattr(ai_rules.cli, "get_repo_root", lambda: test_repo)
+        monkeypatch.setattr(ai_rules.cli, "get_config_dir", lambda: test_repo)
 
         user_config_path = mock_home / ".ai-rules-config.yaml"
         user_config = {
@@ -145,21 +145,19 @@ class TestStatusCacheValidation:
         with open(user_config_path, "w") as f:
             yaml.dump(user_config, f)
 
-        config = Config.load(test_repo)
-        cache_path = config.get_merged_settings_path("claude", test_repo)
+        config = Config.load()
+        cache_path = config.get_merged_settings_path("claude")
         assert cache_path is not None
 
-        config.build_merged_settings(
-            "claude", test_repo / "config" / "claude" / "settings.json", test_repo
-        )
+        config.build_merged_settings("claude", test_repo / "claude" / "settings.json")
         assert cache_path.exists()
 
         time.sleep(0.01)
 
-        base_settings_path = test_repo / "config" / "claude" / "settings.json"
+        base_settings_path = test_repo / "claude" / "settings.json"
         base_settings_path.write_text('{"test": "updated"}')
 
-        assert config.is_cache_stale("claude", base_settings_path, test_repo)
+        assert config.is_cache_stale("claude", base_settings_path)
 
         result = runner.invoke(main, ["status"], catch_exceptions=False)
         assert result.exit_code == 1
@@ -171,7 +169,7 @@ class TestStatusCacheValidation:
         """Test that status detects stale cache when user config is modified."""
         import ai_rules.cli
 
-        monkeypatch.setattr(ai_rules.cli, "get_repo_root", lambda: test_repo)
+        monkeypatch.setattr(ai_rules.cli, "get_config_dir", lambda: test_repo)
 
         user_config_path = mock_home / ".ai-rules-config.yaml"
         user_config: dict[str, Any] = {
@@ -181,13 +179,11 @@ class TestStatusCacheValidation:
         with open(user_config_path, "w") as f:
             yaml.dump(user_config, f)
 
-        config = Config.load(test_repo)
-        cache_path = config.get_merged_settings_path("claude", test_repo)
+        config = Config.load()
+        cache_path = config.get_merged_settings_path("claude")
         assert cache_path is not None
 
-        config.build_merged_settings(
-            "claude", test_repo / "config" / "claude" / "settings.json", test_repo
-        )
+        config.build_merged_settings("claude", test_repo / "claude" / "settings.json")
         assert cache_path.exists()
 
         time.sleep(0.01)
@@ -196,9 +192,9 @@ class TestStatusCacheValidation:
         with open(user_config_path, "w") as f:
             yaml.dump(user_config, f)
 
-        config_reloaded = Config.load(test_repo)
+        config_reloaded = Config.load()
         assert config_reloaded.is_cache_stale(
-            "claude", test_repo / "config" / "claude" / "settings.json", test_repo
+            "claude", test_repo / "claude" / "settings.json"
         )
 
         result = runner.invoke(main, ["status"], catch_exceptions=False)
@@ -211,7 +207,7 @@ class TestStatusCacheValidation:
         """Test that status suggests --rebuild-cache flag when cache is stale."""
         import ai_rules.cli
 
-        monkeypatch.setattr(ai_rules.cli, "get_repo_root", lambda: test_repo)
+        monkeypatch.setattr(ai_rules.cli, "get_config_dir", lambda: test_repo)
 
         user_config_path = mock_home / ".ai-rules-config.yaml"
         user_config = {
@@ -221,14 +217,12 @@ class TestStatusCacheValidation:
         with open(user_config_path, "w") as f:
             yaml.dump(user_config, f)
 
-        config = Config.load(test_repo)
-        config.build_merged_settings(
-            "claude", test_repo / "config" / "claude" / "settings.json", test_repo
-        )
+        config = Config.load()
+        config.build_merged_settings("claude", test_repo / "claude" / "settings.json")
 
         time.sleep(0.01)
 
-        base_settings_path = test_repo / "config" / "claude" / "settings.json"
+        base_settings_path = test_repo / "claude" / "settings.json"
         base_settings_path.write_text('{"test": "updated"}')
 
         result = runner.invoke(main, ["status"], catch_exceptions=False)
@@ -241,7 +235,7 @@ class TestStatusCacheValidation:
         """Test that status passes when cache is fresh."""
         import ai_rules.cli
 
-        monkeypatch.setattr(ai_rules.cli, "get_repo_root", lambda: test_repo)
+        monkeypatch.setattr(ai_rules.cli, "get_config_dir", lambda: test_repo)
 
         user_config_path = mock_home / ".ai-rules-config.yaml"
         user_config = {
@@ -251,10 +245,8 @@ class TestStatusCacheValidation:
         with open(user_config_path, "w") as f:
             yaml.dump(user_config, f)
 
-        config = Config.load(test_repo)
-        config.build_merged_settings(
-            "claude", test_repo / "config" / "claude" / "settings.json", test_repo
-        )
+        config = Config.load()
+        config.build_merged_settings("claude", test_repo / "claude" / "settings.json")
 
         claude = ClaudeAgent(test_repo, config)
         goose = GooseAgent(test_repo, config)
@@ -265,7 +257,7 @@ class TestStatusCacheValidation:
                 create_symlink(target_path, source, force=False, dry_run=False)
 
         assert not config.is_cache_stale(
-            "claude", test_repo / "config" / "claude" / "settings.json", test_repo
+            "claude", test_repo / "claude" / "settings.json"
         )
 
         result = runner.invoke(main, ["status"], catch_exceptions=False)
@@ -277,9 +269,9 @@ class TestStatusCacheValidation:
         """Test that status doesn't warn about cache when no overrides exist."""
         import ai_rules.cli
 
-        monkeypatch.setattr(ai_rules.cli, "get_repo_root", lambda: test_repo)
+        monkeypatch.setattr(ai_rules.cli, "get_config_dir", lambda: test_repo)
 
-        config = Config.load(test_repo)
+        config = Config.load()
         claude = ClaudeAgent(test_repo, config)
         goose = GooseAgent(test_repo, config)
         shared = SharedAgent(test_repo, config)

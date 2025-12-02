@@ -43,17 +43,17 @@ class MCPManager:
     def CLAUDE_JSON(self) -> Path:
         return Path.home() / ".claude.json"
 
-    def load_managed_mcps(self, repo_root: Path, config: Config) -> dict[str, Any]:
-        """Load managed MCP definitions from repo and apply user overrides.
+    def load_managed_mcps(self, config_dir: Path, config: Config) -> dict[str, Any]:
+        """Load managed MCP definitions and apply user overrides.
 
         Args:
-            repo_root: Repository root path
+            config_dir: Config directory path
             config: Config instance with user overrides
 
         Returns:
             Dictionary of MCP name -> MCP config (with overrides applied)
         """
-        mcps_file = repo_root / "config" / "claude" / "mcps.json"
+        mcps_file = config_dir / "claude" / "mcps.json"
         if not mcps_file.exists():
             return {}
 
@@ -185,17 +185,17 @@ class MCPManager:
 
     def install_mcps(
         self,
-        repo_root: Path,
+        config_dir: Path,
         config: Config,
         force: bool = False,
         dry_run: bool = False,
     ) -> tuple[OperationResult, str, list[str]]:
         """Install managed MCPs into ~/.claude.json.
 
-        Auto-removes MCPs that were previously tracked but are no longer in repo config.
+        Auto-removes MCPs that were previously tracked but are no longer in current config.
 
         Args:
-            repo_root: Repository root path
+            config_dir: Config directory path
             config: Config instance with user overrides
             force: Skip confirmation prompts
             dry_run: Don't actually modify files
@@ -203,7 +203,7 @@ class MCPManager:
         Returns:
             Tuple of (result, message, conflicts_list)
         """
-        managed_mcps = self.load_managed_mcps(repo_root, config)
+        managed_mcps = self.load_managed_mcps(config_dir, config)
 
         for _name, mcp_config in managed_mcps.items():
             mcp_config[MANAGED_BY_KEY] = MANAGED_BY_VALUE
@@ -309,18 +309,18 @@ class MCPManager:
             f"Removed {len(tracked_mcps)} MCPs{backup_msg}",
         )
 
-    def get_status(self, repo_root: Path, config: Config) -> MCPStatus:
+    def get_status(self, config_dir: Path, config: Config) -> MCPStatus:
         """Get status of managed and unmanaged MCPs.
 
         Args:
-            repo_root: Repository root path
+            config_dir: Config directory path
             config: Config instance
 
         Returns:
             MCPStatus object with categorized MCPs
         """
         status = MCPStatus()
-        managed_mcps = self.load_managed_mcps(repo_root, config)
+        managed_mcps = self.load_managed_mcps(config_dir, config)
 
         for _name, mcp_config in managed_mcps.items():
             mcp_config[MANAGED_BY_KEY] = MANAGED_BY_VALUE

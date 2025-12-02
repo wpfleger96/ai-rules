@@ -36,67 +36,48 @@ def cache_setup(tmp_path, monkeypatch):
 @pytest.mark.unit
 @pytest.mark.config
 class TestConfigLoading:
-    """Test configuration file loading and precedence."""
+    """Test configuration file loading.
 
-    def test_loads_repo_config_only(self, tmp_path, monkeypatch):
-        monkeypatch.setenv("HOME", str(tmp_path / "home"))
-        repo_config = tmp_path / ".ai-rules-config.yaml"
-        repo_config.write_text(
-            "version: 1\nexclude_symlinks:\n  - ~/.claude/settings.json\n"
-        )
-
-        config = Config.load(tmp_path)
-
-        assert "~/.claude/settings.json" in config.exclude_symlinks
+    Note: As of v0.4.2, only user-level config (~/.ai-rules-config.yaml) is supported.
+    Repo-level config support was removed.
+    """
 
     def test_loads_user_config_only(self, tmp_path, monkeypatch):
         home = tmp_path / "home"
         home.mkdir()
         monkeypatch.setenv("HOME", str(home))
+        monkeypatch.setattr(Path, "home", staticmethod(lambda: home))
 
         user_config = home / ".ai-rules-config.yaml"
         user_config.write_text(
             "version: 1\nexclude_symlinks:\n  - ~/.config/goose/config.yaml\n"
         )
 
-        config = Config.load(tmp_path)
+        config = Config.load()
 
-        assert "~/.config/goose/config.yaml" in config.exclude_symlinks
-
-    def test_both_configs_are_combined(self, tmp_path, monkeypatch):
-        home = tmp_path / "home"
-        home.mkdir()
-        monkeypatch.setenv("HOME", str(home))
-
-        repo_config = tmp_path / ".ai-rules-config.yaml"
-        repo_config.write_text(
-            "version: 1\nexclude_symlinks:\n  - ~/.claude/settings.json\n"
-        )
-
-        user_config = home / ".ai-rules-config.yaml"
-        user_config.write_text(
-            "version: 1\nexclude_symlinks:\n  - ~/.config/goose/config.yaml\n"
-        )
-
-        config = Config.load(tmp_path)
-
-        assert "~/.claude/settings.json" in config.exclude_symlinks
         assert "~/.config/goose/config.yaml" in config.exclude_symlinks
 
     def test_handles_missing_config_files(self, tmp_path, monkeypatch):
-        monkeypatch.setenv("HOME", str(tmp_path / "home"))
+        home = tmp_path / "home"
+        home.mkdir()
+        monkeypatch.setenv("HOME", str(home))
+        monkeypatch.setattr(Path, "home", staticmethod(lambda: home))
 
-        config = Config.load(tmp_path)
+        config = Config.load()
 
         assert len(config.exclude_symlinks) == 0
 
     def test_handles_invalid_yaml(self, tmp_path, monkeypatch):
-        monkeypatch.setenv("HOME", str(tmp_path / "home"))
-        repo_config = tmp_path / ".ai-rules-config.yaml"
-        repo_config.write_text("invalid: yaml: content: [[[")
+        home = tmp_path / "home"
+        home.mkdir()
+        monkeypatch.setenv("HOME", str(home))
+        monkeypatch.setattr(Path, "home", staticmethod(lambda: home))
+
+        user_config = home / ".ai-rules-config.yaml"
+        user_config.write_text("invalid: yaml: content: [[[")
 
         with pytest.raises(yaml.YAMLError):
-            Config.load(tmp_path)
+            Config.load()
 
 
 @pytest.mark.unit
@@ -181,57 +162,30 @@ class TestExcludeSymlinks:
 class TestSettingsOverrides:
     """Test settings override loading and merging."""
 
-    @pytest.mark.parametrize(
-        "config_location,override_config,expected_loaded",
-        [
-            # User config with overrides - should load
-            (
-                "user",
-                """version: 1
+    def test_settings_override_loading(self, tmp_path, monkeypatch):
+        """Test that settings_overrides are loaded from user config."""
+        home = tmp_path / "home"
+        home.mkdir()
+        monkeypatch.setenv("HOME", str(home))
+        monkeypatch.setattr(Path, "home", staticmethod(lambda: home))
+
+        config_path = home / ".ai-rules-config.yaml"
+        config_path.write_text(
+            """version: 1
 settings_overrides:
   claude:
     model: claude-sonnet-4-5-20250929
     theme: dark
-""",
-                True,
-            ),
-            # Repo config with overrides - should be ignored
-            (
-                "repo",
-                """version: 1
-settings_overrides:
-  claude:
-    model: should-be-ignored
-""",
-                False,
-            ),
-        ],
-    )
-    def test_settings_override_loading(
-        self, tmp_path, monkeypatch, config_location, override_config, expected_loaded
-    ):
-        """Test that settings_overrides are loaded only from user config."""
-        home = tmp_path / "home"
-        home.mkdir()
-        monkeypatch.setenv("HOME", str(home))
+"""
+        )
 
-        if config_location == "user":
-            config_path = home / ".ai-rules-config.yaml"
-        else:  # repo
-            config_path = tmp_path / ".ai-rules-config.yaml"
+        config = Config.load()
 
-        config_path.write_text(override_config)
-        config = Config.load(tmp_path)
-
-        if expected_loaded:
-            assert "claude" in config.settings_overrides
-            assert (
-                config.settings_overrides["claude"]["model"]
-                == "claude-sonnet-4-5-20250929"
-            )
-            assert config.settings_overrides["claude"]["theme"] == "dark"
-        else:
-            assert len(config.settings_overrides) == 0
+        assert "claude" in config.settings_overrides
+        assert (
+            config.settings_overrides["claude"]["model"] == "claude-sonnet-4-5-20250929"
+        )
+        assert config.settings_overrides["claude"]["theme"] == "dark"
 
     @pytest.mark.parametrize(
         "overrides,base,expected",
@@ -292,9 +246,8 @@ settings_overrides:
 
         config = cache_setup["config"]
         base_path = cache_setup["base_settings_path"]
-        repo_root = cache_setup["repo_root"]
 
-        cache_path = config.build_merged_settings("claude", base_path, repo_root)
+        cache_path = config.build_merged_settings("claude", base_path)
 
         assert cache_path is not None
         assert cache_path.exists()
@@ -310,9 +263,7 @@ settings_overrides:
         base_settings_path.write_text('{"model": "claude-opus-4-20250514"}')
 
         config = Config(settings_overrides={})
-        cache_path = config.build_merged_settings(
-            "claude", base_settings_path, tmp_path
-        )
+        cache_path = config.build_merged_settings("claude", base_settings_path)
 
         assert cache_path is None
 
@@ -320,9 +271,8 @@ settings_overrides:
         """Test that cache is stale when it doesn't exist."""
         config = cache_setup["config"]
         base_path = cache_setup["base_settings_path"]
-        repo_root = cache_setup["repo_root"]
 
-        assert config.is_cache_stale("claude", base_path, repo_root) is True
+        assert config.is_cache_stale("claude", base_path) is True
 
     def test_cache_staleness_when_fresh(self, cache_setup):
         """Test that cache is fresh when recently built."""
@@ -330,12 +280,11 @@ settings_overrides:
 
         config = cache_setup["config"]
         base_path = cache_setup["base_settings_path"]
-        repo_root = cache_setup["repo_root"]
 
-        config.build_merged_settings("claude", base_path, repo_root)
+        config.build_merged_settings("claude", base_path)
         time.sleep(0.01)
 
-        assert config.is_cache_stale("claude", base_path, repo_root) is False
+        assert config.is_cache_stale("claude", base_path) is False
 
     def test_cache_staleness_when_base_updated(self, cache_setup):
         """Test that cache is stale when base settings are modified."""
@@ -343,15 +292,14 @@ settings_overrides:
 
         config = cache_setup["config"]
         base_path = cache_setup["base_settings_path"]
-        repo_root = cache_setup["repo_root"]
 
-        config.build_merged_settings("claude", base_path, repo_root)
+        config.build_merged_settings("claude", base_path)
         time.sleep(0.02)
 
         base_path.write_text('{"model": "claude-opus-4-20250514", "new": "value"}')
         time.sleep(0.02)
 
-        assert config.is_cache_stale("claude", base_path, repo_root) is True
+        assert config.is_cache_stale("claude", base_path) is True
 
     def test_build_merged_settings_rebuild_behavior(self, cache_setup):
         """Test that cache rebuild is skipped when fresh but happens when forced."""
@@ -359,17 +307,16 @@ settings_overrides:
 
         config = cache_setup["config"]
         base_path = cache_setup["base_settings_path"]
-        repo_root = cache_setup["repo_root"]
 
         # First build
-        cache_path1 = config.build_merged_settings("claude", base_path, repo_root)
+        cache_path1 = config.build_merged_settings("claude", base_path)
         assert cache_path1 is not None
         mtime1 = cache_path1.stat().st_mtime
 
         time.sleep(0.01)
 
         # Second build without force - should skip (same mtime)
-        cache_path2 = config.build_merged_settings("claude", base_path, repo_root)
+        cache_path2 = config.build_merged_settings("claude", base_path)
         assert cache_path2 is not None
         mtime2 = cache_path2.stat().st_mtime
         assert mtime1 == mtime2
@@ -377,7 +324,7 @@ settings_overrides:
         # Third build with force_rebuild - should rebuild (different mtime)
         time.sleep(0.01)
         cache_path3 = config.build_merged_settings(
-            "claude", base_path, repo_root, force_rebuild=True
+            "claude", base_path, force_rebuild=True
         )
         assert cache_path3 is not None
         mtime3 = cache_path3.stat().st_mtime
@@ -398,13 +345,9 @@ settings_overrides:
             settings_overrides={"claude": {"model": "claude-sonnet-4-5-20250929"}}
         )
 
-        cache_path = config.build_merged_settings(
-            "claude", base_settings_path, tmp_path
-        )
+        cache_path = config.build_merged_settings("claude", base_settings_path)
 
-        result = config.get_settings_file_for_symlink(
-            "claude", base_settings_path, tmp_path
-        )
+        result = config.get_settings_file_for_symlink("claude", base_settings_path)
         assert result == cache_path
 
     def test_get_settings_file_for_symlink_returns_base_when_no_cache(
@@ -422,9 +365,7 @@ settings_overrides:
             settings_overrides={"claude": {"model": "claude-sonnet-4-5-20250929"}}
         )
 
-        result = config.get_settings_file_for_symlink(
-            "claude", base_settings_path, tmp_path
-        )
+        result = config.get_settings_file_for_symlink("claude", base_settings_path)
         assert result == base_settings_path
 
 
@@ -564,7 +505,7 @@ class TestPathValidation:
 
     def test_validate_valid_simple_path_succeeds(self, tmp_path):
         """Test that valid simple path succeeds."""
-        settings_file = tmp_path / "config" / "claude" / "settings.json"
+        settings_file = tmp_path / "claude" / "settings.json"
         settings_file.parent.mkdir(parents=True)
         settings_file.write_text('{"model": "sonnet"}')
 
@@ -578,7 +519,7 @@ class TestPathValidation:
 
     def test_validate_valid_nested_path_succeeds(self, tmp_path):
         """Test that valid nested path succeeds."""
-        settings_file = tmp_path / "config" / "claude" / "settings.json"
+        settings_file = tmp_path / "claude" / "settings.json"
         settings_file.parent.mkdir(parents=True)
         settings_file.write_text('{"env": {"VAR": "value"}}')
 
@@ -590,7 +531,7 @@ class TestPathValidation:
 
     def test_validate_valid_array_path_succeeds(self, tmp_path):
         """Test that valid array path succeeds."""
-        settings_file = tmp_path / "config" / "claude" / "settings.json"
+        settings_file = tmp_path / "claude" / "settings.json"
         settings_file.parent.mkdir(parents=True)
         settings_file.write_text('{"items": ["first", "second"]}')
 
@@ -602,7 +543,7 @@ class TestPathValidation:
 
     def test_validate_invalid_path_provides_suggestions(self, tmp_path):
         """Test that invalid path provides suggestions (as error)."""
-        settings_file = tmp_path / "config" / "claude" / "settings.json"
+        settings_file = tmp_path / "claude" / "settings.json"
         settings_file.parent.mkdir(parents=True)
         settings_file.write_text('{"model": "sonnet", "theme": "dark"}')
 
@@ -617,7 +558,7 @@ class TestPathValidation:
 
     def test_validate_malformed_array_notation_fails(self, tmp_path):
         """Test that malformed array notation fails."""
-        settings_file = tmp_path / "config" / "claude" / "settings.json"
+        settings_file = tmp_path / "claude" / "settings.json"
         settings_file.parent.mkdir(parents=True)
         settings_file.write_text('{"items": ["first"]}')
 
@@ -716,7 +657,7 @@ class TestCacheCleanup:
 
         config = Config(settings_overrides={})
 
-        removed = config.cleanup_orphaned_cache(tmp_path)
+        removed = config.cleanup_orphaned_cache()
         assert "claude" in removed
         assert not cache_dir.exists()
 
@@ -734,7 +675,7 @@ class TestCacheCleanup:
 
         config = Config(settings_overrides={"claude": {"model": "test"}})
 
-        removed = config.cleanup_orphaned_cache(tmp_path)
+        removed = config.cleanup_orphaned_cache()
         assert removed == []
         assert cache_dir.exists()
 
@@ -747,5 +688,5 @@ class TestCacheCleanup:
         monkeypatch.setattr(Path, "home", staticmethod(lambda: home))
 
         config = Config(settings_overrides={})
-        removed = config.cleanup_orphaned_cache(tmp_path)
+        removed = config.cleanup_orphaned_cache()
         assert removed == []

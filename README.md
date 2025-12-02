@@ -28,7 +28,7 @@ Consolidates config files for AI coding agents (Claude Code, Goose) into a singl
 One-command setup from PyPI:
 
 ```bash
-uvx ai-agent-rules setup
+uvx --from ai-agent-rules ai-rules setup
 ```
 
 This will:
@@ -146,18 +146,13 @@ exclude_symlinks:
 settings_overrides:
   claude:
     model: "claude-sonnet-4-5-20250929"  # Override model on personal laptop
-    # Other settings inherited from repo config/claude/settings.json
+    # Other settings inherited from base config/claude/settings.json
   goose:
     provider: "anthropic"
 ```
 
-**Config File Locations:**
+**Config File Location:**
 - `~/.ai-rules-config.yaml` - User-specific config (exclusions and overrides)
-- `<repo>/.ai-rules-config.yaml` - Repo defaults (global exclusions only)
-
-**Config Precedence:**
-- User config exclusions + Repo config exclusions = Combined (additive)
-- Settings overrides only loaded from user config (machine-specific, not in git)
 
 ### Settings Overrides - Syncing Configs Across Machines
 

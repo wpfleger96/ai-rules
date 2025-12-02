@@ -1,14 +1,16 @@
 """Command-line interface for ai-rules."""
 
+import os
+import subprocess
 import sys
 
 from importlib.metadata import PackageNotFoundError
 from importlib.metadata import version as get_version
+from importlib.resources import files as resource_files
 from pathlib import Path
 from typing import Any
 
 import click
-import yaml
 
 from rich.console import Console
 from rich.prompt import Confirm
@@ -41,18 +43,133 @@ except PackageNotFoundError:
 _NON_INTERACTIVE_FLAGS = frozenset({"--dry-run", "--help", "-h"})
 
 
+def get_config_dir() -> Path:
+    """Get the config directory.
+
+    Works in both development mode (git repo) and installed mode (PyPI package).
+    Uses importlib.resources which handles both cases automatically.
+    """
+    try:
+        # Get config directory from package resources
+        config_resource = resource_files("ai_rules") / "config"
+        # Convert Traversable to Path
+        return Path(str(config_resource))
+    except Exception:
+        # Fallback: assume config/ is sibling to this file
+        return Path(__file__).parent / "config"
+
+
+def get_git_repo_root() -> Path:
+    """Get the git repository root directory.
+
+    This only works in development mode when the code is in a git repository.
+    For installed packages, this will fail - use get_config_dir() instead.
+    """
+    try:
+        result = subprocess.run(
+            ["git", "rev-parse", "--show-toplevel"],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        if result.returncode == 0:
+            return Path(result.stdout.strip())
+    except Exception:
+        pass
+
+    raise RuntimeError(
+        "Not in a git repository. For config access, use get_config_dir() instead."
+    )
+
+
 def get_repo_root() -> Path:
-    """Get the ai-rules project root directory."""
-    return Path(__file__).parent.parent.parent.absolute()
+    """Get repository root - wrapper for backward compatibility.
+
+    DEPRECATED: Use get_config_dir() for config access or get_git_repo_root() for git operations.
+    This function exists only for backward compatibility during migration.
+
+    Returns:
+        Path to repository root (in dev mode) or package parent (in installed mode)
+    """
+    try:
+        return get_git_repo_root()
+    except RuntimeError:
+        # Not in git repo - fall back to package location
+        # This allows commands to work in PyPI-installed mode
+        return Path(__file__).parent.parent.parent.absolute()
 
 
-def get_agents(repo_root: Path, config: Config) -> list[Agent]:
-    """Get all available agents."""
+def get_agents(config_dir: Path, config: Config) -> list[Agent]:
+    """Get all agent instances.
+
+    Args:
+        config_dir: Path to the config directory (use get_config_dir())
+        config: Configuration object
+
+    Returns:
+        List of all available agent instances
+    """
     return [
-        ClaudeAgent(repo_root, config),
-        GooseAgent(repo_root, config),
-        SharedAgent(repo_root, config),
+        ClaudeAgent(config_dir, config),
+        GooseAgent(config_dir, config),
+        SharedAgent(config_dir, config),
     ]
+
+
+def detect_old_config_symlinks() -> list[tuple[Path, Path]]:
+    """Detect symlinks pointing to old config/ location.
+
+    Returns list of (symlink_path, old_target) tuples for broken symlinks.
+    This is used for migration from v0.4.1 to v0.4.2 when config moved
+    from repo root to src/ai_rules/config/.
+    """
+    old_patterns = [
+        "/config/AGENTS.md",
+        "/config/claude/",
+        "/config/goose/",
+        "/config/chat_agent_hints.md",
+    ]
+
+    broken_symlinks = []
+
+    # Check common symlink locations
+    check_paths = [
+        Path.home() / ".claude",
+        Path.home() / ".config" / "goose",
+        Path.home() / "AGENTS.md",
+    ]
+
+    for base_path in check_paths:
+        if not base_path.exists():
+            continue
+
+        # Check if it's a symlink
+        if base_path.is_symlink():
+            try:
+                target = os.readlink(str(base_path))
+                if any(pattern in str(target) for pattern in old_patterns):
+                    # This is pointing to old location
+                    if not Path(target).exists():
+                        # Broken symlink
+                        broken_symlinks.append((base_path, Path(target)))
+            except (OSError, ValueError):
+                # Skip if we can't read the symlink
+                pass
+
+        # Check symlinks in directories
+        if base_path.is_dir():
+            for item in base_path.rglob("*"):
+                if item.is_symlink():
+                    try:
+                        target = os.readlink(str(item))
+                        if any(pattern in str(target) for pattern in old_patterns):
+                            if not Path(target).exists():
+                                broken_symlinks.append((item, Path(target)))
+                    except (OSError, ValueError):
+                        # Skip if we can't read the symlink
+                        pass
+
+    return broken_symlinks
 
 
 def select_agents(all_agents: list[Agent], filter_string: str | None) -> list[Agent]:
@@ -442,8 +559,8 @@ def install(
     agents: str | None,
 ) -> None:
     """Install AI agent configs via symlinks."""
-    repo_root = get_repo_root()
-    config = Config.load(repo_root)
+    config_dir = get_config_dir()
+    config = Config.load()
 
     if rebuild_cache and not dry_run:
         import shutil
@@ -452,8 +569,34 @@ def install(
         if cache_dir.exists():
             shutil.rmtree(cache_dir)
             console.print("[dim]✓ Cleared settings cache[/dim]")
-    all_agents = get_agents(repo_root, config)
+    all_agents = get_agents(config_dir, config)
     selected_agents = select_agents(all_agents, agents)
+
+    # Detect and migrate old config symlinks (v0.4.1 → v0.4.2)
+    if not dry_run:
+        old_symlinks = detect_old_config_symlinks()
+        if old_symlinks:
+            console.print(
+                "\n[yellow]Detected config migration from v0.4.1 → v0.4.2[/yellow]"
+            )
+            console.print(
+                f"Found {len(old_symlinks)} symlink(s) pointing to old config location"
+            )
+            console.print(
+                "[dim]Automatically migrating symlinks to new location...[/dim]\n"
+            )
+
+            for symlink_path, _old_target in old_symlinks:
+                try:
+                    symlink_path.unlink()
+                    console.print(f"  [dim]✓ Removed old symlink: {symlink_path}[/dim]")
+                except Exception as e:
+                    console.print(
+                        f"  [yellow]⚠ Could not remove {symlink_path}: {e}[/yellow]"
+                    )
+
+            console.print("\n[green]✓ Migration complete[/green]")
+            console.print("[dim]New symlinks will be created below...[/dim]\n")
 
     if not dry_run and not check_first_run(selected_agents, force):
         console.print("[yellow]Installation cancelled[/yellow]")
@@ -465,18 +608,15 @@ def install(
     if not dry_run:
         for agent in selected_agents:
             if agent.agent_id in ["claude", "goose"]:
-                settings_file = (
-                    repo_root / "config" / agent.agent_id / agent.config_file_name
-                )
+                settings_file = config_dir / agent.agent_id / agent.config_file_name
                 if settings_file.exists():
                     config.build_merged_settings(
                         agent.agent_id,
                         settings_file,
-                        repo_root,
                         force_rebuild=rebuild_cache,
                     )
 
-        orphaned = config.cleanup_orphaned_cache(repo_root)
+        orphaned = config.cleanup_orphaned_cache()
         if orphaned:
             console.print(
                 f"[dim]✓ Cleaned up orphaned cache for: {', '.join(orphaned)}[/dim]"
@@ -495,7 +635,7 @@ def install(
         if conflicts and not force:
             console.print("\n[bold yellow]MCP Conflicts Detected:[/bold yellow]")
             mgr = MCPManager()
-            expected_mcps = mgr.load_managed_mcps(repo_root, config)
+            expected_mcps = mgr.load_managed_mcps(config_dir, config)
             claude_data = mgr.load_claude_json()
             installed_mcps = claude_data.get("mcpServers", {})
 
@@ -528,23 +668,27 @@ def install(
     total_excluded = user_results["excluded"]
     total_errors = user_results["errors"]
     if not dry_run:
-        hooks_dir = repo_root / ".hooks"
-        post_merge_hook = hooks_dir / "post-merge"
-        git_dir = repo_root / ".git"
+        try:
+            git_repo_root = get_git_repo_root()
+            hooks_dir = git_repo_root / ".hooks"
+            post_merge_hook = hooks_dir / "post-merge"
+            git_dir = git_repo_root / ".git"
 
-        if post_merge_hook.exists() and git_dir.is_dir():
-            import subprocess
+            if post_merge_hook.exists() and git_dir.is_dir():
+                import subprocess
 
-            try:
-                subprocess.run(
-                    ["git", "config", "core.hooksPath", ".hooks"],
-                    cwd=repo_root,
-                    check=True,
-                    capture_output=True,
-                )
-                console.print("\n[dim]✓ Configured git hooks[/dim]")
-            except subprocess.CalledProcessError:
-                pass
+                try:
+                    subprocess.run(
+                        ["git", "config", "core.hooksPath", ".hooks"],
+                        cwd=git_repo_root,
+                        check=True,
+                        capture_output=True,
+                    )
+                    console.print("\n[dim]✓ Configured git hooks[/dim]")
+                except subprocess.CalledProcessError:
+                    pass
+        except RuntimeError:
+            pass
 
     format_summary(
         dry_run,
@@ -610,9 +754,9 @@ def _display_symlink_status(
 )
 def status(agents: str | None) -> None:
     """Check status of AI agent symlinks."""
-    repo_root = get_repo_root()
-    config = Config.load(repo_root)
-    all_agents = get_agents(repo_root, config)
+    config_dir = get_config_dir()
+    config = Config.load()
+    all_agents = get_agents(config_dir, config)
     selected_agents = select_agents(all_agents, agents)
 
     console.print("[bold]AI Rules Status[/bold]\n")
@@ -641,9 +785,9 @@ def status(agents: str | None) -> None:
         agent_config = AGENT_CONFIG_METADATA.get(agent.agent_id)
         if agent_config and agent.agent_id in config.settings_overrides:
             base_settings_path = (
-                repo_root / "config" / agent.agent_id / agent_config["config_file"]
+                config_dir / agent.agent_id / agent_config["config_file"]
             )
-            if config.is_cache_stale(agent.agent_id, base_settings_path, repo_root):
+            if config.is_cache_stale(agent.agent_id, base_settings_path):
                 console.print("  [yellow]⚠[/yellow] Cached settings are stale")
                 all_correct = False
                 cache_stale = True
@@ -689,37 +833,45 @@ def status(agents: str | None) -> None:
         console.print()
 
     console.print("[bold cyan]Git Hooks Configuration[/bold cyan]\n")
-    hooks_dir = repo_root / ".hooks"
-    post_merge_hook = hooks_dir / "post-merge"
+    try:
+        git_repo_root = get_git_repo_root()
+        hooks_dir = git_repo_root / ".hooks"
+        post_merge_hook = hooks_dir / "post-merge"
 
-    if post_merge_hook.exists() and (repo_root / ".git").is_dir():
-        import subprocess
+        if post_merge_hook.exists() and (git_repo_root / ".git").is_dir():
+            import subprocess
 
-        try:
-            result = subprocess.run(
-                ["git", "config", "--get", "core.hooksPath"],
-                cwd=repo_root,
-                capture_output=True,
-                text=True,
-                check=False,
-            )
-            configured_path = result.stdout.strip()
-            if configured_path == ".hooks":
-                console.print("  [green]✓[/green] Post-merge hook configured")
-            else:
+            try:
+                result = subprocess.run(
+                    ["git", "config", "--get", "core.hooksPath"],
+                    cwd=git_repo_root,
+                    capture_output=True,
+                    text=True,
+                    check=False,
+                )
+                configured_path = result.stdout.strip()
+                if configured_path == ".hooks":
+                    console.print("  [green]✓[/green] Post-merge hook configured")
+                else:
+                    console.print(
+                        "  [red]✗[/red] Post-merge hook not configured\n"
+                        "    [dim]Run 'uv run ai-rules install' to enable automatic reminders[/dim]"
+                    )
+                    all_correct = False
+            except Exception:
                 console.print(
                     "  [red]✗[/red] Post-merge hook not configured\n"
                     "    [dim]Run 'uv run ai-rules install' to enable automatic reminders[/dim]"
                 )
                 all_correct = False
-        except Exception:
+        else:
             console.print(
-                "  [red]✗[/red] Post-merge hook not configured\n"
-                "    [dim]Run 'uv run ai-rules install' to enable automatic reminders[/dim]"
+                "  [dim]○[/dim] Post-merge hook not available in this repository"
             )
-            all_correct = False
-    else:
-        console.print("  [dim]○[/dim] Post-merge hook not available in this repository")
+    except RuntimeError:
+        console.print(
+            "  [dim]○[/dim] Not in a git repository - git hooks not applicable"
+        )
 
     console.print()
 
@@ -743,9 +895,9 @@ def status(agents: str | None) -> None:
 )
 def uninstall(force: bool, agents: str | None) -> None:
     """Remove AI agent symlinks."""
-    repo_root = get_repo_root()
-    config = Config.load(repo_root)
-    all_agents = get_agents(repo_root, config)
+    config_dir = get_config_dir()
+    config = Config.load()
+    all_agents = get_agents(config_dir, config)
     selected_agents = select_agents(all_agents, agents)
 
     if not force:
@@ -794,9 +946,9 @@ def uninstall(force: bool, agents: str | None) -> None:
 @main.command("list-agents")
 def list_agents_cmd() -> None:
     """List available AI agents."""
-    repo_root = get_repo_root()
-    config = Config.load(repo_root)
-    agents = get_agents(repo_root, config)
+    config_dir = get_config_dir()
+    config = Config.load()
+    agents = get_agents(config_dir, config)
 
     table = Table(title="Available AI Agents", show_header=True)
     table.add_column("ID", style="cyan")
@@ -971,9 +1123,9 @@ def upgrade(check: bool, force: bool, skip_install: bool) -> None:
 )
 def validate(agents: str | None) -> None:
     """Validate configuration and source files."""
-    repo_root = get_repo_root()
-    config = Config.load(repo_root)
-    all_agents = get_agents(repo_root, config)
+    config_dir = get_config_dir()
+    config = Config.load()
+    all_agents = get_agents(config_dir, config)
     selected_agents = select_agents(all_agents, agents)
 
     console.print("[bold]Validating AI Rules Configuration[/bold]\n")
@@ -1031,9 +1183,9 @@ def validate(agents: str | None) -> None:
 )
 def diff(agents: str | None) -> None:
     """Show differences between repo configs and installed symlinks."""
-    repo_root = get_repo_root()
-    config = Config.load(repo_root)
-    all_agents = get_agents(repo_root, config)
+    config_dir = get_config_dir()
+    config = Config.load()
+    all_agents = get_agents(config_dir, config)
     selected_agents = select_agents(all_agents, agents)
 
     console.print("[bold]Configuration Differences[/bold]\n")
@@ -1157,10 +1309,7 @@ def exclude_remove(pattern: str) -> None:
 @exclude.command("list")
 def exclude_list() -> None:
     """List all exclusion patterns."""
-    repo_root = get_repo_root()
-    config = Config.load(repo_root)
-    user_config_path = Path.home() / ".ai-rules-config.yaml"
-    repo_config_path = repo_root / ".ai-rules-config.yaml"
+    config = Config.load()
 
     if not config.exclude_symlinks:
         console.print("[dim]No exclusion patterns configured[/dim]")
@@ -1168,27 +1317,8 @@ def exclude_list() -> None:
 
     console.print("[bold]Exclusion Patterns:[/bold]\n")
 
-    user_exclusions = []
-    repo_exclusions = []
-
-    if user_config_path.exists():
-        with open(user_config_path) as f:
-            data = yaml.safe_load(f) or {}
-            user_exclusions = data.get("exclude_symlinks", [])
-
-    if repo_config_path.exists():
-        with open(repo_config_path) as f:
-            data = yaml.safe_load(f) or {}
-            repo_exclusions = data.get("exclude_symlinks", [])
-
     for pattern in sorted(config.exclude_symlinks):
-        source = []
-        if pattern in user_exclusions:
-            source.append("user")
-        if pattern in repo_exclusions:
-            source.append("repo")
-        source_str = ", ".join(source)
-        console.print(f"  • {pattern} [dim]({source_str})[/dim]")
+        console.print(f"  • {pattern} [dim](user)[/dim]")
 
 
 @main.group()
@@ -1218,7 +1348,7 @@ def override_set(key: str, value: str) -> None:
     - Provides helpful suggestions when paths are invalid
     """
     user_config_path = Path.home() / ".ai-rules-config.yaml"
-    repo_root = get_repo_root()
+    config_dir = get_config_dir()
 
     parts = key.split(".", 1)
     if len(parts) != 2:
@@ -1231,7 +1361,7 @@ def override_set(key: str, value: str) -> None:
     agent, setting = parts
 
     is_valid, error_msg, warning_msg, suggestions = validate_override_path(
-        agent, setting, repo_root
+        agent, setting, config_dir
     )
 
     if not is_valid:
@@ -1388,8 +1518,7 @@ def override_unset(key: str) -> None:
 @override.command("list")
 def override_list() -> None:
     """List all settings overrides."""
-    repo_root = get_repo_root()
-    config = Config.load(repo_root)
+    config = Config.load()
 
     if not config.settings_overrides:
         console.print("[dim]No settings overrides configured[/dim]")
@@ -1417,8 +1546,8 @@ def config() -> None:
 @click.option("--agent", help="Show config for specific agent only")
 def config_show(merged: bool, agent: str | None) -> None:
     """Show current configuration."""
-    repo_root = get_repo_root()
-    cfg = Config.load(repo_root)
+    config_dir = get_config_dir()
+    cfg = Config.load()
     user_config_path = Path.home() / ".ai-rules-config.yaml"
 
     if merged:
@@ -1429,7 +1558,7 @@ def config_show(merged: bool, agent: str | None) -> None:
         for agent_name in agents_to_show:
             if agent_name not in cfg.settings_overrides:
                 console.print(
-                    f"[dim]{agent_name}: No overrides (using repo settings)[/dim]\n"
+                    f"[dim]{agent_name}: No overrides (using base settings)[/dim]\n"
                 )
                 continue
 
@@ -1443,7 +1572,7 @@ def config_show(merged: bool, agent: str | None) -> None:
                 console.print()
                 continue
 
-            base_path = repo_root / "config" / agent_name / agent_config["config_file"]
+            base_path = config_dir / agent_name / agent_config["config_file"]
             if base_path.exists():
                 with open(base_path) as f:
                     import json
@@ -1494,13 +1623,6 @@ def config_show(merged: bool, agent: str | None) -> None:
             console.print(content)
         else:
             console.print(f"[dim]No user config at {user_config_path}[/dim]\n")
-
-        repo_config_path = repo_root / ".ai-rules-config.yaml"
-        if repo_config_path.exists():
-            with open(repo_config_path) as f:
-                content = f.read()
-            console.print(f"\n[bold]Repo Config:[/bold] {repo_config_path}")
-            console.print(content)
 
 
 @config.command("edit")

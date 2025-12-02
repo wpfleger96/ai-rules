@@ -23,7 +23,7 @@ class TestClaudeAgent:
         assert "~/.claude/commands/test-command.md" in targets
 
     def test_dynamic_discovery_of_multiple_agents(self, test_repo):
-        agents_dir = test_repo / "config" / "claude" / "agents"
+        agents_dir = test_repo / "claude" / "agents"
         (agents_dir / "another-agent.md").write_text("# Another Agent")
         (agents_dir / "third-agent.md").write_text("# Third Agent")
 
@@ -39,7 +39,7 @@ class TestClaudeAgent:
         assert "~/.claude/agents/third-agent.md" in agent_targets
 
     def test_dynamic_discovery_of_multiple_commands(self, test_repo):
-        commands_dir = test_repo / "config" / "claude" / "commands"
+        commands_dir = test_repo / "claude" / "commands"
         (commands_dir / "another-command.md").write_text("# Another Command")
 
         agent = ClaudeAgent(test_repo, Config(exclude_symlinks=[]))

@@ -46,6 +46,15 @@ ai-agent-rules = "ai_rules.cli:main"
 requires = ["setuptools", "wheel"]
 build-backend = "setuptools.build_meta"
 
+[tool.setuptools]
+include-package-data = true
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+ai_rules = ["config/**/*"]
+
 [tool.semantic_release]
 version_toml = ["pyproject.toml:project.version:tf"]
 tag_format = "v{version}"

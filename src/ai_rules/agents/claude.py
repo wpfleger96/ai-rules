@@ -38,7 +38,7 @@ class ClaudeAgent(Agent):
         settings_file = self.config_dir / "claude" / "settings.json"
         if settings_file.exists():
             target_file = self.config.get_settings_file_for_symlink(
-                "claude", settings_file, self.repo_root
+                "claude", settings_file
             )
             symlinks.append((Path("~/.claude/settings.json"), target_file))
 
@@ -92,7 +92,7 @@ class ClaudeAgent(Agent):
             Tuple of (result, message, conflicts_list)
         """
         manager = MCPManager()
-        return manager.install_mcps(self.repo_root, self.config, force, dry_run)
+        return manager.install_mcps(self.config_dir, self.config, force, dry_run)
 
     def uninstall_mcps(
         self, force: bool = False, dry_run: bool = False
@@ -116,4 +116,4 @@ class ClaudeAgent(Agent):
             MCPStatus object with categorized MCPs
         """
         manager = MCPManager()
-        return manager.get_status(self.repo_root, self.config)
+        return manager.get_status(self.config_dir, self.config)
