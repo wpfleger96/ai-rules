@@ -1,6 +1,14 @@
 # CHANGELOG
 
 
+## v0.5.3 (2025-12-02)
+
+### Bug Fixes
+
+- Performance improvements during symlink install
+  ([`4cc1700`](https://github.com/wpfleger96/ai-rules/commit/4cc170055db596cf067a69d4b56d14f829e6f562))
+
+
 ## v0.5.2 (2025-12-02)
 
 ### Bug Fixes
