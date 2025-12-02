@@ -15,25 +15,52 @@ jobs:
     - name: Checkout repo
       uses: actions/checkout@v4
       with:
+        ref: ${{ github.event.workflow_run.head_sha }}
         fetch-depth: 0
 
+    - name: Check if release tag exists
+      id: check_tag
+      run: |
+        if git describe --exact-match HEAD 2>/dev/null | grep -qE '^v[0-9]+\.[0-9]+\.[0-9]+'; then
+          echo "has_tag=true" >> $GITHUB_OUTPUT
+          TAG=$(git describe --exact-match HEAD)
+          echo "tag=$TAG" >> $GITHUB_OUTPUT
+          echo "Release tag found: $TAG"
+        else
+          echo "has_tag=false" >> $GITHUB_OUTPUT
+          echo "No release tag found - skipping publish"
+        fi
+
     - name: Set up Python
+      if: steps.check_tag.outputs.has_tag == 'true'
       uses: actions/setup-python@v5
       with:
         python-version-file: .python-version
 
     - name: Install uv
+      if: steps.check_tag.outputs.has_tag == 'true'
       uses: astral-sh/setup-uv@v3
       with:
         version: "latest"
 
     - name: Install dependencies and build
+      if: steps.check_tag.outputs.has_tag == 'true'
       run: |
         uv sync
         uv build
 
     - name: Publish to PyPI
+      if: steps.check_tag.outputs.has_tag == 'true'
       uses: pypa/gh-action-pypi-publish@release/v1
       with:
         password: ${{ secrets.PYPI_API_TOKEN }}
         verify-metadata: true
+
+    - name: Publish summary
+      if: always()
+      run: |
+        if [ "${{ steps.check_tag.outputs.has_tag }}" == "true" ]; then
+          echo "Published version ${{ steps.check_tag.outputs.tag }} to PyPI"
+        else
+          echo "Skipped - no new release tag found"
+        fi
