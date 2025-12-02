@@ -75,6 +75,7 @@
       "Bash(touch:*)",
       "Bash(tr:*)",
       "Bash(tree:*)",
+      "Bash(unzip:*)",
       "Bash(uv:*)",
       "Bash(wc:*)",
       "Read(*)",
