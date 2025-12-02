@@ -1,6 +1,22 @@
 # CHANGELOG
 
 
+## v0.5.0 (2025-12-02)
+
+### Continuous Integration
+
+- Enable ad-hoc runs of publish workflow
+  ([`4388662`](https://github.com/wpfleger96/ai-rules/commit/43886624aca953c8bf6f17bbbc368f08269382f9))
+
+- Fix publish workflow bug
+  ([`f09ab45`](https://github.com/wpfleger96/ai-rules/commit/f09ab455e7e6f89dc3db2a83028611aedf17482b))
+
+### Features
+
+- Show full diff for stale cache
+  ([`cffabd8`](https://github.com/wpfleger96/ai-rules/commit/cffabd827e9adedc875c1f73a2796fc8aa132ae5))
+
+
 ## v0.4.1 (2025-12-02)
 
 ### Bug Fixes

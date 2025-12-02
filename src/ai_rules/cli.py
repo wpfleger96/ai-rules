@@ -789,6 +789,11 @@ def status(agents: str | None) -> None:
             )
             if config.is_cache_stale(agent.agent_id, base_settings_path):
                 console.print("  [yellow]⚠[/yellow] Cached settings are stale")
+                diff_output = config.get_cache_diff(
+                    agent.agent_id, base_settings_path, repo_root
+                )
+                if diff_output:
+                    console.print(diff_output)
                 all_correct = False
                 cache_stale = True
 

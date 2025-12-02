@@ -283,3 +283,44 @@ class TestStatusCacheValidation:
         result = runner.invoke(main, ["status"], catch_exceptions=False)
         assert result.exit_code == 0
         assert "Cached settings are stale" not in result.output
+
+    def test_status_shows_cache_diff_when_stale(
+        self, test_repo, mock_home, runner, monkeypatch
+    ):
+        """Test that status displays diff when cache is stale."""
+        import ai_rules.cli
+
+        monkeypatch.setattr(ai_rules.cli, "get_repo_root", lambda: test_repo)
+
+        user_config_path = mock_home / ".ai-rules-config.yaml"
+        user_config = {
+            "version": 1,
+            "settings_overrides": {"claude": {"model": "claude-sonnet-4"}},
+        }
+        with open(user_config_path, "w") as f:
+            yaml.dump(user_config, f)
+
+        config = Config.load(test_repo)
+        config.build_merged_settings(
+            "claude", test_repo / "config" / "claude" / "settings.json", test_repo
+        )
+
+        time.sleep(0.01)
+
+        base_settings_path = test_repo / "config" / "claude" / "settings.json"
+        base_settings_path.write_text('{"model": "claude-3-5-sonnet"}')
+
+        claude = ClaudeAgent(test_repo, config)
+        goose = GooseAgent(test_repo, config)
+        shared = SharedAgent(test_repo, config)
+        for agent in [claude, goose, shared]:
+            for target, source in agent.get_symlinks():
+                target_path = Path(str(target).replace("~", str(mock_home)))
+                create_symlink(target_path, source, force=False, dry_run=False)
+
+        result = runner.invoke(main, ["status"], catch_exceptions=False)
+        assert result.exit_code == 1
+        assert "Cached settings are stale" in result.output
+        assert "Cached (current)" in result.output
+        assert "Expected (merged)" in result.output
+        assert "model" in result.output
