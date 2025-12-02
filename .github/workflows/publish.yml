@@ -1,10 +1,6 @@
 name: Publish to PyPI
 
 on:
-  workflow_run:
-    workflows: ["Automated Release"]
-    types:
-      - completed
   workflow_dispatch:
     inputs:
       tag:
@@ -14,16 +10,13 @@ on:
 
 jobs:
   deploy:
-    if: |
-      github.event_name == 'workflow_dispatch' ||
-      github.event.workflow_run.conclusion == 'success'
     runs-on: ubuntu-latest
 
     steps:
     - name: Checkout repo
       uses: actions/checkout@v4
       with:
-        ref: ${{ github.event.inputs.tag || github.event.workflow_run.head_sha }}
+        ref: ${{ github.event.inputs.tag }}
         fetch-depth: 0
 
     - name: Fetch all tags from remote

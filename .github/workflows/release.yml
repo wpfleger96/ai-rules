@@ -39,3 +39,10 @@ jobs:
         uses: python-semantic-release/python-semantic-release@v9.21.0
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Trigger Publish Workflow
+        if: steps.release.outputs.released == 'true'
+        run: |
+          gh workflow run publish.yml -f tag=${{ steps.release.outputs.tag }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

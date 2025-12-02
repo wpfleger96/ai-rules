@@ -167,6 +167,7 @@ def test_register_user_calls_hash_password():
 ```
 
 **Structure:** Arrange-act-assert | Names describe scenario: `test_<scenario>_<result>` | Independent (no shared state) | Deterministic
+**Parametrize similar scenarios:** Use `@pytest.mark.parametrize` when testing the same logic with different inputs.
 **Why:** Testing implementation makes tests brittle. Testing behavior ensures functionality works regardless of how it's implemented.
 
 ### AWS CLI Requirements
