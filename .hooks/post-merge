@@ -2,7 +2,19 @@
 
 set -euo pipefail
 
-new_config_files=$(git diff --name-status --diff-filter=A ORIG_HEAD HEAD -- config/ 2>/dev/null | grep '^A')
+# Check if pyproject.toml changed (entry points or dependencies)
+pyproject_changed=$(git diff --name-only ORIG_HEAD HEAD -- pyproject.toml 2>/dev/null || true)
+
+if [ -n "$pyproject_changed" ]; then
+    echo ""
+    echo "pyproject.toml changed - reinstalling package..."
+    uv sync --reinstall-package ai-agent-rules
+    echo "Package reinstalled successfully."
+    echo ""
+fi
+
+# Check for new config files
+new_config_files=$(git diff --name-status --diff-filter=A ORIG_HEAD HEAD -- config/ 2>/dev/null | grep '^A' || true)
 
 if [ -n "$new_config_files" ]; then
     echo ""

@@ -432,6 +432,109 @@ class Config:
 
         return False
 
+    def get_cache_diff(
+        self, agent: str, base_settings_path: Path, repo_root: Path
+    ) -> str | None:
+        """Get a unified diff between cached and expected merged settings.
+
+        Args:
+            agent: Agent name (e.g., 'claude', 'goose')
+            base_settings_path: Path to base settings in repo
+            repo_root: Repository root path
+
+        Returns:
+            Formatted diff string with Rich markup, or None if no diff/cache doesn't exist
+        """
+        import difflib
+
+        if agent not in self.settings_overrides:
+            return None
+
+        cache_path = self.get_merged_settings_path(agent, repo_root)
+        if not cache_path or not cache_path.exists():
+            return None
+
+        agent_config = AGENT_CONFIG_METADATA.get(agent)
+        if not agent_config:
+            return None
+
+        config_format = agent_config["format"]
+
+        try:
+            with open(cache_path) as f:
+                if config_format == "json":
+                    cached_settings = json.load(f)
+                elif config_format == "yaml":
+                    cached_settings = yaml.safe_load(f) or {}
+                else:
+                    return None
+        except (json.JSONDecodeError, yaml.YAMLError, OSError):
+            return None
+
+        if not base_settings_path.exists():
+            base_settings = {}
+        else:
+            try:
+                with open(base_settings_path) as f:
+                    if config_format == "json":
+                        base_settings = json.load(f)
+                    elif config_format == "yaml":
+                        base_settings = yaml.safe_load(f) or {}
+                    else:
+                        return None
+            except (json.JSONDecodeError, yaml.YAMLError, OSError):
+                return None
+
+        expected_settings = self.merge_settings(agent, base_settings)
+
+        if cached_settings == expected_settings:
+            return None
+
+        if config_format == "json":
+            cached_text = json.dumps(cached_settings, indent=2)
+            expected_text = json.dumps(expected_settings, indent=2)
+        elif config_format == "yaml":
+            cached_text = yaml.dump(
+                cached_settings, default_flow_style=False, sort_keys=False
+            )
+            expected_text = yaml.dump(
+                expected_settings, default_flow_style=False, sort_keys=False
+            )
+        else:
+            return None
+
+        cached_lines = cached_text.splitlines(keepends=True)
+        expected_lines = expected_text.splitlines(keepends=True)
+
+        diff = difflib.unified_diff(
+            cached_lines,
+            expected_lines,
+            fromfile="Cached (current)",
+            tofile="Expected (merged)",
+            lineterm="",
+        )
+
+        diff_lines = []
+        for line in diff:
+            line = line.rstrip("\n")
+            if (
+                line.startswith("---")
+                or line.startswith("+++")
+                or line.startswith("@@")
+            ):
+                diff_lines.append(f"[dim]    {line}[/dim]")
+            elif line.startswith("+"):
+                diff_lines.append(f"[green]    {line}[/green]")
+            elif line.startswith("-"):
+                diff_lines.append(f"[red]    {line}[/red]")
+            else:
+                diff_lines.append(f"[dim]    {line}[/dim]")
+
+        if not diff_lines:
+            return None
+
+        return "\n".join(diff_lines)
+
     def build_merged_settings(
         self,
         agent: str,
