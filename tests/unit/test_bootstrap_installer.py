@@ -1,11 +1,13 @@
 """Tests for tool installation utilities."""
 
 import subprocess
+import sys
 
 import pytest
 
 from ai_rules.bootstrap.installer import (
     UV_NOT_FOUND_ERROR,
+    get_tool_config_dir,
     install_tool,
     uninstall_tool,
 )
@@ -209,3 +211,45 @@ class TestUninstallTool:
         success, message = uninstall_tool("test-package")
         assert success is False
         assert expected_message in message.lower()
+
+
+@pytest.mark.unit
+@pytest.mark.bootstrap
+class TestGetToolConfigDir:
+    """Tests for get_tool_config_dir function."""
+
+    def test_returns_expected_path_structure(self):
+        """Test that get_tool_config_dir returns correct path structure."""
+        result = get_tool_config_dir("ai-agent-rules")
+        python_version = f"python{sys.version_info.major}.{sys.version_info.minor}"
+
+        path_str = str(result)
+        assert "uv/tools/ai-agent-rules" in path_str
+        assert python_version in path_str
+        assert path_str.endswith("ai_rules/config")
+
+    def test_respects_xdg_data_home(self, monkeypatch, tmp_path):
+        """Test that XDG_DATA_HOME environment variable is respected."""
+        custom_data_home = tmp_path / "custom_data"
+        monkeypatch.setenv("XDG_DATA_HOME", str(custom_data_home))
+
+        result = get_tool_config_dir("ai-agent-rules")
+
+        assert str(result).startswith(str(custom_data_home))
+        assert "uv/tools/ai-agent-rules" in str(result)
+
+    def test_uses_default_data_home_when_xdg_not_set(self, monkeypatch):
+        """Test that ~/.local/share is used when XDG_DATA_HOME is not set."""
+        monkeypatch.delenv("XDG_DATA_HOME", raising=False)
+
+        result = get_tool_config_dir("ai-agent-rules")
+
+        path_str = str(result)
+        assert ".local/share" in path_str or ".local\\share" in path_str
+
+    def test_custom_package_name(self):
+        """Test that custom package names are handled correctly."""
+        result = get_tool_config_dir("my-custom-package")
+
+        assert "my-custom-package" in str(result)
+        assert "ai_rules/config" in str(result)

@@ -53,7 +53,6 @@ def get_config_dir() -> Path:
         config_resource = resource_files("ai_rules") / "config"
         return Path(str(config_resource))
     except Exception:
-        # Fallback: assume config/ is sibling to this file
         return Path(__file__).parent / "config"
 
 
@@ -144,12 +143,9 @@ def detect_old_config_symlinks() -> list[tuple[Path, Path]]:
             try:
                 target = os.readlink(str(base_path))
                 if any(pattern in str(target) for pattern in old_patterns):
-                    # This is pointing to old location
                     if not Path(target).exists():
-                        # Broken symlink
                         broken_symlinks.append((base_path, Path(target)))
             except (OSError, ValueError):
-                # Skip if we can't read the symlink
                 pass
 
         if base_path.is_dir():
@@ -161,7 +157,6 @@ def detect_old_config_symlinks() -> list[tuple[Path, Path]]:
                             if not Path(target).exists():
                                 broken_symlinks.append((item, Path(target)))
                     except (OSError, ValueError):
-                        # Skip if we can't read the symlink
                         pass
 
     return broken_symlinks
@@ -492,21 +487,9 @@ def setup(ctx: click.Context, force: bool, dry_run: bool, skip_symlinks: bool) -
     Example:
         uvx ai-agent-rules setup
     """
-    from ai_rules.bootstrap import install_tool
+    from ai_rules.bootstrap import get_tool_config_dir, install_tool
 
-    if not skip_symlinks:
-        console.print(
-            "[bold cyan]Step 1/2: Installing AI agent configuration symlinks[/bold cyan]\n"
-        )
-        ctx.invoke(
-            install,
-            force=force,
-            dry_run=dry_run,
-            rebuild_cache=False,
-            agents=None,
-        )
-
-    console.print("\n[bold cyan]Step 2/2: Install ai-rules system-wide[/bold cyan]")
+    console.print("[bold cyan]Step 1/2: Install ai-rules system-wide[/bold cyan]")
     console.print("This allows you to run 'ai-rules' from any directory.\n")
 
     if not force:
@@ -516,23 +499,60 @@ def setup(ctx: click.Context, force: bool, dry_run: bool, skip_symlinks: bool) -
             )
             return
 
+    tool_install_success = False
     try:
         success, message = install_tool("ai-agent-rules", force=force, dry_run=dry_run)
 
         if dry_run:
             console.print(f"\n[dim]{message}[/dim]")
-            return
-
-        if success:
-            console.print("\n[green]✓ Setup complete![/green]")
-            console.print("You can now run [bold]ai-rules[/bold] from anywhere.")
+            tool_install_success = True
+        elif success:
+            console.print("[green]✓ Tool installed successfully[/green]\n")
+            tool_install_success = True
         else:
             console.print(f"\n[red]Error:[/red] {message}")
             console.print("\n[yellow]Manual installation:[/yellow]")
             console.print("  uv tool install ai-agent-rules")
+            return
     except Exception as e:
         console.print(f"\n[red]Error:[/red] {e}")
-        console.print("\nFor help, visit: https://github.com/willpfleger/ai-rules")
+        return
+
+    if not skip_symlinks:
+        console.print(
+            "[bold cyan]Step 2/2: Installing AI agent configuration symlinks[/bold cyan]\n"
+        )
+
+        config_dir_override = None
+        if tool_install_success and not dry_run:
+            try:
+                tool_config_dir = get_tool_config_dir("ai-agent-rules")
+                if tool_config_dir.exists():
+                    config_dir_override = str(tool_config_dir)
+                else:
+                    console.print(
+                        f"[yellow]Warning:[/yellow] Tool config not found at expected location: {tool_config_dir}"
+                    )
+                    console.print(
+                        "[dim]Falling back to current config directory[/dim]\n"
+                    )
+            except Exception as e:
+                console.print(
+                    f"[yellow]Warning:[/yellow] Could not determine tool config path: {e}"
+                )
+                console.print("[dim]Falling back to current config directory[/dim]\n")
+
+        ctx.invoke(
+            install,
+            force=force,
+            dry_run=dry_run,
+            rebuild_cache=False,
+            agents=None,
+            config_dir_override=config_dir_override,
+        )
+
+    console.print("\n[green]✓ Setup complete![/green]")
+    console.print("You can now run [bold]ai-rules[/bold] from anywhere.")
 
 
 @main.command()
@@ -547,14 +567,28 @@ def setup(ctx: click.Context, force: bool, dry_run: bool, skip_symlinks: bool) -
     "--agents",
     help="Comma-separated list of agents to install (default: all)",
 )
+@click.option(
+    "--config-dir",
+    "config_dir_override",
+    hidden=True,
+    help="Override config directory (internal use)",
+)
 def install(
     force: bool,
     dry_run: bool,
     rebuild_cache: bool,
     agents: str | None,
+    config_dir_override: str | None = None,
 ) -> None:
     """Install AI agent configs via symlinks."""
-    config_dir = get_config_dir()
+    if config_dir_override:
+        config_dir = Path(config_dir_override)
+        if not config_dir.exists():
+            console.print(f"[red]Error:[/red] Config directory not found: {config_dir}")
+            sys.exit(1)
+    else:
+        config_dir = get_config_dir()
+
     config = Config.load()
 
     if rebuild_cache and not dry_run:
@@ -567,7 +601,6 @@ def install(
     all_agents = get_agents(config_dir, config)
     selected_agents = select_agents(all_agents, agents)
 
-    # Detect and migrate old config symlinks (v0.4.1 → v0.5.0)
     if not dry_run:
         old_symlinks = detect_old_config_symlinks()
         if old_symlinks:

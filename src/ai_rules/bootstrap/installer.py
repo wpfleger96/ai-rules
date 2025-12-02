@@ -1,9 +1,42 @@
 """Tool installation utilities."""
 
+import os
 import shutil
 import subprocess
+import sys
+
+from pathlib import Path
 
 UV_NOT_FOUND_ERROR = "uv not found in PATH. Install from https://docs.astral.sh/uv/"
+
+
+def get_tool_config_dir(package_name: str = "ai-agent-rules") -> Path:
+    """Get config directory for a uv tool installation.
+
+    Computes the expected path where uv tool install places the package:
+    $XDG_DATA_HOME/uv/tools/{package}/lib/python{version}/site-packages/ai_rules/config/
+
+    Args:
+        package_name: Name of the uv tool package
+
+    Returns:
+        Path to the config directory in the uv tools location
+    """
+
+    data_home = os.environ.get("XDG_DATA_HOME", str(Path.home() / ".local" / "share"))
+    python_version = f"python{sys.version_info.major}.{sys.version_info.minor}"
+
+    return (
+        Path(data_home)
+        / "uv"
+        / "tools"
+        / package_name
+        / "lib"
+        / python_version
+        / "site-packages"
+        / "ai_rules"
+        / "config"
+    )
 
 
 def is_uv_available() -> bool:

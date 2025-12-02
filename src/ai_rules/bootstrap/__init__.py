@@ -20,7 +20,13 @@ from .config import (
     save_pending_update,
     should_check_now,
 )
-from .installer import UV_NOT_FOUND_ERROR, install_tool, is_uv_available, uninstall_tool
+from .installer import (
+    UV_NOT_FOUND_ERROR,
+    get_tool_config_dir,
+    install_tool,
+    is_uv_available,
+    uninstall_tool,
+)
 from .updater import UpdateInfo, check_pypi_updates, perform_pypi_update
 from .version import get_package_version, is_newer, parse_version
 
@@ -29,6 +35,7 @@ __all__ = [
     "is_newer",
     "parse_version",
     "UV_NOT_FOUND_ERROR",
+    "get_tool_config_dir",
     "install_tool",
     "is_uv_available",
     "uninstall_tool",
