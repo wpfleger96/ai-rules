@@ -1,6 +1,14 @@
 # CHANGELOG
 
 
+## v0.5.4 (2025-12-02)
+
+### Bug Fixes
+
+- Stop caching wrong symlink path when overrides exist
+  ([`8611713`](https://github.com/wpfleger96/ai-rules/commit/86117135c0854acc7b370bc3c1d4325595003845))
+
+
 ## v0.5.3 (2025-12-02)
 
 ### Bug Fixes
