@@ -71,20 +71,17 @@ ai-rules setup                      # One-time setup: install symlinks + make av
 ai-rules upgrade                    # Upgrade to latest version
 ai-rules upgrade --check            # Check for updates without installing
 
-ai-rules install                    # Install all agents (user + projects)
-ai-rules install --user-only        # Install only user-level configs
+ai-rules install                    # Install all agent configs
 ai-rules install --agents claude    # Install specific agents
 ai-rules install --dry-run          # Preview changes
 ai-rules install --force            # Skip confirmations
 ai-rules install --rebuild-cache    # Rebuild merged settings cache
 
 ai-rules status                     # Check symlink status (✓✗⚠○)
-ai-rules status --user-only         # Check only user-level configs
 ai-rules diff                       # Show config differences
 ai-rules validate                   # Verify source files exist
 ai-rules update                     # Re-sync after adding files
 ai-rules uninstall                  # Remove all symlinks
-ai-rules uninstall --user-only      # Remove only user-level symlinks
 ai-rules list-agents                # Show available agents
 ```
 
@@ -112,18 +109,6 @@ ai-rules override unset claude.model         # Remove override
 ai-rules override list                       # List all overrides
 ```
 
-### Project-Level Configuration
-
-```bash
-ai-rules list-projects              # List configured projects
-ai-rules add-project <name> <path>  # Add a project
-ai-rules remove-project <name>      # Remove a project
-
-ai-rules install --projects my-api  # Install specific project only
-ai-rules status --projects my-api   # Check specific project status
-ai-rules uninstall --projects api   # Uninstall specific project
-```
-
 ## Configuration
 
 ### Quick Start with Config Wizard
@@ -138,11 +123,10 @@ This will walk you through:
 1. Selecting common exclusions
 2. Adding custom exclusion patterns (with glob support)
 3. Setting up machine-specific settings overrides
-4. Configuring projects
 
 ### User-Level Config
 
-Create `~/.ai-rules-config.yaml` for user-level settings and project mappings:
+Create `~/.ai-rules-config.yaml` for user-level settings:
 
 ```yaml
 version: 1
@@ -162,26 +146,10 @@ settings_overrides:
     # Other settings inherited from repo config/claude/settings.json
   goose:
     provider: "anthropic"
-
-# Project configurations
-projects:
-  my-api:
-    path: ~/Development/work/my-api
-    exclude_symlinks:
-      - ".goosehints"  # Don't use Goose for this project
-
-  personal-blog:
-    path: ~/Projects/personal-blog
-    exclude_symlinks: []  # Use all agents
-
-  python-project:
-    path: ~/Development/python-ml
-    exclude_symlinks:
-      - "CLAUDE.md"  # Only use Goose
 ```
 
 **Config File Locations:**
-- `~/.ai-rules-config.yaml` - User-specific config (exclusions, overrides, projects)
+- `~/.ai-rules-config.yaml` - User-specific config (exclusions and overrides)
 - `<repo>/.ai-rules-config.yaml` - Repo defaults (global exclusions only)
 
 **Config Precedence:**
@@ -237,47 +205,11 @@ ai-rules override set claude.modle "sonnet"
 
 Path validation ensures you only set valid overrides that exist in the base settings, preventing typos and configuration errors.
 
-### Project-Level Rules
-
-1. **Create project config directory:**
-   ```bash
-   mkdir -p config/projects/my-api
-   ```
-
-2. **Add project-specific rules:**
-   ```bash
-   # Edit config/projects/my-api/AGENTS.md
-   # Add project-specific AI agent rules
-   ```
-
-3. **Configure and install:**
-   ```bash
-   ai-rules add-project my-api ~/Development/my-api
-   ai-rules install --projects my-api
-   ```
-
-The system will create symlinks in your project:
-- `<project>/AGENTS.md` → `config/projects/<name>/AGENTS.md`
-- `<project>/CLAUDE.md` → `config/projects/<name>/AGENTS.md`
-- `<project>/.goosehints` → `config/projects/<name>/AGENTS.md`
-
-### Exclusion Behavior
-
-Exclusions are additive:
-- **Global exclusions** (root config) apply everywhere (user + all projects)
-- **Project exclusions** only apply to that specific project
-- A symlink is excluded if it matches *either* global or project exclusions
-
 ## Structure
 
 ```
 config/
 ├── AGENTS.md              # User-level rules → ~/AGENTS.md, ~/.CLAUDE.md, ~/.config/goose/.goosehints
-├── projects/              # Project-level configurations
-│   ├── my-api/
-│   │   └── AGENTS.md      # → <project>/AGENTS.md, <project>/CLAUDE.md, <project>/.goosehints
-│   └── my-blog/
-│       └── AGENTS.md      # → <project>/AGENTS.md, <project>/CLAUDE.md, <project>/.goosehints
 ├── claude/
 │   ├── settings.json      # → ~/.claude/settings.json
 │   ├── agents/*.md        # → ~/.claude/agents/*.md (dynamic)
@@ -285,8 +217,6 @@ config/
 └── goose/
     └── config.yaml        # → ~/.config/goose/config.yaml
 ```
-
-See [config/projects/README.md](config/projects/README.md) for detailed project configuration guide.
 
 ## Extending
 

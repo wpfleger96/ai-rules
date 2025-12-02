@@ -3,7 +3,6 @@
 from pathlib import Path
 
 from ai_rules.agents.base import Agent
-from ai_rules.config import ProjectConfig
 
 
 class GooseAgent(Agent):
@@ -39,19 +38,5 @@ class GooseAgent(Agent):
                 "goose", config_file, self.repo_root
             )
             symlinks.append((Path("~/.config/goose/config.yaml"), target_file))
-
-        return symlinks
-
-    def get_project_symlinks(self, project: ProjectConfig) -> list[tuple[Path, Path]]:
-        """Get Goose symlinks for a specific project.
-
-        Creates symlink at <project>/.goosehints pointing to config/projects/<name>/AGENTS.md
-        """
-        symlinks = []
-
-        project_agents_file = self.config_dir / "projects" / project.name / "AGENTS.md"
-        if project_agents_file.exists():
-            target = project.path / ".goosehints"
-            symlinks.append((target, project_agents_file))
 
         return symlinks

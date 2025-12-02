@@ -1,7 +1,7 @@
 # Example AI Rules configuration file
 #
 # This file can be placed in two locations:
-#   1. ~/.ai-rules-config.yaml (user-specific: exclusions, overrides, projects)
+#   1. ~/.ai-rules-config.yaml (user-specific: exclusions and overrides)
 #   2. <repo>/.ai-rules-config.yaml (repo defaults: exclusions only)
 #
 # Quick setup: Run `ai-rules config init` for an interactive wizard
@@ -9,7 +9,6 @@
 # Config merging:
 #   - Exclusions: user + repo exclusions are combined (additive)
 #   - Overrides: only loaded from user config (machine-specific, not in git)
-#   - Projects: only loaded from user config
 
 version: 1
 
@@ -81,22 +80,3 @@ settings_overrides:
   #
   # goose:
   #   provider: "anthropic"
-
-# ============================================================================
-# PROJECTS (User config only)
-# ============================================================================
-# Map project names to directories for project-level rules
-#
-# CLI commands:
-#   ai-rules add-project my-api ~/Development/my-api
-#   ai-rules remove-project my-api
-#   ai-rules list-projects
-# projects:
-#   my-api:
-#     path: ~/Development/work/my-api
-#     exclude_symlinks:
-#       - ".goosehints"  # Don't use Goose for this project
-#
-#   personal-blog:
-#     path: ~/Projects/personal-blog
-#     exclude_symlinks: []  # Use all agents

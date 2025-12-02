@@ -20,7 +20,6 @@ class TestConfigInitCommand:
             "n",  # Exclude Shared agents file?
             "",  # Custom exclusions (empty to finish)
             "n",  # Override settings?
-            "n",  # Configure projects?
             "y",  # Save configuration?
         ]
 
@@ -48,7 +47,6 @@ class TestConfigInitCommand:
             "~/.custom/pattern.txt",  # Custom exclusion
             "",  # Finish custom exclusions
             "n",  # Override settings?
-            "n",  # Configure projects?
             "y",  # Save configuration?
         ]
 
@@ -80,7 +78,6 @@ class TestConfigInitCommand:
             "model=claude-3-5-sonnet-20241022",  # Add override
             "",  # Finish overrides for claude
             "3",  # Done with agents
-            "n",  # Configure projects?
             "y",  # Save configuration?
         ]
 
@@ -97,39 +94,6 @@ class TestConfigInitCommand:
             data["settings_overrides"]["claude"]["model"]
             == "claude-3-5-sonnet-20241022"
         )
-
-    def test_config_init_with_projects(self, runner, tmp_path, monkeypatch):
-        """Test config init with project configuration."""
-        config_path = tmp_path / ".ai-rules-config.yaml"
-        project_path = tmp_path / "my-project"
-        project_path.mkdir()
-        monkeypatch.setenv("HOME", str(tmp_path))
-
-        inputs = [
-            "n",
-            "n",
-            "n",
-            "n",  # Skip exclusions
-            "",  # No custom exclusions
-            "n",  # Override settings?
-            "y",  # Configure projects?
-            "my-project",  # Project name
-            str(project_path),  # Project path
-            "",  # No project exclusions
-            "n",  # No more projects
-            "y",  # Save configuration?
-        ]
-
-        result = runner.invoke(main, ["config", "init"], input="\n".join(inputs))
-
-        assert result.exit_code == 0
-
-        with open(config_path) as f:
-            data = yaml.safe_load(f)
-
-        assert "projects" in data
-        assert "my-project" in data["projects"]
-        assert data["projects"]["my-project"]["path"] == str(project_path)
 
     def test_config_init_cancels_on_overwrite_decline(
         self, runner, tmp_path, monkeypatch
@@ -166,7 +130,6 @@ class TestConfigInitCommand:
             "n",  # Skip exclusions
             "",  # No custom exclusions
             "n",  # Override settings?
-            "n",  # Configure projects?
             "y",  # Save configuration?
         ]
 

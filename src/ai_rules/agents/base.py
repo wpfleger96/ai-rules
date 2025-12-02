@@ -3,7 +3,7 @@
 from abc import ABC, abstractmethod
 from pathlib import Path
 
-from ai_rules.config import Config, ProjectConfig
+from ai_rules.config import Config
 
 
 class Agent(ABC):
@@ -66,35 +66,3 @@ class Agent(ABC):
             These will be removed during install if they point to our config files.
         """
         return []
-
-    @abstractmethod
-    def get_project_symlinks(self, project: ProjectConfig) -> list[tuple[Path, Path]]:
-        """Get list of (target_path, source_path) tuples for project-level symlinks.
-
-        Args:
-            project: Project configuration
-
-        Returns:
-            List of tuples where:
-            - target_path: Where symlink should be created in the project (e.g., <project>/CLAUDE.md)
-            - source_path: What symlink should point to (e.g., repo/config/projects/<name>/AGENTS.md)
-        """
-        pass
-
-    def get_all_project_symlinks(self) -> dict[str, list[tuple[Path, Path]]]:
-        """Get all project symlinks grouped by project name, filtered by exclusions.
-
-        Returns:
-            Dictionary mapping project names to lists of (target_path, source_path) tuples
-        """
-        result = {}
-        for project_name, project in self.config.projects.items():
-            symlinks = self.get_project_symlinks(project)
-            filtered_symlinks = [
-                (target, source)
-                for target, source in symlinks
-                if not self.config.is_project_excluded(project_name, str(target))
-            ]
-            if filtered_symlinks:
-                result[project_name] = filtered_symlinks
-        return result
