@@ -20,12 +20,12 @@ Consolidates config files for AI coding agents (Claude Code, Goose) into a singl
 
 **Requirements:** Python 3.10+, [uv](https://github.com/astral-sh/uv)
 
-### Quick Start (Recommended)
+### From PyPI (Recommended)
 
 One-command setup from PyPI:
 
 ```bash
-uvx ai-rules setup
+uvx ai-agent-rules setup
 ```
 
 This will:
@@ -34,7 +34,7 @@ This will:
 
 After setup, you can run `ai-rules` from any directory.
 
-### Developer Installation
+### Local Development
 
 For contributing or local development:
 

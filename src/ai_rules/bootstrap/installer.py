@@ -16,7 +16,7 @@ def is_uv_available() -> bool:
 
 
 def install_tool(
-    package_name: str = "ai-rules",
+    package_name: str = "ai-agent-rules",
     force: bool = False,
     dry_run: bool = False,
 ) -> tuple[bool, str]:
@@ -63,7 +63,7 @@ def install_tool(
         return False, f"Unexpected error: {e}"
 
 
-def uninstall_tool(package_name: str = "ai-rules") -> tuple[bool, str]:
+def uninstall_tool(package_name: str = "ai-agent-rules") -> tuple[bool, str]:
     """Uninstall package from uv tools.
 
     Args:

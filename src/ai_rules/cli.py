@@ -34,7 +34,7 @@ from ai_rules.symlinks import (
 console = Console()
 
 try:
-    __version__ = get_version("ai-rules")
+    __version__ = get_version("ai-agent-rules")
 except PackageNotFoundError:
     __version__ = "dev"
 
@@ -171,8 +171,8 @@ def _background_update_check() -> None:
     )
 
     try:
-        current = get_package_version("ai-rules")
-        update_info = check_pypi_updates("ai-rules", current)
+        current = get_package_version("ai-agent-rules")
+        update_info = check_pypi_updates("ai-agent-rules", current)
 
         if update_info.has_update:
             save_pending_update(update_info)
@@ -384,7 +384,7 @@ def setup(ctx: click.Context, force: bool, dry_run: bool, skip_symlinks: bool) -
     This is the recommended way to install ai-rules for first-time users.
 
     Example:
-        uvx ai-rules setup
+        uvx ai-agent-rules setup
     """
     from ai_rules.bootstrap import install_tool
 
@@ -411,7 +411,7 @@ def setup(ctx: click.Context, force: bool, dry_run: bool, skip_symlinks: bool) -
             return
 
     try:
-        success, message = install_tool("ai-rules", force=force, dry_run=dry_run)
+        success, message = install_tool("ai-agent-rules", force=force, dry_run=dry_run)
 
         if dry_run:
             console.print(f"\n[dim]{message}[/dim]")
@@ -423,7 +423,7 @@ def setup(ctx: click.Context, force: bool, dry_run: bool, skip_symlinks: bool) -
         else:
             console.print(f"\n[red]Error:[/red] {message}")
             console.print("\n[yellow]Manual installation:[/yellow]")
-            console.print("  uv tool install ai-rules")
+            console.print("  uv tool install ai-agent-rules")
     except Exception as e:
         console.print(f"\n[red]Error:[/red] {e}")
         console.print("\nFor help, visit: https://github.com/willpfleger/ai-rules")
@@ -866,7 +866,7 @@ def upgrade(check: bool, force: bool) -> None:
     )
 
     try:
-        current = get_package_version("ai-rules")
+        current = get_package_version("ai-agent-rules")
     except Exception as e:
         console.print(f"[red]Error:[/red] Could not get current version: {e}")
         sys.exit(1)
@@ -875,7 +875,7 @@ def upgrade(check: bool, force: bool) -> None:
 
     with console.status("Checking for updates..."):
         try:
-            update_info = check_pypi_updates("ai-rules", current)
+            update_info = check_pypi_updates("ai-agent-rules", current)
         except Exception as e:
             console.print(f"[red]Error:[/red] Failed to check for updates: {e}")
             sys.exit(1)
@@ -903,7 +903,7 @@ def upgrade(check: bool, force: bool) -> None:
     # Perform upgrade
     with console.status("Upgrading..."):
         try:
-            success, message = perform_pypi_update("ai-rules")
+            success, message = perform_pypi_update("ai-agent-rules")
         except Exception as e:
             console.print(f"\n[red]Error:[/red] Upgrade failed: {e}")
             sys.exit(1)
