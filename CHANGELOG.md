@@ -1,7 +1,26 @@
 # CHANGELOG
 
 
-## v0.3.0 (2025-11-15)
+## v0.4.0 (2025-12-02)
+
+### Chores
+
+- Ai spaghetti refactor
+  ([`e1c0694`](https://github.com/wpfleger96/ai-rules/commit/e1c0694822c34320c2ad7ee0b9dee4667460eff8))
+
+- Cleanup and another CI test fix
+  ([`7acadcf`](https://github.com/wpfleger96/ai-rules/commit/7acadcf9b757f211d1fd306cace79e3932f6f131))
+
+### Features
+
+- Add bootstrap install and auto update processes
+  ([`6569767`](https://github.com/wpfleger96/ai-rules/commit/65697676c24c08a2b5da7a0fb6deb6df0b065920))
+
+- Publish to pypi
+  ([`14e41f3`](https://github.com/wpfleger96/ai-rules/commit/14e41f3863284d08ddd645c9324ea741fed858d0))
+
+
+## v0.3.0 (2025-12-01)
 
 ### Bug Fixes
 
@@ -74,15 +93,7 @@ All tests passing (23 tests).
 Fixes #[issue-number]
 
 
-## v0.2.0 (2025-11-07)
-
-### Features
-
-- Add SubagentStop hook, project-level rule support, shared AGENTS.md config, and post-merge hook
-  ([`263e07c`](https://github.com/wpfleger96/ai-rules/commit/263e07cbf712afad6720c17fe4327818d80fedb1))
-
-
-## v0.1.1 (2025-11-04)
+## v0.2.0 (2025-12-01)
 
 ### Bug Fixes
 
@@ -94,10 +105,10 @@ Fixes #[issue-number]
 - Update README and readd MIT license
   ([`9bd4e65`](https://github.com/wpfleger96/ai-rules/commit/9bd4e65c4e790e15c5457d33f00db4a2e342ad57))
 
-
-## v0.1.0 (2025-11-04)
-
 ### Features
+
+- Add SubagentStop hook, project-level rule support, shared AGENTS.md config, and post-merge hook
+  ([`263e07c`](https://github.com/wpfleger96/ai-rules/commit/263e07cbf712afad6720c17fe4327818d80fedb1))
 
 - Initial release
   ([`8a9c739`](https://github.com/wpfleger96/ai-rules/commit/8a9c73994c4b84f2754076d555bed68303d715fe))
