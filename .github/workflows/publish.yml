@@ -18,17 +18,35 @@ jobs:
         ref: ${{ github.event.workflow_run.head_sha }}
         fetch-depth: 0
 
+    - name: Fetch all tags from remote
+      run: |
+        echo "Fetching all tags from remote..."
+        git fetch --tags --force
+        echo "Recent tags:"
+        git tag -l | tail -10
+        echo "Current commit: $(git rev-parse HEAD)"
+
     - name: Check if release tag exists
       id: check_tag
       run: |
-        if git describe --exact-match HEAD 2>/dev/null | grep -qE '^v[0-9]+\.[0-9]+\.[0-9]+'; then
-          echo "has_tag=true" >> $GITHUB_OUTPUT
-          TAG=$(git describe --exact-match HEAD)
-          echo "tag=$TAG" >> $GITHUB_OUTPUT
-          echo "Release tag found: $TAG"
+        echo "Checking for release tag on commit $(git rev-parse HEAD)"
+
+        if TAG=$(git describe --exact-match HEAD 2>/dev/null); then
+          echo "Found tag: $TAG"
+
+          if echo "$TAG" | grep -qE '^v[0-9]+\.[0-9]+\.[0-9]+'; then
+            echo "has_tag=true" >> $GITHUB_OUTPUT
+            echo "tag=$TAG" >> $GITHUB_OUTPUT
+            echo "✓ Release tag found: $TAG"
+          else
+            echo "has_tag=false" >> $GITHUB_OUTPUT
+            echo "✗ Tag exists but doesn't match version pattern: $TAG"
+          fi
         else
           echo "has_tag=false" >> $GITHUB_OUTPUT
-          echo "No release tag found - skipping publish"
+          echo "✗ No tag found on current commit"
+          echo "Available tags on recent commits:"
+          git log --oneline --decorate -5
         fi
 
     - name: Set up Python
