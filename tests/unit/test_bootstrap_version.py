@@ -10,20 +10,15 @@ from ai_rules.bootstrap.version import is_newer, parse_version
 @pytest.mark.unit
 @pytest.mark.bootstrap
 class TestParseVersion:
-    """Tests for parse_version function."""
-
     def test_parse_version_with_prerelease(self):
-        """Test parsing version with prerelease tag."""
         version = parse_version("v1.2.3-alpha.1")
         assert str(version) == "1.2.3a1"
 
     def test_parse_version_with_build_metadata(self):
-        """Test parsing version with build metadata."""
         version = parse_version("1.2.3+build.123")
         assert "1.2.3" in str(version)
 
     def test_parse_version_invalid_raises_error(self):
-        """Test that invalid version strings raise InvalidVersion."""
         with pytest.raises(InvalidVersion):
             parse_version("not.a.version")
 
@@ -31,8 +26,6 @@ class TestParseVersion:
 @pytest.mark.unit
 @pytest.mark.bootstrap
 class TestIsNewer:
-    """Tests for is_newer function."""
-
     @pytest.mark.parametrize(
         "latest,current,expected",
         [
@@ -50,7 +43,6 @@ class TestIsNewer:
         ],
     )
     def test_version_comparison(self, latest, current, expected):
-        """Test version comparison with various formats."""
         assert is_newer(latest, current) is expected
 
     @pytest.mark.parametrize(
@@ -61,7 +53,6 @@ class TestIsNewer:
         ],
     )
     def test_prerelease_versions(self, latest, current, expected):
-        """Test comparison of prerelease versions."""
         assert is_newer(latest, current) is expected
 
     @pytest.mark.parametrize(
@@ -73,5 +64,4 @@ class TestIsNewer:
         ],
     )
     def test_invalid_versions_return_false(self, latest, current):
-        """Test that invalid versions return False."""
         assert is_newer(latest, current) is False

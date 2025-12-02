@@ -50,9 +50,7 @@ def get_config_dir() -> Path:
     Uses importlib.resources which handles both cases automatically.
     """
     try:
-        # Get config directory from package resources
         config_resource = resource_files("ai_rules") / "config"
-        # Convert Traversable to Path
         return Path(str(config_resource))
     except Exception:
         # Fallback: assume config/ is sibling to this file
@@ -120,7 +118,7 @@ def detect_old_config_symlinks() -> list[tuple[Path, Path]]:
     """Detect symlinks pointing to old config/ location.
 
     Returns list of (symlink_path, old_target) tuples for broken symlinks.
-    This is used for migration from v0.4.1 to v0.4.2 when config moved
+    This is used for migration from v0.4.1 to v0.5.0 when config moved
     from repo root to src/ai_rules/config/.
     """
     old_patterns = [
@@ -132,7 +130,6 @@ def detect_old_config_symlinks() -> list[tuple[Path, Path]]:
 
     broken_symlinks = []
 
-    # Check common symlink locations
     check_paths = [
         Path.home() / ".claude",
         Path.home() / ".config" / "goose",
@@ -143,7 +140,6 @@ def detect_old_config_symlinks() -> list[tuple[Path, Path]]:
         if not base_path.exists():
             continue
 
-        # Check if it's a symlink
         if base_path.is_symlink():
             try:
                 target = os.readlink(str(base_path))
@@ -156,7 +152,6 @@ def detect_old_config_symlinks() -> list[tuple[Path, Path]]:
                 # Skip if we can't read the symlink
                 pass
 
-        # Check symlinks in directories
         if base_path.is_dir():
             for item in base_path.rglob("*"):
                 if item.is_symlink():
@@ -572,12 +567,12 @@ def install(
     all_agents = get_agents(config_dir, config)
     selected_agents = select_agents(all_agents, agents)
 
-    # Detect and migrate old config symlinks (v0.4.1 → v0.4.2)
+    # Detect and migrate old config symlinks (v0.4.1 → v0.5.0)
     if not dry_run:
         old_symlinks = detect_old_config_symlinks()
         if old_symlinks:
             console.print(
-                "\n[yellow]Detected config migration from v0.4.1 → v0.4.2[/yellow]"
+                "\n[yellow]Detected config migration from v0.4.1 → v0.5.0[/yellow]"
             )
             console.print(
                 f"Found {len(old_symlinks)} symlink(s) pointing to old config location"
@@ -789,9 +784,7 @@ def status(agents: str | None) -> None:
             )
             if config.is_cache_stale(agent.agent_id, base_settings_path):
                 console.print("  [yellow]⚠[/yellow] Cached settings are stale")
-                diff_output = config.get_cache_diff(
-                    agent.agent_id, base_settings_path, repo_root
-                )
+                diff_output = config.get_cache_diff(agent.agent_id, base_settings_path)
                 if diff_output:
                     console.print(diff_output)
                 all_correct = False

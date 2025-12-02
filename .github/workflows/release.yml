@@ -1,14 +1,18 @@
 name: Automated Release
 
 on:
-  push:
+  workflow_run:
+    workflows: ["CI"]
     branches:
       - main
+    types:
+      - completed
 
 jobs:
   release:
     name: Release
     runs-on: ubuntu-latest
+    if: github.event.workflow_run.conclusion == 'success'
 
     steps:
       - name: Checkout
@@ -29,9 +33,6 @@ jobs:
 
       - name: Install dependencies
         run: uv sync
-
-      - name: Run tests before release
-        run: uv run pytest -v
 
       - name: Semantic Version Release
         id: release

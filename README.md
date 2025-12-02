@@ -3,9 +3,11 @@
 Manage AI agent configurations through symlinks. Keep all your configs in one git-tracked location.
 
 [![PyPI Downloads](https://img.shields.io/pypi/dm/ai-agent-rules.svg)](https://pypi.org/project/ai-agent-rules/)
-[![Python Versions](https://img.shields.io/pypi/pyversions/ai-agent-rules.svg)](https://pypi.org/project/ai-agent-rules/)
-[![GitHub Contributors](https://img.shields.io/github/contributors/wpfleger96/ai-rules.svg)](https://github.com/wpfleger96/ai-rules/graphs/contributors)
 [![PyPI version](https://img.shields.io/pypi/v/ai-agent-rules.svg)](https://pypi.org/project/ai-agent-rules/)
+[![Python Versions](https://img.shields.io/pypi/pyversions/ai-agent-rules.svg)](https://pypi.org/project/ai-agent-rules/)
+[![CI](https://github.com/wpfleger96/ai-rules/actions/workflows/ci.yml/badge.svg)](https://github.com/wpfleger96/ai-rules/actions/workflows/ci.yml)
+[![GitHub Contributors](https://img.shields.io/github/contributors/wpfleger96/ai-rules.svg)](https://github.com/wpfleger96/ai-rules/graphs/contributors)
+[![Lines of Code](https://aschey.tech/tokei/github/wpfleger96/ai-rules?category=code)](https://github.com/wpfleger96/ai-rules)
 [![License](https://img.shields.io/github/license/wpfleger96/ai-rules.svg)](https://github.com/wpfleger96/ai-rules/blob/main/LICENSE)
 
 ## Overview

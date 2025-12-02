@@ -236,6 +236,11 @@ class TestStatusCacheValidation:
         import ai_rules.cli
 
         monkeypatch.setattr(ai_rules.cli, "get_config_dir", lambda: test_repo)
+        monkeypatch.setattr(
+            ai_rules.cli,
+            "get_git_repo_root",
+            lambda: (_ for _ in ()).throw(RuntimeError("Not in git repo")),
+        )
 
         user_config_path = mock_home / ".ai-rules-config.yaml"
         user_config = {
@@ -260,7 +265,9 @@ class TestStatusCacheValidation:
             "claude", test_repo / "claude" / "settings.json"
         )
 
-        result = runner.invoke(main, ["status"], catch_exceptions=False)
+        result = runner.invoke(
+            main, ["status"], catch_exceptions=False, env={"HOME": str(mock_home)}
+        )
         assert result.exit_code == 0
 
     def test_status_no_cache_warning_when_no_overrides(
@@ -270,6 +277,11 @@ class TestStatusCacheValidation:
         import ai_rules.cli
 
         monkeypatch.setattr(ai_rules.cli, "get_config_dir", lambda: test_repo)
+        monkeypatch.setattr(
+            ai_rules.cli,
+            "get_git_repo_root",
+            lambda: (_ for _ in ()).throw(RuntimeError("Not in git repo")),
+        )
 
         config = Config.load()
         claude = ClaudeAgent(test_repo, config)
@@ -280,7 +292,9 @@ class TestStatusCacheValidation:
                 target_path = Path(str(target).replace("~", str(mock_home)))
                 create_symlink(target_path, source, force=False, dry_run=False)
 
-        result = runner.invoke(main, ["status"], catch_exceptions=False)
+        result = runner.invoke(
+            main, ["status"], catch_exceptions=False, env={"HOME": str(mock_home)}
+        )
         assert result.exit_code == 0
         assert "Cached settings are stale" not in result.output
 
@@ -290,7 +304,7 @@ class TestStatusCacheValidation:
         """Test that status displays diff when cache is stale."""
         import ai_rules.cli
 
-        monkeypatch.setattr(ai_rules.cli, "get_repo_root", lambda: test_repo)
+        monkeypatch.setattr(ai_rules.cli, "get_config_dir", lambda: test_repo)
 
         user_config_path = mock_home / ".ai-rules-config.yaml"
         user_config = {
@@ -300,14 +314,12 @@ class TestStatusCacheValidation:
         with open(user_config_path, "w") as f:
             yaml.dump(user_config, f)
 
-        config = Config.load(test_repo)
-        config.build_merged_settings(
-            "claude", test_repo / "config" / "claude" / "settings.json", test_repo
-        )
+        config = Config.load()
+        config.build_merged_settings("claude", test_repo / "claude" / "settings.json")
 
         time.sleep(0.01)
 
-        base_settings_path = test_repo / "config" / "claude" / "settings.json"
+        base_settings_path = test_repo / "claude" / "settings.json"
         base_settings_path.write_text('{"model": "claude-3-5-sonnet"}')
 
         claude = ClaudeAgent(test_repo, config)

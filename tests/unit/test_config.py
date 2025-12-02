@@ -38,7 +38,7 @@ def cache_setup(tmp_path, monkeypatch):
 class TestConfigLoading:
     """Test configuration file loading.
 
-    Note: As of v0.4.2, only user-level config (~/.ai-rules-config.yaml) is supported.
+    Note: As of v0.5.0, only user-level config (~/.ai-rules-config.yaml) is supported.
     Repo-level config support was removed.
     """
 

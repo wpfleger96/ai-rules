@@ -53,9 +53,8 @@ All AI tools inherit from `Agent` (`agents/base.py`). To add a new tool:
 3. Register in `cli.py::get_agents()`
 
 ### Config System
-- User config: `~/.ai-rules-config.yaml` (machine-specific)
-- Repo config: `<repo>/.ai-rules-config.yaml` (shared)
-- `settings_overrides` only from user config (intentional)
+- User config: `~/.ai-rules-config.yaml`
+- `settings_overrides` for machine-specific agent settings
 
 ## Testing
 

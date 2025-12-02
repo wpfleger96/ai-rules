@@ -41,7 +41,7 @@ def runner():
 def test_repo(tmp_path):
     """Create a test repository structure with config files.
 
-    Note: As of v0.4.2, config structure changed from repo/config/* to package/config/*.
+    Note: As of v0.5.0, config structure changed from repo/config/* to package/config/*.
     This fixture mimics the new package structure for testing.
     """
     config_root = tmp_path / "test-config"

@@ -9,7 +9,6 @@ class TestConfigInitCommand:
     """Tests for the config init command."""
 
     def test_config_init_creates_basic_config(self, runner, tmp_path, monkeypatch):
-        """Test config init creates a basic configuration file."""
         config_path = tmp_path / ".ai-rules-config.yaml"
         monkeypatch.setenv("HOME", str(tmp_path))
 
@@ -35,7 +34,6 @@ class TestConfigInitCommand:
         assert "exclude_symlinks" not in data or len(data["exclude_symlinks"]) == 0
 
     def test_config_init_with_exclusions(self, runner, tmp_path, monkeypatch):
-        """Test config init with exclusion patterns."""
         config_path = tmp_path / ".ai-rules-config.yaml"
         monkeypatch.setenv("HOME", str(tmp_path))
 
@@ -63,7 +61,6 @@ class TestConfigInitCommand:
         assert "~/.custom/pattern.txt" in data["exclude_symlinks"]
 
     def test_config_init_with_settings_overrides(self, runner, tmp_path, monkeypatch):
-        """Test config init with settings overrides."""
         config_path = tmp_path / ".ai-rules-config.yaml"
         monkeypatch.setenv("HOME", str(tmp_path))
 
@@ -98,7 +95,6 @@ class TestConfigInitCommand:
     def test_config_init_cancels_on_overwrite_decline(
         self, runner, tmp_path, monkeypatch
     ):
-        """Test config init cancels when user declines to overwrite existing config."""
         config_path = tmp_path / ".ai-rules-config.yaml"
         monkeypatch.setenv("HOME", str(tmp_path))
 
@@ -115,7 +111,6 @@ class TestConfigInitCommand:
     def test_config_init_overwrites_existing_config(
         self, runner, tmp_path, monkeypatch
     ):
-        """Test config init can overwrite existing configuration."""
         config_path = tmp_path / ".ai-rules-config.yaml"
         monkeypatch.setenv("HOME", str(tmp_path))
 
@@ -144,7 +139,6 @@ class TestConfigInitCommand:
         assert data["version"] == 1
 
     def test_config_init_cancels_on_save_decline(self, runner, tmp_path, monkeypatch):
-        """Test config init doesn't save when user declines."""
         config_path = tmp_path / ".ai-rules-config.yaml"
         monkeypatch.setenv("HOME", str(tmp_path))
 
@@ -170,7 +164,6 @@ class TestConfigShowCommand:
     """Tests for the config show command."""
 
     def test_config_show_displays_user_config(self, runner, tmp_path, monkeypatch):
-        """Test config show displays user configuration."""
         config_path = tmp_path / ".ai-rules-config.yaml"
         monkeypatch.setenv("HOME", str(tmp_path))
 

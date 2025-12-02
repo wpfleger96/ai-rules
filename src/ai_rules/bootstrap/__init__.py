@@ -25,20 +25,16 @@ from .updater import UpdateInfo, check_pypi_updates, perform_pypi_update
 from .version import get_package_version, is_newer, parse_version
 
 __all__ = [
-    # Version
     "get_package_version",
     "is_newer",
     "parse_version",
-    # Installation
     "UV_NOT_FOUND_ERROR",
     "install_tool",
     "is_uv_available",
     "uninstall_tool",
-    # Updates
     "UpdateInfo",
     "check_pypi_updates",
     "perform_pypi_update",
-    # Configuration
     "AutoUpdateConfig",
     "clear_pending_update",
     "get_config_dir",

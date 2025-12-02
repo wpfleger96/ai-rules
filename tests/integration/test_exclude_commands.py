@@ -9,7 +9,6 @@ class TestExcludeAddCommand:
     """Tests for the exclude add command."""
 
     def test_exclude_add_creates_config_if_missing(self, runner, tmp_path, monkeypatch):
-        """Test exclude add creates config file if it doesn't exist."""
         config_path = tmp_path / ".ai-rules-config.yaml"
         monkeypatch.setenv("HOME", str(tmp_path))
 
@@ -27,7 +26,6 @@ class TestExcludeAddCommand:
     def test_exclude_add_appends_to_existing_config(
         self, runner, tmp_path, monkeypatch
     ):
-        """Test exclude add appends to existing exclusions."""
         config_path = tmp_path / ".ai-rules-config.yaml"
         monkeypatch.setenv("HOME", str(tmp_path))
 
@@ -50,7 +48,6 @@ class TestExcludeAddCommand:
         assert "~/.new/pattern.txt" in data["exclude_symlinks"]
 
     def test_exclude_add_rejects_duplicate_pattern(self, runner, tmp_path, monkeypatch):
-        """Test exclude add rejects duplicate patterns."""
         config_path = tmp_path / ".ai-rules-config.yaml"
         monkeypatch.setenv("HOME", str(tmp_path))
 
@@ -72,7 +69,6 @@ class TestExcludeAddCommand:
         assert data["exclude_symlinks"].count("~/.claude/settings.json") == 1
 
     def test_exclude_add_handles_glob_patterns(self, runner, tmp_path, monkeypatch):
-        """Test exclude add handles glob patterns."""
         config_path = tmp_path / ".ai-rules-config.yaml"
         monkeypatch.setenv("HOME", str(tmp_path))
 
@@ -90,7 +86,6 @@ class TestExcludeRemoveCommand:
     """Tests for the exclude remove command."""
 
     def test_exclude_remove_deletes_pattern(self, runner, tmp_path, monkeypatch):
-        """Test exclude remove deletes pattern from config."""
         config_path = tmp_path / ".ai-rules-config.yaml"
         monkeypatch.setenv("HOME", str(tmp_path))
 
@@ -115,7 +110,6 @@ class TestExcludeRemoveCommand:
     def test_exclude_remove_fails_on_missing_config(
         self, runner, tmp_path, monkeypatch
     ):
-        """Test exclude remove fails when config doesn't exist."""
         monkeypatch.setenv("HOME", str(tmp_path))
 
         result = runner.invoke(main, ["exclude", "remove", "~/.pattern.txt"])
@@ -126,7 +120,6 @@ class TestExcludeRemoveCommand:
     def test_exclude_remove_fails_on_nonexistent_pattern(
         self, runner, tmp_path, monkeypatch
     ):
-        """Test exclude remove fails when pattern doesn't exist."""
         config_path = tmp_path / ".ai-rules-config.yaml"
         monkeypatch.setenv("HOME", str(tmp_path))
 
@@ -147,7 +140,6 @@ class TestExcludeListCommand:
     """Tests for the exclude list command."""
 
     def test_exclude_list_shows_patterns(self, runner, tmp_path, monkeypatch):
-        """Test exclude list displays exclusion patterns."""
         config_path = tmp_path / ".ai-rules-config.yaml"
         monkeypatch.setenv("HOME", str(tmp_path))
 
@@ -169,7 +161,6 @@ class TestExcludeListCommand:
         assert "~/.pattern2.txt" in result.output
 
     def test_exclude_list_shows_empty_message(self, runner, tmp_path, monkeypatch):
-        """Test exclude list shows message when no patterns exist."""
         config_path = tmp_path / ".ai-rules-config.yaml"
         monkeypatch.setenv("HOME", str(tmp_path))
 

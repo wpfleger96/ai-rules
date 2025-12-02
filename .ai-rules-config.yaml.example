@@ -1,14 +1,8 @@
 # Example AI Rules configuration file
 #
-# This file can be placed in two locations:
-#   1. ~/.ai-rules-config.yaml (user-specific: exclusions and overrides)
-#   2. <repo>/.ai-rules-config.yaml (repo defaults: exclusions only)
+# Place this file at: ~/.ai-rules-config.yaml
 #
 # Quick setup: Run `ai-rules config init` for an interactive wizard
-#
-# Config merging:
-#   - Exclusions: user + repo exclusions are combined (additive)
-#   - Overrides: only loaded from user config (machine-specific, not in git)
 
 version: 1
 

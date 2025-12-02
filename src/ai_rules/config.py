@@ -254,7 +254,7 @@ class Config:
 
         Returns empty config if file doesn't exist.
 
-        Note: Repo-level config support was removed in v0.4.2.
+        Note: Repo-level config support was removed in v0.5.0.
         All configuration is now user-specific.
         """
         user_config_path = Path.home() / ".ai-rules-config.yaml"
@@ -427,15 +427,12 @@ class Config:
 
         return False
 
-    def get_cache_diff(
-        self, agent: str, base_settings_path: Path, repo_root: Path
-    ) -> str | None:
+    def get_cache_diff(self, agent: str, base_settings_path: Path) -> str | None:
         """Get a unified diff between cached and expected merged settings.
 
         Args:
             agent: Agent name (e.g., 'claude', 'goose')
             base_settings_path: Path to base settings in repo
-            repo_root: Repository root path
 
         Returns:
             Formatted diff string with Rich markup, or None if no diff/cache doesn't exist
@@ -445,7 +442,7 @@ class Config:
         if agent not in self.settings_overrides:
             return None
 
-        cache_path = self.get_merged_settings_path(agent, repo_root)
+        cache_path = self.get_merged_settings_path(agent)
         if not cache_path or not cache_path.exists():
             return None
 
