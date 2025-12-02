@@ -68,7 +68,7 @@ class TestLoadAutoUpdateConfig:
     def test_load_valid_config(self, mock_home, monkeypatch):
         """Test loading valid configuration file."""
         config_file = mock_home / ".ai-rules" / "update_config.yaml"
-        config_file.parent.mkdir(parents=True)
+        config_file.parent.mkdir(parents=True, exist_ok=True)
         config_file.write_text(
             "enabled: true\nfrequency: weekly\nlast_check: 2024-01-01T12:00:00\nnotify_only: false\n"
         )
@@ -105,7 +105,7 @@ class TestLoadAutoUpdateConfig:
         config_file = mock_home / ".ai-rules" / "update_config.yaml"
 
         if error_type == "invalid_yaml":
-            config_file.parent.mkdir(parents=True)
+            config_file.parent.mkdir(parents=True, exist_ok=True)
             config_file.write_text("invalid: yaml: content:")
         elif error_type == "os_error":
 
@@ -131,7 +131,7 @@ class TestSaveAutoUpdateConfig:
     def test_save_config_writes_yaml(self, mock_home, monkeypatch):
         """Test that config is saved as YAML."""
         config_file = mock_home / ".ai-rules" / "update_config.yaml"
-        config_file.parent.mkdir(parents=True)
+        config_file.parent.mkdir(parents=True, exist_ok=True)
 
         monkeypatch.setattr(
             "ai_rules.bootstrap.config.get_config_path",
@@ -237,7 +237,7 @@ class TestLoadPendingUpdate:
     def test_load_valid_pending_update(self, mock_home, monkeypatch):
         """Test loading valid pending update."""
         pending_file = mock_home / ".ai-rules" / "pending_update.json"
-        pending_file.parent.mkdir(parents=True)
+        pending_file.parent.mkdir(parents=True, exist_ok=True)
         import json
 
         pending_data = {
@@ -273,7 +273,7 @@ class TestLoadPendingUpdate:
     def test_load_invalid_json_returns_none(self, mock_home, monkeypatch):
         """Test that invalid JSON returns None."""
         pending_file = mock_home / ".ai-rules" / "pending_update.json"
-        pending_file.parent.mkdir(parents=True)
+        pending_file.parent.mkdir(parents=True, exist_ok=True)
         pending_file.write_text('{"invalid": "json"')
 
         monkeypatch.setattr(
@@ -292,7 +292,7 @@ class TestSavePendingUpdate:
     def test_save_pending_update_writes_json(self, mock_home, monkeypatch):
         """Test that pending update is saved as JSON."""
         pending_file = mock_home / ".ai-rules" / "pending_update.json"
-        pending_file.parent.mkdir(parents=True)
+        pending_file.parent.mkdir(parents=True, exist_ok=True)
 
         monkeypatch.setattr(
             "ai_rules.bootstrap.config.get_pending_update_path",
@@ -348,7 +348,7 @@ class TestClearPendingUpdate:
     def test_clear_pending_update_deletes_file(self, mock_home, monkeypatch):
         """Test that clear removes the file."""
         pending_file = mock_home / ".ai-rules" / "pending_update.json"
-        pending_file.parent.mkdir(parents=True)
+        pending_file.parent.mkdir(parents=True, exist_ok=True)
         pending_file.write_text("{}")
 
         monkeypatch.setattr(
