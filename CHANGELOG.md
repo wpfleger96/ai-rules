@@ -1,7 +1,25 @@
 # CHANGELOG
 
 
+## v0.5.1 (2025-12-02)
+
+### Bug Fixes
+
+- Test failures in CI and cleanup
+  ([`02211d3`](https://github.com/wpfleger96/ai-rules/commit/02211d3c20c52825af0f9aacf2b90e22aa7fed04))
+
+### Chores
+
+- Add AGENTS.md for project
+  ([`b871ea8`](https://github.com/wpfleger96/ai-rules/commit/b871ea8f52177c2c92adadeec50c39d364826b66))
+
+
 ## v0.5.0 (2025-12-02)
+
+### Bug Fixes
+
+- Make sure config files get built into wheel package
+  ([`3c92f88`](https://github.com/wpfleger96/ai-rules/commit/3c92f88744705168af7a34ee650cd9be519da430))
 
 ### Continuous Integration
 
