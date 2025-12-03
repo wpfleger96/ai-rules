@@ -1,6 +1,14 @@
 # CHANGELOG
 
 
+## v0.6.0 (2025-12-03)
+
+### Features
+
+- Auto install status line script
+  ([`e09d21c`](https://github.com/wpfleger96/ai-rules/commit/e09d21c3740fdcc5a923431444b79c106db2d76c))
+
+
 ## v0.5.4 (2025-12-02)
 
 ### Bug Fixes
