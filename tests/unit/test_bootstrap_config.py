@@ -53,11 +53,17 @@ class TestGetConfigPath:
 class TestGetPendingUpdatePath:
     """Tests for get_pending_update_path function."""
 
-    def test_returns_pending_json_path(self, mock_home):
-        """Test that pending update path points to pending_update.json."""
-        pending_path = get_pending_update_path("test-package")
+    def test_returns_pending_json_path_for_ai_rules(self, mock_home):
+        """Test that ai-rules uses legacy pending_update.json filename."""
+        pending_path = get_pending_update_path("ai-rules")
         assert pending_path.name == "pending_update.json"
-        assert pending_path.parent == mock_home / ".test-package"
+        assert pending_path.parent == mock_home / ".ai-rules"
+
+    def test_returns_tool_specific_path_for_other_tools(self, mock_home):
+        """Test that other tools use pending_{tool_id}_update.json format."""
+        pending_path = get_pending_update_path("statusline")
+        assert pending_path.name == "pending_statusline_update.json"
+        assert pending_path.parent == mock_home / ".ai-rules"
 
 
 @pytest.mark.unit

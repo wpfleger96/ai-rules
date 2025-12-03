@@ -129,28 +129,33 @@ def should_check_now(config: AutoUpdateConfig) -> bool:
     return False
 
 
-def get_pending_update_path(package_name: str = "ai-rules") -> Path:
-    """Get path to pending update cache file.
+def get_pending_update_path(tool_id: str = "ai-rules") -> Path:
+    """Get path to pending update cache file for a specific tool.
 
     Args:
-        package_name: Name of the package
+        tool_id: Tool identifier (e.g., "ai-rules", "statusline")
 
     Returns:
-        Path to pending_update.json
+        Path to pending update JSON file
     """
-    return get_config_dir(package_name) / "pending_update.json"
+    if tool_id == "ai-rules":
+        filename = "pending_update.json"
+    else:
+        filename = f"pending_{tool_id}_update.json"
+
+    return get_config_dir("ai-rules") / filename
 
 
-def load_pending_update(package_name: str = "ai-rules") -> UpdateInfo | None:
+def load_pending_update(tool_id: str = "ai-rules") -> UpdateInfo | None:
     """Load cached update info from previous background check.
 
     Args:
-        package_name: Name of the package
+        tool_id: Tool identifier (e.g., "ai-rules", "statusline")
 
     Returns:
         UpdateInfo if available, None otherwise
     """
-    pending_path = get_pending_update_path(package_name)
+    pending_path = get_pending_update_path(tool_id)
 
     if not pending_path.exists():
         return None
@@ -169,14 +174,14 @@ def load_pending_update(package_name: str = "ai-rules") -> UpdateInfo | None:
         return None
 
 
-def save_pending_update(info: UpdateInfo, package_name: str = "ai-rules") -> None:
+def save_pending_update(info: UpdateInfo, tool_id: str = "ai-rules") -> None:
     """Save update info for next session.
 
     Args:
         info: Update information to save
-        package_name: Name of the package
+        tool_id: Tool identifier (e.g., "ai-rules", "statusline")
     """
-    pending_path = get_pending_update_path(package_name)
+    pending_path = get_pending_update_path(tool_id)
 
     try:
         data = {
@@ -193,15 +198,40 @@ def save_pending_update(info: UpdateInfo, package_name: str = "ai-rules") -> Non
         logger.debug(f"Failed to save pending update to {pending_path}: {e}")
 
 
-def clear_pending_update(package_name: str = "ai-rules") -> None:
+def clear_pending_update(tool_id: str = "ai-rules") -> None:
     """Clear pending update after user action.
 
     Args:
-        package_name: Name of the package
+        tool_id: Tool identifier (e.g., "ai-rules", "statusline")
     """
-    pending_path = get_pending_update_path(package_name)
+    pending_path = get_pending_update_path(tool_id)
 
     try:
         pending_path.unlink(missing_ok=True)
     except OSError as e:
         logger.debug(f"Failed to delete pending update at {pending_path}: {e}")
+
+
+def load_all_pending_updates() -> dict[str, UpdateInfo]:
+    """Load pending updates for all tools.
+
+    Returns:
+        Dictionary mapping tool_id to UpdateInfo for tools with pending updates
+    """
+    from .updater import UPDATABLE_TOOLS
+
+    result = {}
+    for tool in UPDATABLE_TOOLS:
+        pending = load_pending_update(tool.tool_id)
+        if pending and pending.has_update:
+            result[tool.tool_id] = pending
+
+    return result
+
+
+def clear_all_pending_updates() -> None:
+    """Clear pending updates for all tools."""
+    from .updater import UPDATABLE_TOOLS
+
+    for tool in UPDATABLE_TOOLS:
+        clear_pending_update(tool.tool_id)

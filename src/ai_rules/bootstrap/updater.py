@@ -5,10 +5,11 @@ import re
 import subprocess
 import urllib.request
 
+from collections.abc import Callable
 from dataclasses import dataclass
 
-from .installer import UV_NOT_FOUND_ERROR, is_command_available
-from .version import is_newer
+from .installer import UV_NOT_FOUND_ERROR, get_tool_version, is_command_available
+from .version import get_package_version, is_newer
 
 
 @dataclass
@@ -133,3 +134,63 @@ def perform_pypi_update(package_name: str) -> tuple[bool, str, bool]:
         return False, "Upgrade timed out after 60 seconds", False
     except Exception as e:
         return False, f"Unexpected error: {e}", False
+
+
+@dataclass
+class ToolSpec:
+    """Specification for an updatable tool."""
+
+    tool_id: str
+    package_name: str
+    display_name: str
+    get_version: Callable[[], str | None]
+    is_installed: Callable[[], bool]
+
+
+UPDATABLE_TOOLS: list[ToolSpec] = [
+    ToolSpec(
+        tool_id="ai-rules",
+        package_name="ai-agent-rules",
+        display_name="ai-rules",
+        get_version=lambda: get_package_version("ai-agent-rules"),
+        is_installed=lambda: True,  # Always installed (it's us)
+    ),
+    ToolSpec(
+        tool_id="statusline",
+        package_name="claude-code-statusline",
+        display_name="statusline",
+        get_version=lambda: get_tool_version("claude-code-statusline"),
+        is_installed=lambda: is_command_available("claude-statusline"),
+    ),
+]
+
+
+def check_tool_updates(tool: ToolSpec) -> UpdateInfo | None:
+    """Check for updates for any tool.
+
+    Args:
+        tool: Tool specification
+
+    Returns:
+        UpdateInfo if tool is installed and update check succeeds, None otherwise
+    """
+    if not tool.is_installed():
+        return None
+
+    current = tool.get_version()
+    if current is None:
+        return None
+
+    return check_pypi_updates(tool.package_name, current)
+
+
+def get_tool_by_id(tool_id: str) -> ToolSpec | None:
+    """Look up tool spec by ID.
+
+    Args:
+        tool_id: Tool identifier (e.g., "ai-rules", "statusline")
+
+    Returns:
+        ToolSpec if found, None otherwise
+    """
+    return next((t for t in UPDATABLE_TOOLS if t.tool_id == tool_id), None)

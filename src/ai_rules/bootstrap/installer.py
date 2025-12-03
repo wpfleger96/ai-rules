@@ -1,6 +1,7 @@
 """Tool installation utilities."""
 
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -134,6 +135,41 @@ def uninstall_tool(package_name: str = "ai-agent-rules") -> tuple[bool, str]:
         return False, "Uninstallation timed out after 30 seconds"
     except Exception as e:
         return False, f"Unexpected error: {e}"
+
+
+def get_tool_version(tool_name: str) -> str | None:
+    """Get installed version of a uv tool by parsing `uv tool list`.
+
+    Args:
+        tool_name: Name of the tool package (e.g., "claude-code-statusline")
+
+    Returns:
+        Version string (e.g., "0.7.1") or None if not installed
+    """
+    if not is_command_available("uv"):
+        return None
+
+    try:
+        result = subprocess.run(
+            ["uv", "tool", "list"],
+            capture_output=True,
+            text=True,
+            timeout=10,
+        )
+
+        if result.returncode != 0:
+            return None
+
+        for line in result.stdout.splitlines():
+            if line.startswith(tool_name):
+                match = re.search(r"v?(\d+\.\d+\.\d+)", line)
+                if match:
+                    return match.group(1)
+
+        return None
+
+    except (subprocess.TimeoutExpired, Exception):
+        return None
 
 
 def ensure_statusline_installed(dry_run: bool = False) -> str:

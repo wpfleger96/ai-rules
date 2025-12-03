@@ -275,26 +275,25 @@ def check_first_run(agents: list[Agent], force: bool) -> bool:
 
 
 def _background_update_check() -> None:
-    """Run update check in background thread.
+    """Run update check in background thread for all registered tools.
 
     This runs silently and saves results for display on next CLI invocation.
     """
     from datetime import datetime
 
     from ai_rules.bootstrap import (
-        check_pypi_updates,
-        get_package_version,
+        UPDATABLE_TOOLS,
+        check_tool_updates,
         load_auto_update_config,
         save_auto_update_config,
         save_pending_update,
     )
 
     try:
-        current = get_package_version("ai-agent-rules")
-        update_info = check_pypi_updates("ai-agent-rules", current)
-
-        if update_info.has_update:
-            save_pending_update(update_info)
+        for tool in UPDATABLE_TOOLS:
+            update_info = check_tool_updates(tool)
+            if update_info and update_info.has_update:
+                save_pending_update(update_info, tool.tool_id)
 
         config = load_auto_update_config()
         config.last_check = datetime.now().isoformat()
@@ -332,27 +331,44 @@ def _check_pending_updates() -> None:
     Shows interactive prompt in normal TTY contexts, non-interactive message
     for --help, --dry-run, or non-TTY contexts.
     """
-    from ai_rules.bootstrap import clear_pending_update, load_pending_update
+    from ai_rules.bootstrap import (
+        clear_all_pending_updates,
+        get_tool_by_id,
+        load_all_pending_updates,
+    )
 
     try:
-        pending = load_pending_update()
-        if not pending or not pending.has_update:
+        pending = load_all_pending_updates()
+        if not pending:
             return
 
-        console.print(
-            f"\n[cyan]Update available:[/cyan] {pending.current_version} → {pending.latest_version}"
-        )
+        updates = []
+        for tid, info in pending.items():
+            tool = get_tool_by_id(tid)
+            if tool:
+                updates.append(
+                    f"{tool.display_name} {info.current_version} → {info.latest_version}"
+                )
+
+        if not updates:
+            return
+
+        update_label = "Update available" if len(updates) == 1 else "Updates available"
+        console.print(f"\n[cyan]{update_label}:[/cyan] {', '.join(updates)}")
 
         if _is_interactive_context():
-            if Confirm.ask("Install now?", default=False):
+            prompt = "Install now?" if len(updates) == 1 else "Install all updates?"
+            if Confirm.ask(prompt, default=False):
                 ctx = click.get_current_context()
-                ctx.invoke(upgrade, check=False, force=False)
+                ctx.invoke(
+                    upgrade, check=False, force=False, skip_install=False, only=None
+                )
             else:
                 console.print("[dim]Run 'ai-rules upgrade' when ready[/dim]")
         else:
             console.print("[dim]Run 'ai-rules upgrade' to install[/dim]")
 
-        clear_pending_update()
+        clear_all_pending_updates()
     except Exception:
         pass
 
@@ -1090,117 +1106,160 @@ def update(force: bool) -> None:
     is_flag=True,
     help="Skip running 'install --rebuild-cache' after upgrade",
 )
-def upgrade(check: bool, force: bool, skip_install: bool) -> None:
-    """Upgrade ai-rules to the latest version from PyPI.
+@click.option(
+    "--only",
+    type=click.Choice(["ai-rules", "statusline"]),
+    help="Only upgrade specific tool",
+)
+def upgrade(check: bool, force: bool, skip_install: bool, only: str | None) -> None:
+    """Upgrade ai-rules and related tools to the latest versions from PyPI.
 
     Examples:
-        ai-rules upgrade        # Check and install updates
-        ai-rules upgrade --check  # Only check for updates
+        ai-rules upgrade                    # Check and install all updates
+        ai-rules upgrade --check            # Only check for updates
+        ai-rules upgrade --only=statusline  # Only upgrade statusline tool
     """
     from ai_rules.bootstrap import (
-        check_pypi_updates,
-        get_package_version,
+        UPDATABLE_TOOLS,
+        check_tool_updates,
         perform_pypi_update,
     )
 
-    try:
-        current = get_package_version("ai-agent-rules")
-    except Exception as e:
-        console.print(f"[red]Error:[/red] Could not get current version: {e}")
+    tools = [t for t in UPDATABLE_TOOLS if only is None or t.tool_id == only]
+    tools = [t for t in tools if t.is_installed()]
+
+    if not tools:
+        if only:
+            console.print(f"[yellow]⚠[/yellow] Tool '{only}' is not installed")
+        else:
+            console.print("[yellow]⚠[/yellow] No tools are installed")
         sys.exit(1)
 
-    console.print(f"[dim]Current version: {current}[/dim]\n")
-
-    with console.status("Checking for updates..."):
+    tool_updates = []
+    for tool in tools:
         try:
-            update_info = check_pypi_updates("ai-agent-rules", current)
+            current = tool.get_version()
+            if current:
+                console.print(
+                    f"[dim]{tool.display_name} current version: {current}[/dim]"
+                )
         except Exception as e:
-            console.print(f"[red]Error:[/red] Failed to check for updates: {e}")
-            sys.exit(1)
+            console.print(
+                f"[red]Error:[/red] Could not get {tool.display_name} version: {e}"
+            )
+            continue
 
-    if not update_info.has_update and not force:
-        console.print("[green]✓[/green] Already up to date!")
+        with console.status(f"Checking {tool.display_name} for updates..."):
+            try:
+                update_info = check_tool_updates(tool)
+            except Exception as e:
+                console.print(
+                    f"[red]Error:[/red] Failed to check {tool.display_name} updates: {e}"
+                )
+                continue
+
+        if update_info and (update_info.has_update or force):
+            tool_updates.append((tool, update_info))
+        elif update_info and not update_info.has_update:
+            console.print(
+                f"[green]✓[/green] {tool.display_name} is already up to date!"
+            )
+
+    console.print()
+
+    if not tool_updates and not force:
+        console.print("[green]✓[/green] All tools are up to date!")
         return
 
-    if update_info.has_update:
-        console.print(
-            f"[cyan]Update available:[/cyan] {update_info.current_version} → {update_info.latest_version}"
-        )
+    if not check:
+        for tool, update_info in tool_updates:
+            if update_info.has_update:
+                console.print(
+                    f"[cyan]Update available for {tool.display_name}:[/cyan] "
+                    f"{update_info.current_version} → {update_info.latest_version}"
+                )
 
     if check:
-        if update_info.has_update:
+        if tool_updates:
             console.print("\nRun [bold]ai-rules upgrade[/bold] to install")
         return
 
     if not force:
-        if not Confirm.ask("\nInstall update?", default=True):
+        if len(tool_updates) == 1:
+            prompt = f"\nInstall {tool_updates[0][0].display_name} update?"
+        else:
+            prompt = f"\nInstall {len(tool_updates)} updates?"
+        if not Confirm.ask(prompt, default=True):
             console.print("[yellow]Cancelled.[/yellow]")
             return
 
-    with console.status("Upgrading..."):
-        try:
-            success, message, was_upgraded = perform_pypi_update("ai-agent-rules")
-        except Exception as e:
-            console.print(f"\n[red]Error:[/red] Upgrade failed: {e}")
-            sys.exit(1)
-
-    if success:
-        console.print("\n[green]✓[/green] Upgrade successful!")
-
-        if (was_upgraded or force) and not skip_install:
+    ai_rules_upgraded = False
+    for tool, _ in tool_updates:
+        with console.status(f"Upgrading {tool.display_name}..."):
             try:
-                import subprocess
-
-                try:
-                    repo_root = get_repo_root()
-                except Exception:
-                    console.print(
-                        "\n[dim]Not in ai-rules repository - skipping install[/dim]"
-                    )
-                    console.print(
-                        "[dim]Run 'ai-rules install --rebuild-cache' from repo to update[/dim]"
-                    )
-                    console.print(
-                        "[dim]Restart your terminal if the command doesn't work[/dim]"
-                    )
-                    return
-
+                success, msg, was_upgraded = perform_pypi_update(tool.package_name)
+            except Exception as e:
                 console.print(
-                    "\n[dim]Running 'ai-rules install --rebuild-cache'...[/dim]"
+                    f"\n[red]Error:[/red] {tool.display_name} upgrade failed: {e}"
                 )
+                continue
 
-                result = subprocess.run(
-                    ["ai-rules", "install", "--rebuild-cache"],
-                    capture_output=False,
-                    text=True,
-                    cwd=str(repo_root),
-                    timeout=30,
+        if success:
+            console.print(f"[green]✓[/green] {tool.display_name} upgrade successful!")
+            if tool.tool_id == "ai-rules" and was_upgraded:
+                ai_rules_upgraded = True
+        else:
+            console.print(
+                f"[red]Error:[/red] {tool.display_name} upgrade failed: {msg}"
+            )
+
+    if ai_rules_upgraded and not skip_install:
+        try:
+            import subprocess
+
+            try:
+                repo_root = get_repo_root()
+            except Exception:
+                console.print(
+                    "\n[dim]Not in ai-rules repository - skipping install[/dim]"
                 )
+                console.print(
+                    "[dim]Run 'ai-rules install --rebuild-cache' from repo to update[/dim]"
+                )
+                console.print(
+                    "[dim]Restart your terminal if the command doesn't work[/dim]"
+                )
+                return
 
-                if result.returncode == 0:
-                    console.print("[dim]✓ Install completed successfully[/dim]")
-                else:
-                    console.print(
-                        f"[yellow]⚠[/yellow] Install failed with exit code {result.returncode}"
-                    )
-                    console.print(
-                        "[dim]Run 'ai-rules install --rebuild-cache' manually to retry[/dim]"
-                    )
-            except subprocess.TimeoutExpired:
-                console.print("[yellow]⚠[/yellow] Install timed out after 30 seconds")
+            console.print("\n[dim]Running 'ai-rules install --rebuild-cache'...[/dim]")
+
+            result = subprocess.run(
+                ["ai-rules", "install", "--rebuild-cache"],
+                capture_output=False,
+                text=True,
+                cwd=str(repo_root),
+                timeout=30,
+            )
+
+            if result.returncode == 0:
+                console.print("[dim]✓ Install completed successfully[/dim]")
+            else:
+                console.print(
+                    f"[yellow]⚠[/yellow] Install failed with exit code {result.returncode}"
+                )
                 console.print(
                     "[dim]Run 'ai-rules install --rebuild-cache' manually to retry[/dim]"
                 )
-            except Exception as e:
-                console.print(f"[yellow]⚠[/yellow] Could not run install: {e}")
-                console.print(
-                    "[dim]Run 'ai-rules install --rebuild-cache' manually[/dim]"
-                )
+        except subprocess.TimeoutExpired:
+            console.print("[yellow]⚠[/yellow] Install timed out after 30 seconds")
+            console.print(
+                "[dim]Run 'ai-rules install --rebuild-cache' manually to retry[/dim]"
+            )
+        except Exception as e:
+            console.print(f"[yellow]⚠[/yellow] Could not run install: {e}")
+            console.print("[dim]Run 'ai-rules install --rebuild-cache' manually[/dim]")
 
         console.print("[dim]Restart your terminal if the command doesn't work[/dim]")
-    else:
-        console.print(f"\n[red]Error:[/red] {message}")
-        sys.exit(1)
 
 
 @main.command()
