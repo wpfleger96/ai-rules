@@ -1,7 +1,20 @@
 # CHANGELOG
 
 
+## v0.7.0 (2025-12-03)
+
+### Features
+
+- Auto update statusline script
+  ([`fbb4688`](https://github.com/wpfleger96/ai-rules/commit/fbb468850ac943ba37e6a1f162e4278632933f8e))
+
+
 ## v0.6.0 (2025-12-03)
+
+### Documentation
+
+- Update README
+  ([`a8b1815`](https://github.com/wpfleger96/ai-rules/commit/a8b18150468d16ddd6a22384125d443192db4655))
 
 ### Features
 
