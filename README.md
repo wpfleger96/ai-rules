@@ -36,6 +36,7 @@ uvx --from ai-agent-rules ai-rules setup
 This will:
 1. Install AI agent configuration symlinks
 2. Make `ai-rules` available system-wide
+3. Auto-install optional tools (claude-code-statusline)
 
 After setup, you can run `ai-rules` from any directory.
 
@@ -76,13 +77,13 @@ ai-rules setup                      # One-time setup: install symlinks + make av
 ai-rules upgrade                    # Upgrade to latest version
 ai-rules upgrade --check            # Check for updates without installing
 
-ai-rules install                    # Install all agent configs
+ai-rules install                    # Install all agent configs + optional tools
 ai-rules install --agents claude    # Install specific agents
 ai-rules install --dry-run          # Preview changes
 ai-rules install --force            # Skip confirmations
 ai-rules install --rebuild-cache    # Rebuild merged settings cache
 
-ai-rules status                     # Check symlink status (✓✗⚠○)
+ai-rules status                     # Check symlink status + optional tools (✓✗⚠○)
 ai-rules diff                       # Show config differences
 ai-rules validate                   # Verify source files exist
 ai-rules update                     # Re-sync after adding files
@@ -217,6 +218,20 @@ config/
 └── goose/
     └── config.yaml        # → ~/.config/goose/config.yaml
 ```
+
+## Optional Tools
+
+AI Rules automatically installs optional tools that enhance functionality:
+
+- **claude-code-statusline** - Custom status line for Claude Code showing token usage, git info, time, and workspace details
+
+These tools are installed automatically during `setup` and `install` commands. Check installation status:
+
+```bash
+ai-rules status  # Shows Optional Tools section
+```
+
+If a tool fails to install, ai-rules continues normally (fail-open behavior).
 
 ## Extending
 
