@@ -39,13 +39,16 @@ def get_tool_config_dir(package_name: str = "ai-agent-rules") -> Path:
     )
 
 
-def is_uv_available() -> bool:
-    """Check if uv is available in PATH.
+def is_command_available(command: str) -> bool:
+    """Check if a command is available in PATH.
+
+    Args:
+        command: Command name to check
 
     Returns:
-        True if uv is available, False otherwise
+        True if command is available, False otherwise
     """
-    return shutil.which("uv") is not None
+    return shutil.which(command) is not None
 
 
 def install_tool(
@@ -63,7 +66,7 @@ def install_tool(
     Returns:
         Tuple of (success, message)
     """
-    if not is_uv_available():
+    if not is_command_available("uv"):
         return False, UV_NOT_FOUND_ERROR
 
     cmd = ["uv", "tool", "install", package_name]
@@ -105,7 +108,7 @@ def uninstall_tool(package_name: str = "ai-agent-rules") -> tuple[bool, str]:
     Returns:
         Tuple of (success, message)
     """
-    if not is_uv_available():
+    if not is_command_available("uv"):
         return False, UV_NOT_FOUND_ERROR
 
     cmd = ["uv", "tool", "uninstall", package_name]
@@ -131,3 +134,25 @@ def uninstall_tool(package_name: str = "ai-agent-rules") -> tuple[bool, str]:
         return False, "Uninstallation timed out after 30 seconds"
     except Exception as e:
         return False, f"Unexpected error: {e}"
+
+
+def ensure_statusline_installed(dry_run: bool = False) -> str:
+    """Install claude-code-statusline if not already present. Fails open.
+
+    Args:
+        dry_run: If True, skip installation
+
+    Returns:
+        Status: "already_installed", "installed", "failed", or "skipped"
+    """
+    if is_command_available("claude-statusline"):
+        return "already_installed"
+
+    if dry_run:
+        return "skipped"
+
+    try:
+        success, _ = install_tool("claude-code-statusline", force=False, dry_run=False)
+        return "installed" if success else "failed"
+    except Exception:
+        return "failed"

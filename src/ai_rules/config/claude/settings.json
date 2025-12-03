@@ -103,7 +103,7 @@
   "hooks": {},
   "statusLine": {
     "type": "command",
-    "command": "sh -c 'cd ~/Development/Personal/claude-code-status-line && uv run --no-config claude-statusline'"
+    "command": "claude-statusline"
   },
   "alwaysThinkingEnabled": true
 }

@@ -156,7 +156,7 @@ def detect_old_config_symlinks() -> list[tuple[Path, Path]]:
             try:
                 target = os.readlink(str(base_path))
                 if any(pattern in str(target) for pattern in old_patterns):
-                    if not Path(target).exists():
+                    if not base_path.resolve().exists():
                         broken_symlinks.append((base_path, Path(target)))
             except (OSError, ValueError):
                 pass
@@ -167,7 +167,7 @@ def detect_old_config_symlinks() -> list[tuple[Path, Path]]:
                     try:
                         target = os.readlink(str(item))
                         if any(pattern in str(target) for pattern in old_patterns):
-                            if not Path(target).exists():
+                            if not item.resolve().exists():
                                 broken_symlinks.append((item, Path(target)))
                     except (OSError, ValueError):
                         pass
@@ -499,7 +499,19 @@ def setup(ctx: click.Context, force: bool, dry_run: bool, skip_symlinks: bool) -
     Example:
         uvx ai-agent-rules setup
     """
-    from ai_rules.bootstrap import get_tool_config_dir, install_tool
+    from ai_rules.bootstrap import (
+        ensure_statusline_installed,
+        get_tool_config_dir,
+        install_tool,
+    )
+
+    statusline_result = ensure_statusline_installed(dry_run=dry_run)
+    if statusline_result == "installed":
+        console.print("[green]✓[/green] Installed claude-statusline\n")
+    elif statusline_result == "failed":
+        console.print(
+            "[yellow]⚠[/yellow] Failed to install claude-statusline (continuing anyway)\n"
+        )
 
     console.print("[bold cyan]Step 1/2: Install ai-rules system-wide[/bold cyan]")
     console.print("This allows you to run 'ai-rules' from any directory.\n")
@@ -593,6 +605,16 @@ def install(
     config_dir_override: str | None = None,
 ) -> None:
     """Install AI agent configs via symlinks."""
+    from ai_rules.bootstrap import ensure_statusline_installed
+
+    statusline_result = ensure_statusline_installed(dry_run=dry_run)
+    if statusline_result == "installed":
+        console.print("[green]✓[/green] Installed claude-statusline\n")
+    elif statusline_result == "failed":
+        console.print(
+            "[yellow]⚠[/yellow] Failed to install claude-statusline (continuing anyway)\n"
+        )
+
     if config_dir_override:
         config_dir = Path(config_dir_override)
         if not config_dir.exists():
@@ -923,6 +945,18 @@ def status(agents: str | None) -> None:
 
     console.print()
 
+    console.print("[bold cyan]Optional Tools[/bold cyan]\n")
+    from ai_rules.bootstrap import is_command_available
+
+    statusline_missing = False
+    if is_command_available("claude-statusline"):
+        console.print("  [green]✓[/green] claude-statusline installed")
+    else:
+        console.print("  [yellow]○[/yellow] claude-statusline not installed")
+        statusline_missing = True
+
+    console.print()
+
     if not all_correct:
         if cache_stale:
             console.print(
@@ -931,6 +965,11 @@ def status(agents: str | None) -> None:
         else:
             console.print("[yellow]💡 Run 'ai-rules install' to fix issues[/yellow]")
         sys.exit(1)
+    elif statusline_missing:
+        console.print("[green]All symlinks are correct![/green]")
+        console.print(
+            "[yellow]💡 Run 'ai-rules install' to install optional tools[/yellow]"
+        )
     else:
         console.print("[green]All symlinks are correct![/green]")
 

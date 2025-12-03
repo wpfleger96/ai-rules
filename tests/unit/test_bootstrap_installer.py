@@ -20,7 +20,7 @@ class TestInstallTool:
 
     def test_install_without_uv_returns_error(self, monkeypatch):
         monkeypatch.setattr(
-            "ai_rules.bootstrap.installer.is_uv_available", lambda: False
+            "ai_rules.bootstrap.installer.is_command_available", lambda cmd: False
         )
         success, message = install_tool("test-package")
         assert success is False
@@ -28,7 +28,7 @@ class TestInstallTool:
 
     def test_install_pypi_package(self, monkeypatch):
         monkeypatch.setattr(
-            "ai_rules.bootstrap.installer.is_uv_available", lambda: True
+            "ai_rules.bootstrap.installer.is_command_available", lambda cmd: True
         )
 
         captured_args = []
@@ -56,7 +56,7 @@ class TestInstallTool:
 
     def test_install_with_force_flag(self, monkeypatch):
         monkeypatch.setattr(
-            "ai_rules.bootstrap.installer.is_uv_available", lambda: True
+            "ai_rules.bootstrap.installer.is_command_available", lambda cmd: True
         )
 
         captured_args = []
@@ -80,7 +80,7 @@ class TestInstallTool:
 
     def test_install_dry_run(self, monkeypatch):
         monkeypatch.setattr(
-            "ai_rules.bootstrap.installer.is_uv_available", lambda: True
+            "ai_rules.bootstrap.installer.is_command_available", lambda cmd: True
         )
         success, message = install_tool("test-package", dry_run=True)
         assert success is True
@@ -98,7 +98,7 @@ class TestInstallTool:
     def test_install_handles_errors(self, monkeypatch, error_type, expected_message):
         """Test that install handles various error conditions gracefully."""
         monkeypatch.setattr(
-            "ai_rules.bootstrap.installer.is_uv_available", lambda: True
+            "ai_rules.bootstrap.installer.is_command_available", lambda cmd: True
         )
 
         def mock_run(*args, **kwargs):
@@ -136,7 +136,7 @@ class TestUninstallTool:
 
     def test_uninstall_without_uv_returns_error(self, monkeypatch):
         monkeypatch.setattr(
-            "ai_rules.bootstrap.installer.is_uv_available", lambda: False
+            "ai_rules.bootstrap.installer.is_command_available", lambda cmd: False
         )
         success, message = uninstall_tool("test-package")
         assert success is False
@@ -144,7 +144,7 @@ class TestUninstallTool:
 
     def test_uninstall_package(self, monkeypatch):
         monkeypatch.setattr(
-            "ai_rules.bootstrap.installer.is_uv_available", lambda: True
+            "ai_rules.bootstrap.installer.is_command_available", lambda cmd: True
         )
 
         captured_args = []
@@ -182,7 +182,7 @@ class TestUninstallTool:
     def test_uninstall_handles_errors(self, monkeypatch, error_type, expected_message):
         """Test that uninstall handles various error conditions gracefully."""
         monkeypatch.setattr(
-            "ai_rules.bootstrap.installer.is_uv_available", lambda: True
+            "ai_rules.bootstrap.installer.is_command_available", lambda cmd: True
         )
 
         def mock_run(*args, **kwargs):

@@ -57,7 +57,7 @@ where = ["src"]
 ai_rules = ["config/**/*"]
 
 [tool.semantic_release]
-version_toml = ["pyproject.toml:project.version:tf"]
+version_toml = ["pyproject.toml:project.version"]
 tag_format = "v{version}"
 branch = "main"
 commit_parser = "conventional"

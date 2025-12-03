@@ -140,7 +140,9 @@ class TestPerformPyPIUpdate:
 
     def test_perform_pypi_update_without_uv(self, monkeypatch):
         """Test that missing uv returns error."""
-        monkeypatch.setattr("ai_rules.bootstrap.updater.is_uv_available", lambda: False)
+        monkeypatch.setattr(
+            "ai_rules.bootstrap.updater.is_command_available", lambda cmd: False
+        )
         success, message, was_upgraded = perform_pypi_update("test-package")
         assert success is False
         assert message == UV_NOT_FOUND_ERROR
@@ -148,7 +150,9 @@ class TestPerformPyPIUpdate:
 
     def test_perform_pypi_update_success(self, monkeypatch):
         """Test successful upgrade."""
-        monkeypatch.setattr("ai_rules.bootstrap.updater.is_uv_available", lambda: True)
+        monkeypatch.setattr(
+            "ai_rules.bootstrap.updater.is_command_available", lambda cmd: True
+        )
 
         def mock_run(*args, **kwargs):
             class Result:
@@ -166,7 +170,9 @@ class TestPerformPyPIUpdate:
 
     def test_perform_pypi_update_failure(self, monkeypatch):
         """Test upgrade failure."""
-        monkeypatch.setattr("ai_rules.bootstrap.updater.is_uv_available", lambda: True)
+        monkeypatch.setattr(
+            "ai_rules.bootstrap.updater.is_command_available", lambda cmd: True
+        )
 
         def mock_run(*args, **kwargs):
             class Result:
@@ -184,7 +190,9 @@ class TestPerformPyPIUpdate:
 
     def test_perform_pypi_update_timeout(self, monkeypatch):
         """Test handling of timeout."""
-        monkeypatch.setattr("ai_rules.bootstrap.updater.is_uv_available", lambda: True)
+        monkeypatch.setattr(
+            "ai_rules.bootstrap.updater.is_command_available", lambda cmd: True
+        )
 
         def mock_run(*args, **kwargs):
             raise subprocess.TimeoutExpired("uv", 60)
@@ -197,7 +205,9 @@ class TestPerformPyPIUpdate:
 
     def test_perform_pypi_update_unexpected_exception(self, monkeypatch):
         """Test handling of unexpected errors."""
-        monkeypatch.setattr("ai_rules.bootstrap.updater.is_uv_available", lambda: True)
+        monkeypatch.setattr(
+            "ai_rules.bootstrap.updater.is_command_available", lambda cmd: True
+        )
 
         def mock_run(*args, **kwargs):
             raise ValueError("Unexpected error")
@@ -210,7 +220,9 @@ class TestPerformPyPIUpdate:
 
     def test_perform_pypi_update_empty_stderr(self, monkeypatch):
         """Test handling of failures with no stderr."""
-        monkeypatch.setattr("ai_rules.bootstrap.updater.is_uv_available", lambda: True)
+        monkeypatch.setattr(
+            "ai_rules.bootstrap.updater.is_command_available", lambda cmd: True
+        )
 
         def mock_run(*args, **kwargs):
             class Result:

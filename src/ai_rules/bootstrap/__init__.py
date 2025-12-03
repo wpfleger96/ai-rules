@@ -22,9 +22,10 @@ from .config import (
 )
 from .installer import (
     UV_NOT_FOUND_ERROR,
+    ensure_statusline_installed,
     get_tool_config_dir,
     install_tool,
-    is_uv_available,
+    is_command_available,
     uninstall_tool,
 )
 from .updater import UpdateInfo, check_pypi_updates, perform_pypi_update
@@ -35,9 +36,10 @@ __all__ = [
     "is_newer",
     "parse_version",
     "UV_NOT_FOUND_ERROR",
+    "ensure_statusline_installed",
     "get_tool_config_dir",
     "install_tool",
-    "is_uv_available",
+    "is_command_available",
     "uninstall_tool",
     "UpdateInfo",
     "check_pypi_updates",

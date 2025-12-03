@@ -7,7 +7,7 @@ import urllib.request
 
 from dataclasses import dataclass
 
-from .installer import UV_NOT_FOUND_ERROR, is_uv_available
+from .installer import UV_NOT_FOUND_ERROR, is_command_available
 from .version import is_newer
 
 
@@ -81,7 +81,7 @@ def perform_pypi_update(package_name: str) -> tuple[bool, str, bool]:
         - message: Human-readable status message
         - was_upgraded: True if package was actually upgraded (not already up-to-date)
     """
-    if not is_uv_available():
+    if not is_command_available("uv"):
         return False, UV_NOT_FOUND_ERROR, False
 
     try:
