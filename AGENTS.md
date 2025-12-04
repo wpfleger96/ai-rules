@@ -15,10 +15,10 @@ The name `ai-rules` was taken on PyPI, so the package is published as `ai-agent-
 ## Quick Commands
 
 ```bash
-uv sync                       # Install dependencies
+just setup                    # First-time setup (deps + git hooks)
+just                          # Lint, format, and type check
+just test                     # Run tests
 uv run ai-rules <cmd>         # Run CLI
-uv run pytest                 # Run tests (parallel)
-./script/code_quality.sh      # Lint, format, and type check (preferred)
 ```
 
 ## Project Structure
@@ -65,7 +65,7 @@ uv run pytest -m integration    # Integration only
 
 ## Code Style
 
-- Run `./script/code_quality.sh` before committing (handles linting, formatting, type checks)
+- Run `just` before committing (handles linting, formatting, type checks)
 - **pathlib.Path** not string paths
 - **rich.console** for CLI output
 - **Conventional commits** (`feat:`, `fix:`, `chore:`)

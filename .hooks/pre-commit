@@ -2,6 +2,21 @@
 
 set -euo pipefail
 
-export RUN_TESTS=1
+STAGED_FILES=$(git diff --cached --name-only --diff-filter=ACMR 2>/dev/null || true)
 
-./script/code_quality.sh
+just sync
+just type-check
+just lint
+just format
+
+# Re-stage any files modified by lint/format
+if [ -n "$STAGED_FILES" ]; then
+    echo "$STAGED_FILES" | while IFS= read -r file; do
+        if [ -n "$file" ] && [ -f "$file" ] && ! git diff --quiet -- "$file" 2>/dev/null; then
+            echo "Re-staging formatted/linted file: $file"
+            git add "$file"
+        fi
+    done
+fi
+
+just test

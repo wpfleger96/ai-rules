@@ -254,23 +254,73 @@ If a tool fails to install, ai-rules continues normally (fail-open behavior).
 
 ## Development
 
+### Quick Start with Just
+
+This project uses [just](https://github.com/casey/just) for task automation.
+
+**Install just**:
+```bash
+# macOS
+brew install just
+
+# Linux
+cargo install just
+# or: sudo apt install just (Ubuntu 23.04+)
+
+# Windows
+choco install just
+```
+
+**Common commands**:
+```bash
+just              # Run quick quality checks (sync, type-check, lint-check, format-check)
+just --list       # List all available recipes
+
+# Setup
+just setup        # First-time setup: sync deps + install git hooks
+just sync         # Sync dependencies only
+
+# Code Quality
+just check        # Quick quality checks (no tests)
+just check-all    # All checks including tests
+just lint         # Fix linting issues
+just format       # Auto-format code
+just type-check   # Run mypy type checking
+
+# Testing
+just test         # Run all tests (default config)
+just test-unit    # Unit tests only
+just test-integration  # Integration tests only
+just test-cov     # Tests with coverage report
+
+# Benchmarking
+just benchmark-save     # Run and save baseline
+just benchmark-compare  # Compare against baseline
+just benchmark-record   # Compare and save
+just benchmark-list     # List saved benchmarks
+just benchmark-clean    # Remove all benchmarks
+
+# Build
+just build        # Build package
+just rebuild      # Clean and build
+```
+
 ### Running Tests
 The test suite includes both unit tests and integration tests.
 
-The pytest-cov args are optional, use them to include a test coverage report in the output. To run all tests:
-
+Using just (recommended):
 ```bash
-uv run pytest [--cov=src --cov-report=term-missing]
+just test         # Run all tests with default config
+just test-unit    # Only unit tests
+just test-integration  # Only integration tests
+just test-cov     # Tests with coverage report
 ```
 
-To only run unit tests:
+Using uv directly:
 ```bash
-uv run pytest -m unit
-```
-
-To only run integration tests:
-```bash
-uv run pytest -m integration
+uv run pytest [--cov=src --cov-report=term-missing]  # All tests
+uv run pytest -m unit      # Unit tests only
+uv run pytest -m integration  # Integration tests only
 ```
 
 ## Troubleshooting
