@@ -12,6 +12,9 @@ jobs:
   release:
     name: Release
     runs-on: ubuntu-latest
+    concurrency:
+      group: release
+      cancel-in-progress: false
     if: github.event.workflow_run.conclusion == 'success'
 
     steps:
