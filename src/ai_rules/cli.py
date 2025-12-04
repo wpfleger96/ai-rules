@@ -386,8 +386,45 @@ def _check_pending_updates() -> None:
         pass
 
 
+def version_callback(ctx: click.Context, param: click.Parameter, value: bool) -> None:
+    """Custom version callback that also checks for updates.
+
+    Args:
+        ctx: Click context
+        param: Click parameter
+        value: Whether --version flag was provided
+    """
+    if not value or ctx.resilient_parsing:
+        return
+
+    console.print(f"ai-rules, version {__version__}")
+
+    try:
+        from ai_rules.bootstrap import check_tool_updates, get_tool_by_id
+
+        tool = get_tool_by_id("ai-rules")
+        if tool:
+            update_info = check_tool_updates(tool, timeout=3)
+            if update_info and update_info.has_update:
+                console.print(
+                    f"\n[cyan]Update available:[/cyan] {update_info.current_version} → {update_info.latest_version}"
+                )
+                console.print("[dim]Run 'ai-rules upgrade' to install[/dim]")
+    except Exception:
+        pass
+
+    ctx.exit()
+
+
 @click.group()
-@click.version_option(version=__version__)
+@click.option(
+    "--version",
+    is_flag=True,
+    callback=version_callback,
+    expose_value=False,
+    is_eager=True,
+    help="Show version and check for updates",
+)
 def main() -> None:
     """AI Rules - Manage user-level AI agent configurations."""
     import threading

@@ -19,7 +19,7 @@ class AutoUpdateConfig:
     """Configuration for automatic update checks."""
 
     enabled: bool = True
-    frequency: str = "weekly"  # daily, weekly, never
+    frequency: str = "daily"  # daily, weekly, never
     last_check: str | None = None  # ISO format timestamp
     notify_only: bool = False
 

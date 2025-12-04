@@ -98,7 +98,7 @@ class TestLoadAutoUpdateConfig:
 
         config = load_auto_update_config()
         assert config.enabled is True
-        assert config.frequency == "weekly"
+        assert config.frequency == "daily"
         assert config.last_check is None
         assert config.notify_only is False
 

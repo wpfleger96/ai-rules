@@ -27,12 +27,15 @@ class UpdateInfo:
     source: str  # "pypi"
 
 
-def check_pypi_updates(package_name: str, current_version: str) -> UpdateInfo:
+def check_pypi_updates(
+    package_name: str, current_version: str, timeout: int = 10
+) -> UpdateInfo:
     """Check PyPI for newer version.
 
     Args:
         package_name: Package name on PyPI
         current_version: Currently installed version
+        timeout: Request timeout in seconds (default: 10)
 
     Returns:
         UpdateInfo with update status
@@ -52,7 +55,7 @@ def check_pypi_updates(package_name: str, current_version: str) -> UpdateInfo:
         req = urllib.request.Request(url)
         req.add_header("User-Agent", f"{package_name}/{current_version}")
 
-        with urllib.request.urlopen(req, timeout=10) as response:
+        with urllib.request.urlopen(req, timeout=timeout) as response:
             data = json.loads(response.read().decode())
 
         latest_version = data["info"]["version"]
@@ -177,11 +180,12 @@ UPDATABLE_TOOLS: list[ToolSpec] = [
 ]
 
 
-def check_tool_updates(tool: ToolSpec) -> UpdateInfo | None:
+def check_tool_updates(tool: ToolSpec, timeout: int = 10) -> UpdateInfo | None:
     """Check for updates for any tool.
 
     Args:
         tool: Tool specification
+        timeout: Request timeout in seconds (default: 10)
 
     Returns:
         UpdateInfo if tool is installed and update check succeeds, None otherwise
@@ -193,7 +197,7 @@ def check_tool_updates(tool: ToolSpec) -> UpdateInfo | None:
     if current is None:
         return None
 
-    return check_pypi_updates(tool.package_name, current)
+    return check_pypi_updates(tool.package_name, current, timeout)
 
 
 def get_tool_by_id(tool_id: str) -> ToolSpec | None:
