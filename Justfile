@@ -8,14 +8,6 @@ default: sync type-check lint-check format-check
 sync:
     uv sync
 
-install-hooks:
-    @echo "Installing git hooks..."
-    git config --local core.hooksPath .hooks
-    @echo "Git hooks installed successfully"
-
-setup: sync install-hooks
-    @echo "Development environment setup complete"
-
 # Code Quality - Check variants
 type-check:
     uv run mypy .
