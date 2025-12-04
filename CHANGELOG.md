@@ -1,6 +1,14 @@
 # CHANGELOG
 
 
+## v0.9.0 (2025-12-04)
+
+### Features
+
+- Use shell registry for supported shells
+  ([`623e375`](https://github.com/wpfleger96/ai-rules/commit/623e37544b15dd333baca55dc665d13d53fa8325))
+
+
 ## v0.8.1 (2025-12-04)
 
 ### Bug Fixes
