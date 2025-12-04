@@ -12,6 +12,7 @@ from typing import Any
 
 import click
 
+from click.shell_completion import CompletionItem
 from rich.console import Console
 from rich.prompt import Confirm
 from rich.table import Table
@@ -114,6 +115,18 @@ def get_agents(config_dir: Path, config: Config) -> list[Agent]:
         GooseAgent(config_dir, config),
         SharedAgent(config_dir, config),
     ]
+
+
+def complete_agents(
+    ctx: click.Context, param: click.Parameter, incomplete: str
+) -> list[CompletionItem]:
+    """Dynamically discover and complete agent names for --agents option."""
+    config_dir = get_config_dir()
+    config = Config.load()
+    agents = get_agents(config_dir, config)
+    agent_ids = [agent.agent_id for agent in agents]
+
+    return [CompletionItem(aid) for aid in agent_ids if aid.startswith(incomplete)]
 
 
 def detect_old_config_symlinks() -> list[tuple[Path, Path]]:
@@ -506,8 +519,15 @@ def install_user_symlinks(
 @click.option("--force", is_flag=True, help="Skip confirmation prompts")
 @click.option("--dry-run", is_flag=True, help="Show what would be done")
 @click.option("--skip-symlinks", is_flag=True, help="Skip symlink installation step")
+@click.option("--skip-completions", is_flag=True, help="Skip shell completion setup")
 @click.pass_context
-def setup(ctx: click.Context, force: bool, dry_run: bool, skip_symlinks: bool) -> None:
+def setup(
+    ctx: click.Context,
+    force: bool,
+    dry_run: bool,
+    skip_symlinks: bool,
+    skip_completions: bool,
+) -> None:
     """One-time setup: install symlinks and make ai-rules available system-wide.
 
     This is the recommended way to install ai-rules for first-time users.
@@ -529,7 +549,7 @@ def setup(ctx: click.Context, force: bool, dry_run: bool, skip_symlinks: bool) -
             "[yellow]⚠[/yellow] Failed to install claude-statusline (continuing anyway)\n"
         )
 
-    console.print("[bold cyan]Step 1/2: Install ai-rules system-wide[/bold cyan]")
+    console.print("[bold cyan]Step 1/3: Install ai-rules system-wide[/bold cyan]")
     console.print("This allows you to run 'ai-rules' from any directory.\n")
 
     if not force:
@@ -560,7 +580,7 @@ def setup(ctx: click.Context, force: bool, dry_run: bool, skip_symlinks: bool) -
 
     if not skip_symlinks:
         console.print(
-            "[bold cyan]Step 2/2: Installing AI agent configuration symlinks[/bold cyan]\n"
+            "[bold cyan]Step 2/3: Installing AI agent configuration symlinks[/bold cyan]\n"
         )
 
         config_dir_override = None
@@ -591,6 +611,24 @@ def setup(ctx: click.Context, force: bool, dry_run: bool, skip_symlinks: bool) -
             config_dir_override=config_dir_override,
         )
 
+    if not skip_completions:
+        from ai_rules.completions import detect_shell, install_completion
+
+        console.print("\n[bold cyan]Step 3/3: Shell completion setup[/bold cyan]\n")
+
+        shell = detect_shell()
+        if shell in ("bash", "zsh"):
+            if force or Confirm.ask(f"Install {shell} tab completion?", default=True):
+                success, msg = install_completion(shell, dry_run=dry_run)
+                if success:
+                    console.print(f"[green]✓[/green] {msg}")
+                else:
+                    console.print(f"[yellow]⚠[/yellow] {msg}")
+        else:
+            console.print(
+                "[dim]Shell completion not available for your shell (only bash/zsh supported)[/dim]"
+            )
+
     console.print("\n[green]✓ Setup complete![/green]")
     console.print("You can now run [bold]ai-rules[/bold] from anywhere.")
 
@@ -606,6 +644,7 @@ def setup(ctx: click.Context, force: bool, dry_run: bool, skip_symlinks: bool) -
 @click.option(
     "--agents",
     help="Comma-separated list of agents to install (default: all)",
+    shell_complete=complete_agents,
 )
 @click.option(
     "--config-dir",
@@ -834,6 +873,7 @@ def _display_symlink_status(
 @click.option(
     "--agents",
     help="Comma-separated list of agents to check (default: all)",
+    shell_complete=complete_agents,
 )
 def status(agents: str | None) -> None:
     """Check status of AI agent symlinks."""
@@ -995,6 +1035,7 @@ def status(agents: str | None) -> None:
 @click.option(
     "--agents",
     help="Comma-separated list of agents to uninstall (default: all)",
+    shell_complete=complete_agents,
 )
 def uninstall(force: bool, agents: str | None) -> None:
     """Remove AI agent symlinks."""
@@ -1266,6 +1307,7 @@ def upgrade(check: bool, force: bool, skip_install: bool, only: str | None) -> N
 @click.option(
     "--agents",
     help="Comma-separated list of agents to validate (default: all)",
+    shell_complete=complete_agents,
 )
 def validate(agents: str | None) -> None:
     """Validate configuration and source files."""
@@ -1326,6 +1368,7 @@ def validate(agents: str | None) -> None:
 @click.option(
     "--agents",
     help="Comma-separated list of agents to check (default: all)",
+    shell_complete=complete_agents,
 )
 def diff(agents: str | None) -> None:
     """Show differences between repo configs and installed symlinks."""
@@ -1986,6 +2029,108 @@ def config_init() -> None:
         )
     else:
         console.print("[dim]Configuration not saved[/dim]")
+
+
+@main.group()
+def completions() -> None:
+    """Manage shell tab completion."""
+    pass
+
+
+@completions.command(name="bash")
+def completions_bash() -> None:
+    """Output bash completion script for manual installation."""
+    from ai_rules.completions import generate_completion_script
+
+    try:
+        script = generate_completion_script("bash")
+        console.print(script)
+        console.print(
+            "\n[dim]To install: Add the above to your ~/.bashrc or run:[/dim]"
+        )
+        console.print("[dim]  ai-rules completions install[/dim]")
+    except Exception as e:
+        console.print(f"[red]Error generating completion script:[/red] {e}")
+        sys.exit(1)
+
+
+@completions.command(name="zsh")
+def completions_zsh() -> None:
+    """Output zsh completion script for manual installation."""
+    from ai_rules.completions import generate_completion_script
+
+    try:
+        script = generate_completion_script("zsh")
+        console.print(script)
+        console.print("\n[dim]To install: Add the above to your ~/.zshrc or run:[/dim]")
+        console.print("[dim]  ai-rules completions install[/dim]")
+    except Exception as e:
+        console.print(f"[red]Error generating completion script:[/red] {e}")
+        sys.exit(1)
+
+
+@completions.command(name="install")
+@click.option(
+    "--shell",
+    type=click.Choice(["bash", "zsh"], case_sensitive=False),
+    help="Shell type (auto-detected if not specified)",
+)
+def completions_install(shell: str | None) -> None:
+    """Install shell completion to config file."""
+    from ai_rules.completions import detect_shell, install_completion
+
+    if shell is None:
+        shell = detect_shell()
+        if shell is None:
+            console.print(
+                "[red]Error:[/red] Could not detect shell. Please specify with --shell"
+            )
+            sys.exit(1)
+        console.print(f"[dim]Detected shell:[/dim] {shell}")
+
+    success, message = install_completion(shell, dry_run=False)
+
+    if success:
+        console.print(f"[green]✓[/green] {message}")
+    else:
+        console.print(f"[red]Error:[/red] {message}")
+        sys.exit(1)
+
+
+@completions.command(name="uninstall")
+@click.option(
+    "--shell",
+    type=click.Choice(["bash", "zsh"], case_sensitive=False),
+    help="Shell type (auto-detected if not specified)",
+)
+def completions_uninstall(shell: str | None) -> None:
+    """Remove shell completion from config file."""
+    from ai_rules.completions import (
+        detect_shell,
+        find_config_file,
+        uninstall_completion,
+    )
+
+    if shell is None:
+        shell = detect_shell()
+        if shell is None:
+            console.print(
+                "[red]Error:[/red] Could not detect shell. Please specify with --shell"
+            )
+            sys.exit(1)
+
+    config_path = find_config_file(shell)
+    if config_path is None:
+        console.print(f"[red]Error:[/red] No {shell} config file found")
+        sys.exit(1)
+
+    success, message = uninstall_completion(config_path)
+
+    if success:
+        console.print(f"[green]✓[/green] {message}")
+    else:
+        console.print(f"[red]Error:[/red] {message}")
+        sys.exit(1)
 
 
 if __name__ == "__main__":
