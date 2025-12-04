@@ -613,12 +613,16 @@ def setup(
         )
 
     if not skip_completions:
-        from ai_rules.completions import detect_shell, install_completion
+        from ai_rules.completions import (
+            detect_shell,
+            get_supported_shells,
+            install_completion,
+        )
 
         console.print("\n[bold cyan]Step 3/3: Shell completion setup[/bold cyan]\n")
 
         shell = detect_shell()
-        if shell in ("bash", "zsh"):
+        if shell:
             if force or Confirm.ask(f"Install {shell} tab completion?", default=True):
                 success, msg = install_completion(shell, dry_run=dry_run)
                 if success:
@@ -626,8 +630,9 @@ def setup(
                 else:
                     console.print(f"[yellow]⚠[/yellow] {msg}")
         else:
+            supported = ", ".join(get_supported_shells())
             console.print(
-                "[dim]Shell completion not available for your shell (only bash/zsh supported)[/dim]"
+                f"[dim]Shell completion not available for your shell (only {supported} supported)[/dim]"
             )
 
     console.print("\n[green]✓ Setup complete![/green]")
@@ -823,7 +828,7 @@ def install(
         from ai_rules.completions import detect_shell, install_completion
 
         shell = detect_shell()
-        if shell in ("bash", "zsh"):
+        if shell:
             success, msg = install_completion(shell, dry_run=dry_run)
             if success and not dry_run:
                 console.print(f"\n[dim]✓ {msg}[/dim]")
@@ -1033,11 +1038,12 @@ def status(agents: str | None) -> None:
     from ai_rules.completions import (
         detect_shell,
         find_config_file,
+        get_supported_shells,
         is_completion_installed,
     )
 
     shell = detect_shell()
-    if shell in ("bash", "zsh"):
+    if shell:
         config_path = find_config_file(shell)
         if config_path and is_completion_installed(config_path):
             console.print(
@@ -1049,8 +1055,9 @@ def status(agents: str | None) -> None:
                 "(run: ai-rules completions install)"
             )
     else:
+        supported = ", ".join(get_supported_shells())
         console.print(
-            "  [dim]Shell completion not available for your shell (only bash/zsh supported)[/dim]"
+            f"  [dim]Shell completion not available for your shell (only {supported} supported)[/dim]"
         )
 
     console.print()
@@ -2086,6 +2093,11 @@ def completions() -> None:
     pass
 
 
+from ai_rules.completions import get_supported_shells
+
+_SUPPORTED_SHELLS = list(get_supported_shells())
+
+
 @completions.command(name="bash")
 def completions_bash() -> None:
     """Output bash completion script for manual installation."""
@@ -2121,7 +2133,7 @@ def completions_zsh() -> None:
 @completions.command(name="install")
 @click.option(
     "--shell",
-    type=click.Choice(["bash", "zsh"], case_sensitive=False),
+    type=click.Choice(_SUPPORTED_SHELLS, case_sensitive=False),
     help="Shell type (auto-detected if not specified)",
 )
 def completions_install(shell: str | None) -> None:
@@ -2149,7 +2161,7 @@ def completions_install(shell: str | None) -> None:
 @completions.command(name="uninstall")
 @click.option(
     "--shell",
-    type=click.Choice(["bash", "zsh"], case_sensitive=False),
+    type=click.Choice(_SUPPORTED_SHELLS, case_sensitive=False),
     help="Shell type (auto-detected if not specified)",
 )
 def completions_uninstall(shell: str | None) -> None:

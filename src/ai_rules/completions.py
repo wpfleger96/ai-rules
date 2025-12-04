@@ -2,38 +2,61 @@
 
 import os
 
+from dataclasses import dataclass
 from pathlib import Path
 
 COMPLETION_MARKER_START = "# ai-rules shell completion"
 COMPLETION_MARKER_END = "# End ai-rules shell completion"
 
 
+@dataclass
+class ShellConfig:
+    """Configuration for a supported shell."""
+
+    name: str
+    config_files: list[str]  # Relative to home, in priority order
+
+    def get_config_candidates(self) -> list[Path]:
+        """Get existing config file paths for this shell."""
+        home = Path.home()
+        return [home / cf for cf in self.config_files if (home / cf).exists()]
+
+
+SHELL_REGISTRY: dict[str, ShellConfig] = {
+    "bash": ShellConfig("bash", [".bashrc", ".bash_profile", ".profile"]),
+    "zsh": ShellConfig("zsh", [".zshrc", ".zprofile"]),
+}
+
+
+def get_supported_shells() -> tuple[str, ...]:
+    """Get tuple of supported shell names."""
+    return tuple(SHELL_REGISTRY.keys())
+
+
 def detect_shell() -> str | None:
     """Detect current shell from $SHELL environment variable.
 
     Returns:
-        Shell name ('bash' or 'zsh') if supported, None otherwise
+        Shell name if supported, None otherwise
     """
     shell_path = os.environ.get("SHELL", "")
     shell_name = Path(shell_path).name if shell_path else None
-    return shell_name if shell_name in ("bash", "zsh") else None
+    return shell_name if shell_name in SHELL_REGISTRY else None
 
 
 def get_shell_config_candidates(shell: str) -> list[Path]:
     """Return candidate config files for a shell, checking which exist.
 
     Args:
-        shell: Shell name ('bash' or 'zsh')
+        shell: Shell name (e.g., 'bash', 'zsh')
 
     Returns:
         List of config file paths that exist on the system
     """
-    home = Path.home()
-    candidates = {
-        "bash": [home / ".bashrc", home / ".bash_profile", home / ".profile"],
-        "zsh": [home / ".zshrc", home / ".zprofile"],
-    }
-    return [p for p in candidates.get(shell, []) if p.exists()]
+    shell_config = SHELL_REGISTRY.get(shell)
+    if shell_config is None:
+        return []
+    return shell_config.get_config_candidates()
 
 
 def find_config_file(shell: str) -> Path | None:
@@ -95,14 +118,15 @@ def install_completion(shell: str, dry_run: bool = False) -> tuple[bool, str]:
     """Install completion to shell config file.
 
     Args:
-        shell: Shell name ('bash' or 'zsh'), or None to auto-detect
+        shell: Shell name (e.g., 'bash', 'zsh')
         dry_run: If True, only show what would be done
 
     Returns:
         Tuple of (success: bool, message: str)
     """
-    if shell not in ("bash", "zsh"):
-        return False, f"Unsupported shell: {shell}"
+    if shell not in SHELL_REGISTRY:
+        supported = ", ".join(get_supported_shells())
+        return False, f"Unsupported shell: {shell}. Supported: {supported}"
 
     config_path = find_config_file(shell)
     if config_path is None:
