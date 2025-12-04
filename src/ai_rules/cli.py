@@ -1246,7 +1246,14 @@ def upgrade(check: bool, force: bool, skip_install: bool, only: str | None) -> N
                 continue
 
         if success:
-            console.print(f"[green]✓[/green] {tool.display_name} upgrade successful!")
+            if was_upgraded:
+                console.print(
+                    f"[green]✓[/green] {tool.display_name} upgraded successfully!"
+                )
+            else:
+                console.print(
+                    f"[green]✓[/green] {tool.display_name} is already up to date"
+                )
             if tool.tool_id == "ai-rules" and was_upgraded:
                 ai_rules_upgraded = True
         else:

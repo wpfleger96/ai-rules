@@ -8,6 +8,11 @@ import sys
 
 from pathlib import Path
 
+if sys.version_info >= (3, 11):
+    import tomllib
+else:
+    import tomli as tomllib
+
 UV_NOT_FOUND_ERROR = "uv not found in PATH. Install from https://docs.astral.sh/uv/"
 
 
@@ -38,6 +43,42 @@ def get_tool_config_dir(package_name: str = "ai-agent-rules") -> Path:
         / "ai_rules"
         / "config"
     )
+
+
+def get_tool_source(package_name: str) -> str | None:
+    """Detect how a uv tool was installed (PyPI vs local file).
+
+    Args:
+        package_name: Name of the uv tool package
+
+    Returns:
+        "pypi" if installed from PyPI (no path key in requirements)
+        "local" if installed from local file (has path key)
+        None if tool not installed or receipt file not found
+    """
+    data_home = os.environ.get("XDG_DATA_HOME", str(Path.home() / ".local" / "share"))
+    receipt_path = Path(data_home) / "uv" / "tools" / package_name / "uv-receipt.toml"
+
+    if not receipt_path.exists():
+        return None
+
+    try:
+        with open(receipt_path, "rb") as f:
+            receipt = tomllib.load(f)
+
+        requirements = receipt.get("tool", {}).get("requirements", [])
+        if not requirements:
+            return None
+
+        # Check first requirement for path key (indicates local install)
+        first_req = requirements[0]
+        if isinstance(first_req, dict) and "path" in first_req:
+            return "local"
+
+        return "pypi"
+
+    except (OSError, tomllib.TOMLDecodeError, KeyError, IndexError):
+        return None
 
 
 def is_command_available(command: str) -> bool:

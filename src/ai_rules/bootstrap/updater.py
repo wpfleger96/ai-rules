@@ -8,7 +8,12 @@ import urllib.request
 from collections.abc import Callable
 from dataclasses import dataclass
 
-from .installer import UV_NOT_FOUND_ERROR, get_tool_version, is_command_available
+from .installer import (
+    UV_NOT_FOUND_ERROR,
+    get_tool_source,
+    get_tool_version,
+    is_command_available,
+)
 from .version import get_package_version, is_newer
 
 
@@ -85,9 +90,16 @@ def perform_pypi_update(package_name: str) -> tuple[bool, str, bool]:
     if not is_command_available("uv"):
         return False, UV_NOT_FOUND_ERROR, False
 
+    source = get_tool_source(package_name)
+
+    if source == "local":
+        cmd = ["uv", "tool", "install", package_name, "--force"]
+    else:
+        cmd = ["uv", "tool", "upgrade", package_name]
+
     try:
         result = subprocess.run(
-            ["uv", "tool", "upgrade", package_name],
+            cmd,
             capture_output=True,
             text=True,
             timeout=60,
