@@ -1,6 +1,24 @@
 # CHANGELOG
 
 
+## v0.8.1 (2025-12-04)
+
+### Bug Fixes
+
+- Install should install completions
+  ([`6cbb669`](https://github.com/wpfleger96/ai-rules/commit/6cbb669a17121a7f9f1de076a9d11e4e254f3d2d))
+
+### Chores
+
+- Migrate repo to use Just
+  ([`b139720`](https://github.com/wpfleger96/ai-rules/commit/b139720729344e12ea1877fdfac4e5b74f5305fa))
+
+### Continuous Integration
+
+- Prevent race condition in release workflow
+  ([`9ee9827`](https://github.com/wpfleger96/ai-rules/commit/9ee982700ff78230726e715ae896c8c54e11d4e6))
+
+
 ## v0.8.0 (2025-12-04)
 
 ### Bug Fixes
