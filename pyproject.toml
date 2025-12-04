@@ -32,6 +32,7 @@ dependencies = [
     "pyyaml>=6.0",
     "rich>=13.0",
     "ruff>=0.14.3",
+    "tomli>=2.0.0; python_version<'3.11'",
 ]
 
 [project.urls]
@@ -92,7 +93,7 @@ explicit_package_bases = true
 strict = true
 
 [[tool.mypy.overrides]]
-module = ["yaml.*"]
+module = ["yaml.*", "tomli.*"]
 ignore_missing_imports = true  # Only for external libs without stubs
 
 [[tool.mypy.overrides]]

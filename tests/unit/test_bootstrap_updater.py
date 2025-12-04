@@ -237,3 +237,49 @@ class TestPerformPyPIUpdate:
         assert success is False
         assert "failed" in message.lower()
         assert was_upgraded is False
+
+    def test_local_installation_upgrades_successfully(self, monkeypatch):
+        """Test that tools installed from local files can be upgraded."""
+        monkeypatch.setattr(
+            "ai_rules.bootstrap.updater.is_command_available", lambda cmd: True
+        )
+        monkeypatch.setattr(
+            "ai_rules.bootstrap.updater.get_tool_source", lambda pkg: "local"
+        )
+
+        def mock_run(*args, **kwargs):
+            class Result:
+                returncode = 0
+                stderr = ""
+                stdout = "Successfully installed test-package 1.1.0"
+
+            return Result()
+
+        monkeypatch.setattr("ai_rules.bootstrap.updater.subprocess.run", mock_run)
+        success, message, was_upgraded = perform_pypi_update("test-package")
+
+        assert success is True
+        assert was_upgraded is True
+
+    def test_pypi_installation_upgrades_successfully(self, monkeypatch):
+        """Test that PyPI installations still upgrade correctly."""
+        monkeypatch.setattr(
+            "ai_rules.bootstrap.updater.is_command_available", lambda cmd: True
+        )
+        monkeypatch.setattr(
+            "ai_rules.bootstrap.updater.get_tool_source", lambda pkg: "pypi"
+        )
+
+        def mock_run(*args, **kwargs):
+            class Result:
+                returncode = 0
+                stderr = ""
+                stdout = "Upgraded test-package from 1.0.0 to 1.1.0"
+
+            return Result()
+
+        monkeypatch.setattr("ai_rules.bootstrap.updater.subprocess.run", mock_run)
+        success, message, was_upgraded = perform_pypi_update("test-package")
+
+        assert success is True
+        assert was_upgraded is True

@@ -8,6 +8,7 @@ import pytest
 from ai_rules.bootstrap.installer import (
     UV_NOT_FOUND_ERROR,
     get_tool_config_dir,
+    get_tool_source,
     install_tool,
     uninstall_tool,
 )
@@ -253,3 +254,41 @@ class TestGetToolConfigDir:
 
         assert "my-custom-package" in str(result)
         assert "ai_rules/config" in str(result)
+
+
+@pytest.mark.unit
+@pytest.mark.bootstrap
+class TestGetToolSource:
+    """Tests for get_tool_source function."""
+
+    def test_detects_local_installation(self, tmp_path, monkeypatch):
+        """Test that local file installations are detected."""
+        tools_dir = tmp_path / "uv" / "tools" / "test-package"
+        tools_dir.mkdir(parents=True)
+        receipt = tools_dir / "uv-receipt.toml"
+        receipt.write_text(
+            '[tool]\nrequirements = [{ name = "test-package", path = "/path/to/local.whl" }]\n'
+        )
+
+        monkeypatch.setenv("XDG_DATA_HOME", str(tmp_path))
+        result = get_tool_source("test-package")
+        assert result == "local"
+
+    def test_detects_pypi_installation(self, tmp_path, monkeypatch):
+        """Test that PyPI installations are detected."""
+        tools_dir = tmp_path / "uv" / "tools" / "test-package"
+        tools_dir.mkdir(parents=True)
+        receipt = tools_dir / "uv-receipt.toml"
+        receipt.write_text(
+            '[tool]\nrequirements = [{ name = "test-package", version = "1.0.0" }]\n'
+        )
+
+        monkeypatch.setenv("XDG_DATA_HOME", str(tmp_path))
+        result = get_tool_source("test-package")
+        assert result == "pypi"
+
+    def test_returns_none_when_not_installed(self, tmp_path, monkeypatch):
+        """Test that None is returned for tools that aren't installed."""
+        monkeypatch.setenv("XDG_DATA_HOME", str(tmp_path))
+        result = get_tool_source("nonexistent-package")
+        assert result is None
