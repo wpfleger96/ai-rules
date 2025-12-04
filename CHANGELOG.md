@@ -1,6 +1,19 @@
 # CHANGELOG
 
 
+## v0.9.2 (2025-12-04)
+
+### Bug Fixes
+
+- Update daily and force --version to bypass cache
+  ([`f2efa65`](https://github.com/wpfleger96/ai-rules/commit/f2efa653bfea854476c33e947078c1ade9d6e07d))
+
+### Chores
+
+- Add editor config and fix precommit bug
+  ([`35693f0`](https://github.com/wpfleger96/ai-rules/commit/35693f0f986bc272ff90875ddf9424ab1c9d820e))
+
+
 ## v0.9.1 (2025-12-04)
 
 ### Bug Fixes
