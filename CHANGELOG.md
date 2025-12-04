@@ -1,6 +1,14 @@
 # CHANGELOG
 
 
+## v0.9.1 (2025-12-04)
+
+### Bug Fixes
+
+- Shell lint cmds
+  ([`447463e`](https://github.com/wpfleger96/ai-rules/commit/447463e4da6b35c840e3201ec3c8a3d968e865b3))
+
+
 ## v0.9.0 (2025-12-04)
 
 ### Features
