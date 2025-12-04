@@ -1,6 +1,19 @@
 # CHANGELOG
 
 
+## v0.8.0 (2025-12-04)
+
+### Bug Fixes
+
+- Detect and handle local wheel installations in upgrade command
+  ([`41a9797`](https://github.com/wpfleger96/ai-rules/commit/41a97973cd7385c2124e1bffc309e8ec288380ea))
+
+### Features
+
+- Add shell completions support with auto install
+  ([`f8c3bd8`](https://github.com/wpfleger96/ai-rules/commit/f8c3bd84a479d89aa4e83accf8d5bb64f856ef61))
+
+
 ## v0.7.0 (2025-12-03)
 
 ### Features
