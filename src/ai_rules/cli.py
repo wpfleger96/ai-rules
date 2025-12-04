@@ -608,6 +608,7 @@ def setup(
             dry_run=dry_run,
             rebuild_cache=False,
             agents=None,
+            skip_completions=True,
             config_dir_override=config_dir_override,
         )
 
@@ -647,6 +648,11 @@ def setup(
     shell_complete=complete_agents,
 )
 @click.option(
+    "--skip-completions",
+    is_flag=True,
+    help="Skip shell completion installation",
+)
+@click.option(
     "--config-dir",
     "config_dir_override",
     hidden=True,
@@ -657,6 +663,7 @@ def install(
     dry_run: bool,
     rebuild_cache: bool,
     agents: str | None,
+    skip_completions: bool,
     config_dir_override: str | None = None,
 ) -> None:
     """Install AI agent configs via symlinks."""
@@ -811,6 +818,15 @@ def install(
                     pass
         except RuntimeError:
             pass
+
+    if not skip_completions:
+        from ai_rules.completions import detect_shell, install_completion
+
+        shell = detect_shell()
+        if shell in ("bash", "zsh"):
+            success, msg = install_completion(shell, dry_run=dry_run)
+            if success and not dry_run:
+                console.print(f"\n[dim]✓ {msg}[/dim]")
 
     format_summary(
         dry_run,
@@ -1010,6 +1026,32 @@ def status(agents: str | None) -> None:
     else:
         console.print("  [yellow]○[/yellow] claude-statusline not installed")
         statusline_missing = True
+
+    console.print()
+
+    console.print("[bold cyan]Shell Completions[/bold cyan]\n")
+    from ai_rules.completions import (
+        detect_shell,
+        find_config_file,
+        is_completion_installed,
+    )
+
+    shell = detect_shell()
+    if shell in ("bash", "zsh"):
+        config_path = find_config_file(shell)
+        if config_path and is_completion_installed(config_path):
+            console.print(
+                f"  [green]✓[/green] {shell} completion installed ({config_path})"
+            )
+        else:
+            console.print(
+                f"  [yellow]○[/yellow] {shell} completion not installed "
+                "(run: ai-rules completions install)"
+            )
+    else:
+        console.print(
+            "  [dim]Shell completion not available for your shell (only bash/zsh supported)[/dim]"
+        )
 
     console.print()
 
