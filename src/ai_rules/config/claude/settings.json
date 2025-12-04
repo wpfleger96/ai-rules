@@ -71,6 +71,8 @@
       "Bash(readlink:*)",
       "Bash(rg:*)",
       "Bash(sed:*)",
+      "Bash(shellcheck:*)",
+      "Bash(shfmt:*)",
       "Bash(sort:*)",
       "Bash(stat:*)",
       "Bash(tail:*)",

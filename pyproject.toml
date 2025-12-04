@@ -24,7 +24,6 @@ classifiers = [
 dependencies = [
     "click>=8.1",
     "hatch>=1.15.1",
-    "just>=0.8.165",
     "packaging>=21.0",
     "pytest>=8.4.2",
     "pytest-benchmark>=4.0.0",
@@ -85,6 +84,7 @@ lines-between-types = 1
 [[tool.uv.index]]
 name = "pypi"
 url = "https://pypi.org/simple"
+default = true
 
 [tool.mypy]
 python_version = "3.13"
