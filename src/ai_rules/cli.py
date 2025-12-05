@@ -256,6 +256,42 @@ def format_summary(
         console.print(f"  [red]{errors} error(s)[/red]")
 
 
+def _display_pending_symlink_changes(agents: list[Agent]) -> bool:
+    """Display what symlink changes will be made.
+
+    Returns:
+        True if changes were found and displayed, False otherwise
+    """
+    from ai_rules.symlinks import check_symlink
+
+    found_changes = False
+
+    for agent in agents:
+        agent_changes = []
+        for target, source in agent.get_filtered_symlinks():
+            target_path = target.expanduser()
+            status_code, _ = check_symlink(target_path, source)
+
+            if status_code == "correct":
+                continue
+
+            found_changes = True
+            if status_code == "missing":
+                agent_changes.append(("create", target_path, source))
+            elif status_code in ["wrong_target", "broken", "not_symlink"]:
+                agent_changes.append(("update", target_path, source))
+
+        if agent_changes:
+            console.print(f"\n[bold]{agent.name}[/bold]")
+            for action, target, source in agent_changes:
+                if action == "create":
+                    console.print(f"  [green]+[/green] Create: {target} → {source}")
+                else:
+                    console.print(f"  [yellow]↻[/yellow] Update: {target} → {source}")
+
+    return found_changes
+
+
 def check_first_run(agents: list[Agent], force: bool) -> bool:
     """Check if this is the first run and prompt user if needed.
 
@@ -778,9 +814,20 @@ def install(
             console.print("\n[green]✓ Migration complete[/green]")
             console.print("[dim]New symlinks will be created below...[/dim]\n")
 
-    if not dry_run and not check_first_run(selected_agents, force):
-        console.print("[yellow]Installation cancelled[/yellow]")
-        sys.exit(0)
+    if not dry_run and not force:
+        has_changes = _display_pending_symlink_changes(selected_agents)
+
+        if has_changes:
+            console.print()
+            if not Confirm.ask("Apply these changes?", default=True):
+                console.print("[yellow]Installation cancelled[/yellow]")
+                sys.exit(0)
+        elif not has_changes:
+            if not check_first_run(selected_agents, force):
+                console.print("[yellow]Installation cancelled[/yellow]")
+                sys.exit(0)
+    elif not dry_run and force:
+        pass
 
     if dry_run:
         console.print("[bold]Dry run mode - no changes will be made[/bold]\n")
