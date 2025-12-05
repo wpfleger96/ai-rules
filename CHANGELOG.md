@@ -1,12 +1,18 @@
 # CHANGELOG
 
 
+## v0.9.4 (2025-12-05)
+
+
 ## v0.9.3 (2025-12-05)
 
 ### Bug Fixes
 
 - Cc perm
   ([`490ad02`](https://github.com/wpfleger96/ai-rules/commit/490ad0204b37f1553852f6dd96aceaf8556ce8c8))
+
+- Llms are dumb
+  ([`fd29f5b`](https://github.com/wpfleger96/ai-rules/commit/fd29f5b9e9c62064737853e29da7cb3e4fe63d74))
 
 
 ## v0.9.2 (2025-12-04)
