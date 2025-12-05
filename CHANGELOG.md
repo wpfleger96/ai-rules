@@ -1,7 +1,15 @@
 # CHANGELOG
 
 
+## v0.9.5 (2025-12-05)
+
+
 ## v0.9.4 (2025-12-05)
+
+### Bug Fixes
+
+- Show diff during install
+  ([`ea63ecc`](https://github.com/wpfleger96/ai-rules/commit/ea63ecc5996a2994325c3cdc6cc741441c4421ec))
 
 
 ## v0.9.3 (2025-12-05)
