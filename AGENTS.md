@@ -69,6 +69,7 @@ uv run pytest -m integration    # Integration only
 - **pathlib.Path** not string paths
 - **rich.console** for CLI output
 - **Conventional commits** (`feat:`, `fix:`, `chore:`)
+- **ripgrep over grep** - Use `rg` instead of `grep -rn` for searching (10-100x faster on large codebases)
 
 ## Common Gotchas
 
