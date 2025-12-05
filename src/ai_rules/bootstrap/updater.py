@@ -1,6 +1,7 @@
 """Update checking and application utilities."""
 
 import json
+import logging
 import re
 import subprocess
 import urllib.request
@@ -10,11 +11,14 @@ from dataclasses import dataclass
 
 from .installer import (
     UV_NOT_FOUND_ERROR,
+    _validate_package_name,
     get_tool_source,
     get_tool_version,
     is_command_available,
 )
 from .version import get_package_version, is_newer
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -68,8 +72,8 @@ def check_pypi_updates(
             source="pypi",
         )
 
-    except (urllib.error.URLError, json.JSONDecodeError, KeyError, Exception):
-        # Return no update on error
+    except (urllib.error.URLError, json.JSONDecodeError, KeyError) as e:
+        logger.debug(f"PyPI check failed: {e}")
         return UpdateInfo(
             has_update=False,
             current_version=current_version,
@@ -90,6 +94,9 @@ def perform_pypi_update(package_name: str) -> tuple[bool, str, bool]:
         - message: Human-readable status message
         - was_upgraded: True if package was actually upgraded (not already up-to-date)
     """
+    if not _validate_package_name(package_name):
+        return False, f"Invalid package name: {package_name}", False
+
     if not is_command_available("uv"):
         return False, UV_NOT_FOUND_ERROR, False
 

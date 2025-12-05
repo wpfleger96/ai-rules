@@ -16,6 +16,11 @@ else:
 UV_NOT_FOUND_ERROR = "uv not found in PATH. Install from https://docs.astral.sh/uv/"
 
 
+def _validate_package_name(package_name: str) -> bool:
+    """Validate package name matches PyPI naming convention (PEP 508)."""
+    return bool(re.match(r"^[A-Za-z0-9]([A-Za-z0-9._-]*[A-Za-z0-9])?$", package_name))
+
+
 def get_tool_config_dir(package_name: str = "ai-agent-rules") -> Path:
     """Get config directory for a uv tool installation.
 
@@ -108,6 +113,9 @@ def install_tool(
     Returns:
         Tuple of (success, message)
     """
+    if not _validate_package_name(package_name):
+        return False, f"Invalid package name: {package_name}"
+
     if not is_command_available("uv"):
         return False, UV_NOT_FOUND_ERROR
 
@@ -150,6 +158,9 @@ def uninstall_tool(package_name: str = "ai-agent-rules") -> tuple[bool, str]:
     Returns:
         Tuple of (success, message)
     """
+    if not _validate_package_name(package_name):
+        return False, f"Invalid package name: {package_name}"
+
     if not is_command_available("uv"):
         return False, UV_NOT_FOUND_ERROR
 
@@ -187,6 +198,9 @@ def get_tool_version(tool_name: str) -> str | None:
     Returns:
         Version string (e.g., "0.7.1") or None if not installed
     """
+    if not _validate_package_name(tool_name):
+        return None
+
     if not is_command_available("uv"):
         return None
 

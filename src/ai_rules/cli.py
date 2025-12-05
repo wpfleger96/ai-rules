@@ -1,5 +1,6 @@
 """Command-line interface for ai-rules."""
 
+import logging
 import os
 import subprocess
 import sys
@@ -11,6 +12,8 @@ from pathlib import Path
 from typing import Any
 
 import click
+
+logger = logging.getLogger(__name__)
 
 from click.shell_completion import CompletionItem
 from rich.console import Console
@@ -347,8 +350,8 @@ def _background_update_check() -> None:
         config = load_auto_update_config()
         config.last_check = datetime.now().isoformat()
         save_auto_update_config(config)
-    except Exception:
-        pass
+    except Exception as e:
+        logger.debug(f"Background update check failed: {e}")
 
 
 def _is_interactive_context() -> bool:
@@ -418,8 +421,8 @@ def _check_pending_updates() -> None:
             console.print("[dim]Run 'ai-rules upgrade' to install[/dim]")
 
         clear_all_pending_updates()
-    except Exception:
-        pass
+    except Exception as e:
+        logger.debug(f"Failed to check pending updates: {e}")
 
 
 def version_callback(ctx: click.Context, param: click.Parameter, value: bool) -> None:
@@ -446,8 +449,8 @@ def version_callback(ctx: click.Context, param: click.Parameter, value: bool) ->
                     f"\n[cyan]Update available:[/cyan] {update_info.current_version} → {update_info.latest_version}"
                 )
                 console.print("[dim]Run 'ai-rules upgrade' to install[/dim]")
-    except Exception:
-        pass
+    except Exception as e:
+        logger.debug(f"Failed to check for updates in version callback: {e}")
 
     ctx.exit()
 

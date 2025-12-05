@@ -1,17 +1,25 @@
 """Auto-update configuration management."""
 
+import dataclasses
 import json
 import logging
+import re
 
 from dataclasses import asdict, dataclass
 from datetime import datetime, timedelta
 from pathlib import Path
+from typing import Any
 
 import yaml
 
 from .updater import UpdateInfo
 
 logger = logging.getLogger(__name__)
+
+
+def _validate_tool_id(tool_id: str) -> bool:
+    """Validate tool_id contains only safe characters."""
+    return bool(re.match(r"^[a-z0-9][a-z0-9_-]*$", tool_id))
 
 
 @dataclass
@@ -22,6 +30,13 @@ class AutoUpdateConfig:
     frequency: str = "daily"  # daily, weekly, never
     last_check: str | None = None  # ISO format timestamp
     notify_only: bool = False
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> "AutoUpdateConfig":
+        """Create from dict, using dataclass defaults for missing keys."""
+        fields = {f.name for f in dataclasses.fields(cls)}
+        kwargs = {k: v for k, v in data.items() if k in fields}
+        return cls(**kwargs)
 
 
 def get_config_dir(package_name: str = "ai-rules") -> Path:
@@ -67,13 +82,7 @@ def load_auto_update_config(package_name: str = "ai-rules") -> AutoUpdateConfig:
     try:
         with open(config_path) as f:
             data = yaml.safe_load(f) or {}
-
-        return AutoUpdateConfig(
-            enabled=data.get("enabled", True),
-            frequency=data.get("frequency", "weekly"),
-            last_check=data.get("last_check"),
-            notify_only=data.get("notify_only", False),
-        )
+        return AutoUpdateConfig.from_dict(data)
     except (yaml.YAMLError, OSError):
         return AutoUpdateConfig()
 
@@ -137,7 +146,13 @@ def get_pending_update_path(tool_id: str = "ai-rules") -> Path:
 
     Returns:
         Path to pending update JSON file
+
+    Raises:
+        ValueError: If tool_id contains invalid characters
     """
+    if not _validate_tool_id(tool_id):
+        raise ValueError(f"Invalid tool_id: {tool_id}")
+
     if tool_id == "ai-rules":
         filename = "pending_update.json"
     else:
@@ -155,6 +170,9 @@ def load_pending_update(tool_id: str = "ai-rules") -> UpdateInfo | None:
     Returns:
         UpdateInfo if available, None otherwise
     """
+    if not _validate_tool_id(tool_id):
+        return None
+
     pending_path = get_pending_update_path(tool_id)
 
     if not pending_path.exists():
@@ -181,6 +199,9 @@ def save_pending_update(info: UpdateInfo, tool_id: str = "ai-rules") -> None:
         info: Update information to save
         tool_id: Tool identifier (e.g., "ai-rules", "statusline")
     """
+    if not _validate_tool_id(tool_id):
+        return
+
     pending_path = get_pending_update_path(tool_id)
 
     try:
@@ -204,6 +225,9 @@ def clear_pending_update(tool_id: str = "ai-rules") -> None:
     Args:
         tool_id: Tool identifier (e.g., "ai-rules", "statusline")
     """
+    if not _validate_tool_id(tool_id):
+        return
+
     pending_path = get_pending_update_path(tool_id)
 
     try:
