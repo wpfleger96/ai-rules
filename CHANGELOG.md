@@ -1,7 +1,25 @@
 # CHANGELOG
 
 
+## v0.10.0 (2025-12-06)
+
+### Chores
+
+- More code quality
+  ([`f639929`](https://github.com/wpfleger96/ai-rules/commit/f639929156d919ea582140e151ee6114002d485a))
+
+### Features
+
+- Opus avaliable on pro now
+  ([`c7e9969`](https://github.com/wpfleger96/ai-rules/commit/c7e9969fadc997bfa7fe70d463fcd0deafd92197))
+
+
 ## v0.9.5 (2025-12-05)
+
+### Chores
+
+- Code quality
+  ([`9793b0e`](https://github.com/wpfleger96/ai-rules/commit/9793b0e22ab752bdf4deddfe9e2f083aff63d13a))
 
 
 ## v0.9.4 (2025-12-05)
