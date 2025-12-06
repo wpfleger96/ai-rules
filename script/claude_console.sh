@@ -8,4 +8,4 @@ if [[ -z "${ANTHROPIC_CONSOLE_KEY:-}" ]]; then
     exit 1
 fi
 
-ANTHROPIC_API_KEY="$ANTHROPIC_CONSOLE_KEY" exec claude --model opusplan "$@"
+ANTHROPIC_API_KEY="$ANTHROPIC_CONSOLE_KEY" exec claude "$@"
