@@ -16,7 +16,7 @@ from .installer import (
     get_tool_version,
     is_command_available,
 )
-from .version import get_package_version, is_newer
+from .version import is_newer
 
 logger = logging.getLogger(__name__)
 
@@ -176,7 +176,7 @@ UPDATABLE_TOOLS: list[ToolSpec] = [
         tool_id="ai-rules",
         package_name="ai-agent-rules",
         display_name="ai-rules",
-        get_version=lambda: get_package_version("ai-agent-rules"),
+        get_version=lambda: get_tool_version("ai-agent-rules"),
         is_installed=lambda: True,  # Always installed (it's us)
     ),
     ToolSpec(
