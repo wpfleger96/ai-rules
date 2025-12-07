@@ -20,6 +20,8 @@ from .version import get_package_version, is_newer
 
 logger = logging.getLogger(__name__)
 
+PYPI_JSON_API_URL = "https://pypi.org/pypi/{package_name}/json"
+
 
 @dataclass
 class UpdateInfo:
@@ -54,7 +56,7 @@ def check_pypi_updates(
         )
 
     try:
-        url = f"https://pypi.org/pypi/{package_name}/json"
+        url = PYPI_JSON_API_URL.format(package_name=package_name)
 
         req = urllib.request.Request(url)
         req.add_header("User-Agent", f"{package_name}/{current_version}")
@@ -103,9 +105,9 @@ def perform_pypi_update(package_name: str) -> tuple[bool, str, bool]:
     source = get_tool_source(package_name)
 
     if source == "local":
-        cmd = ["uv", "tool", "install", package_name, "--force"]
+        cmd = ["uv", "tool", "install", package_name, "--force", "--no-cache"]
     else:
-        cmd = ["uv", "tool", "upgrade", package_name]
+        cmd = ["uv", "tool", "upgrade", package_name, "--no-cache"]
 
     try:
         result = subprocess.run(

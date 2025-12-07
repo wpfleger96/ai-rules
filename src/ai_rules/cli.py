@@ -1371,7 +1371,7 @@ def upgrade(check: bool, force: bool, skip_install: bool, only: str | None) -> N
             return
 
     ai_rules_upgraded = False
-    for tool, _ in tool_updates:
+    for tool, update_info in tool_updates:
         with console.status(f"Upgrading {tool.display_name}..."):
             try:
                 success, msg, was_upgraded = perform_pypi_update(tool.package_name)
@@ -1382,16 +1382,23 @@ def upgrade(check: bool, force: bool, skip_install: bool, only: str | None) -> N
                 continue
 
         if success:
-            if was_upgraded:
+            new_version = tool.get_version()
+            if new_version == update_info.latest_version:
                 console.print(
-                    f"[green]✓[/green] {tool.display_name} upgraded successfully!"
+                    f"[green]✓[/green] {tool.display_name} upgraded to {new_version}"
+                )
+                if tool.tool_id == "ai-rules":
+                    ai_rules_upgraded = True
+            elif new_version == update_info.current_version:
+                console.print(
+                    f"[yellow]⚠[/yellow] {tool.display_name} upgrade reported success but version unchanged ({new_version})"
                 )
             else:
                 console.print(
-                    f"[green]✓[/green] {tool.display_name} is already up to date"
+                    f"[green]✓[/green] {tool.display_name} upgraded to {new_version}"
                 )
-            if tool.tool_id == "ai-rules" and was_upgraded:
-                ai_rules_upgraded = True
+                if tool.tool_id == "ai-rules":
+                    ai_rules_upgraded = True
         else:
             console.print(
                 f"[red]Error:[/red] {tool.display_name} upgrade failed: {msg}"
