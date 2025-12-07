@@ -1,6 +1,19 @@
 # CHANGELOG
 
 
+## v0.10.1 (2025-12-07)
+
+### Bug Fixes
+
+- Flaky update behavior
+  ([`f894249`](https://github.com/wpfleger96/ai-rules/commit/f894249cf324fd6dfa86a6d99d6562386f1f9d85))
+
+### Chores
+
+- Update script
+  ([`8ae0008`](https://github.com/wpfleger96/ai-rules/commit/8ae00088ee8e4db9f07c7f4f101c214f425c79e1))
+
+
 ## v0.10.0 (2025-12-06)
 
 ### Chores
