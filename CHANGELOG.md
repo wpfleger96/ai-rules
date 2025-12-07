@@ -1,6 +1,14 @@
 # CHANGELOG
 
 
+## v0.10.2 (2025-12-07)
+
+### Bug Fixes
+
+- Still flaky
+  ([`3a6a1ce`](https://github.com/wpfleger96/ai-rules/commit/3a6a1ce4b4b70e49cf0968b42ca78c90c2109ef5))
+
+
 ## v0.10.1 (2025-12-07)
 
 ### Bug Fixes
