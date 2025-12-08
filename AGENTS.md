@@ -18,8 +18,20 @@ The name `ai-rules` was taken on PyPI, so the package is published as `ai-agent-
 just setup                    # First-time setup (deps + git hooks)
 just                          # Lint, format, and type check
 just test                     # Run tests
+just test-fast                # Tests without performance benchmarks (parallel)
+just benchmark-compare        # Run and compare performance benchmarks
 uv run ai-rules <cmd>         # Run CLI
 ```
+
+## Tech Stack
+
+- Python 3.10+ with strict type checking (mypy)
+- **uv** for dependency management
+- **Click** for CLI framework
+- **Rich** for console output
+- **pytest** with xdist for parallel testing
+- **just** for task automation
+- **ruff** for linting and formatting
 
 ## Project Structure
 
@@ -30,6 +42,7 @@ src/ai_rules/
 ├── display.py          # Rich console display utilities
 ├── symlinks.py         # Symlink operations with backups
 ├── mcp.py              # MCP server management
+├── completions.py      # Shell completion management
 ├── agents/
 │   ├── base.py         # Abstract Agent base class
 │   ├── claude.py       # ClaudeAgent
@@ -37,7 +50,7 @@ src/ai_rules/
 │   └── shared.py       # SharedAgent
 ├── bootstrap/          # Auto-update utilities
 └── config/             # Source configs (bundled in package)
-    ├── claude/         # Claude Code configs
+    ├── claude/         # Claude Code configs (settings, agents, commands, skills)
     └── goose/          # Goose configs
 tests/
 ├── unit/               # No filesystem side effects
@@ -61,6 +74,10 @@ All AI tools inherit from `Agent` (`agents/base.py`). To add a new tool:
 ```bash
 uv run pytest -m unit           # Unit only
 uv run pytest -m integration    # Integration only
+uv run pytest -m agents         # Agent tests only
+uv run pytest -m bootstrap      # Bootstrap tests only
+uv run pytest -m completions    # Shell completion tests only
+uv run pytest -m config         # Config tests only
 ```
 
 ## Code Style
@@ -81,6 +98,22 @@ uv run pytest -m integration    # Integration only
    monkeypatch.setattr(Path, "home", staticmethod(lambda: home))
    ```
 
+## Slash Commands & Skills
+
+**Slash commands** (config/claude/commands/):
+- `/test-cleanup` - Audit and optimize test suite
+- `/comment-cleanup` - Remove unnecessary comments
+- `/continue-crash` - Resume after crash
+- `/pr-creator` - Create PRs with comprehensive descriptions
+- `/dev-docs` - Create/update PLAN.md
+- `/update-docs` - Update docs from commits
+- `/annotate-changelog` - Annotate changelog entries
+- `/agents-md` - Create/update AGENTS.md
+
+**Skills** (config/claude/skills/):
+- `doc-writer` - Expert guidance for technical documentation
+- `prompt-engineer` - Prompt crafting and LLM optimization
+
 ## Key Files by Task
 
 | Task | Files |
@@ -88,5 +121,7 @@ uv run pytest -m integration    # Integration only
 | Add CLI command | `cli.py` |
 | Config loading | `config.py` |
 | Symlink behavior | `symlinks.py` |
+| Shell completions | `completions.py` |
 | New agent | `agents/base.py`, `agents/<new>.py`, `cli.py` |
 | MCP management | `mcp.py`, `agents/claude.py` |
+| Auto-update/upgrade | `bootstrap/updater.py`, `bootstrap/installer.py` |
