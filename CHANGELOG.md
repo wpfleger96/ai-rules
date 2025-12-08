@@ -1,6 +1,14 @@
 # CHANGELOG
 
 
+## v0.11.0 (2025-12-08)
+
+### Features
+
+- Doc-writer skill and annotate-changelog slash command
+  ([`0faaf4e`](https://github.com/wpfleger96/ai-rules/commit/0faaf4ece829a80fb646b5815b77398e48a45c86))
+
+
 ## v0.10.3 (2025-12-07)
 
 ### Bug Fixes
