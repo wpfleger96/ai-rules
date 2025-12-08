@@ -1,6 +1,6 @@
 ---
 description: Creates GitHub pull requests with comprehensive descriptions by analyzing git history and code changes
-allowed-tools: Bash, Read, AskUserQuestion, Grep
+allowed-tools: AskUserQuestion, Bash, Glob, Grep, Read, TodoWrite
 model: sonnet
 ---
 

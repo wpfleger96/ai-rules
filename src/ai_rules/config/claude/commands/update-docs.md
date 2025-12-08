@@ -1,6 +1,6 @@
 ---
 description: Automatically updates project documentation by analyzing recent commits and detecting changes
-allowed-tools: Bash, Read, Glob, Grep, Edit, TodoWrite
+allowed-tools: AskUserQuestion, Bash, Edit, Glob, Grep, Read, TodoWrite, Write
 model: sonnet
 ---
 

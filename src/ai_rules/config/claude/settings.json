@@ -91,6 +91,7 @@
       "Read(*)",
       "Search(*)",
       "Skill(prompt-engineer)",
+      "Skill(doc-writer)",
       "WebFetch",
       "WebSearch"
     ],

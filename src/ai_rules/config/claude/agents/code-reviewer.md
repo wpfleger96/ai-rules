@@ -1,7 +1,7 @@
 ---
 name: code-reviewer
 description: use this agent to proactively review code changes before they are deployed
-tools: Bash, Read, AskUserQuestion, Grep, Glob, TodoWrite
+tools: AskUserQuestion, Bash, Glob, Grep, Read, TodoWrite
 model: inherit
 ---
 

@@ -1,6 +1,6 @@
 ---
 description: Creates or updates PLAN.md based on session - auto-detects create vs update mode
-allowed-tools: Bash, Read, Write, Edit, Grep, Glob, TodoWrite
+allowed-tools: AskUserQuestion, Bash, Edit, Glob, Grep, Read, TodoWrite, Write
 model: sonnet
 ---
 
