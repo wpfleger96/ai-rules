@@ -1,6 +1,14 @@
 # CHANGELOG
 
 
+## v0.12.1 (2025-12-08)
+
+### Bug Fixes
+
+- Respect global package index settings
+  ([`beb0fd4`](https://github.com/wpfleger96/ai-rules/commit/beb0fd4814007ca8d4df10c327c7a6c2059038a8))
+
+
 ## v0.12.0 (2025-12-08)
 
 ### Features
