@@ -1,85 +1,86 @@
 """Tests for update checking and application utilities."""
 
-import json
 import subprocess
-import urllib.error
 
 import pytest
 
 from ai_rules.bootstrap.installer import UV_NOT_FOUND_ERROR
-from ai_rules.bootstrap.updater import check_pypi_updates, perform_pypi_update
+from ai_rules.bootstrap.updater import check_index_updates, perform_pypi_update
 
 
 @pytest.mark.unit
 @pytest.mark.bootstrap
-class TestCheckPyPIUpdates:
-    """Tests for check_pypi_updates function."""
+class TestCheckIndexUpdates:
+    """Tests for check_index_updates function."""
 
-    def test_check_pypi_no_update(self, monkeypatch):
+    def test_check_index_no_update(self, monkeypatch):
         """Test when current version is up to date."""
-
-        class MockResponse:
-            def read(self):
-                return json.dumps({"info": {"version": "1.0.0"}}).encode()
-
-            def __enter__(self):
-                return self
-
-            def __exit__(self, *args):
-                pass
-
         monkeypatch.setattr(
-            "ai_rules.bootstrap.updater.urllib.request.urlopen",
-            lambda req, timeout: MockResponse(),
+            "ai_rules.bootstrap.updater.is_command_available", lambda cmd: True
         )
 
-        update_info = check_pypi_updates("test-package", "1.0.0")
+        def mock_run(*args, **kwargs):
+            class Result:
+                returncode = 0
+                stdout = "test-package (1.0.0)\nAvailable versions: 1.0.0"
+                stderr = ""
+
+            return Result()
+
+        monkeypatch.setattr("ai_rules.bootstrap.updater.subprocess.run", mock_run)
+
+        update_info = check_index_updates("test-package", "1.0.0")
         assert update_info.has_update is False
         assert update_info.current_version == "1.0.0"
         assert update_info.latest_version == "1.0.0"
 
-    def test_check_pypi_has_update(self, monkeypatch):
+    def test_check_index_has_update(self, monkeypatch):
         """Test when newer version is available."""
-
-        class MockResponse:
-            def read(self):
-                return json.dumps({"info": {"version": "1.1.0"}}).encode()
-
-            def __enter__(self):
-                return self
-
-            def __exit__(self, *args):
-                pass
-
         monkeypatch.setattr(
-            "ai_rules.bootstrap.updater.urllib.request.urlopen",
-            lambda req, timeout: MockResponse(),
+            "ai_rules.bootstrap.updater.is_command_available", lambda cmd: True
         )
 
-        update_info = check_pypi_updates("test-package", "1.0.0")
+        def mock_run(*args, **kwargs):
+            class Result:
+                returncode = 0
+                stdout = "test-package (1.1.0)\nAvailable versions: 1.1.0, 1.0.0"
+                stderr = ""
+
+            return Result()
+
+        monkeypatch.setattr("ai_rules.bootstrap.updater.subprocess.run", mock_run)
+
+        update_info = check_index_updates("test-package", "1.0.0")
         assert update_info.has_update is True
         assert update_info.current_version == "1.0.0"
         assert update_info.latest_version == "1.1.0"
-        assert update_info.source == "pypi"
+        assert update_info.source == "index"
 
-    def test_check_pypi_network_error(self, monkeypatch):
-        """Test handling of network errors."""
-
-        def mock_urlopen(*args, **kwargs):
-            raise urllib.error.URLError("Network error")
-
+    def test_check_index_command_error(self, monkeypatch):
+        """Test handling of command errors."""
         monkeypatch.setattr(
-            "ai_rules.bootstrap.updater.urllib.request.urlopen", mock_urlopen
+            "ai_rules.bootstrap.updater.is_command_available", lambda cmd: True
         )
-        update_info = check_pypi_updates("test-package", "1.0.0")
+
+        def mock_run(*args, **kwargs):
+            class Result:
+                returncode = 1
+                stdout = ""
+                stderr = "Network error"
+
+            return Result()
+
+        monkeypatch.setattr("ai_rules.bootstrap.updater.subprocess.run", mock_run)
+
+        update_info = check_index_updates("test-package", "1.0.0")
         assert update_info.has_update is False
 
-    def test_check_pypi_invalid_package_name(self):
+    def test_check_index_invalid_package_name(self):
         """Test that invalid package names are rejected."""
-        update_info = check_pypi_updates("../../../etc/passwd", "1.0.0")
+        update_info = check_index_updates("../../../etc/passwd", "1.0.0")
         assert update_info.has_update is False
 
-    def test_check_pypi_package_name_validation(self):
+    def test_check_index_package_name_validation(self):
         """Test package name validation with various invalid names."""
         invalid_names = [
             "package with spaces",
@@ -89,47 +90,48 @@ class TestCheckPyPIUpdates:
             "",
         ]
         for name in invalid_names:
-            update_info = check_pypi_updates(name, "1.0.0")
+            update_info = check_index_updates(name, "1.0.0")
             assert update_info.has_update is False, f"Should reject: {name}"
 
-    def test_check_pypi_handles_missing_version_key(self, monkeypatch):
-        """Test handling of malformed PyPI response."""
-
-        class MockResponse:
-            def read(self):
-                return json.dumps({"info": {}}).encode()
-
-            def __enter__(self):
-                return self
-
-            def __exit__(self, *args):
-                pass
-
+    def test_check_index_without_uvx(self, monkeypatch):
+        """Test that missing uvx returns no update."""
         monkeypatch.setattr(
-            "ai_rules.bootstrap.updater.urllib.request.urlopen",
-            lambda req, timeout: MockResponse(),
+            "ai_rules.bootstrap.updater.is_command_available", lambda cmd: False
         )
-        update_info = check_pypi_updates("test-package", "1.0.0")
+        update_info = check_index_updates("test-package", "1.0.0")
         assert update_info.has_update is False
 
-    def test_check_pypi_handles_json_decode_error(self, monkeypatch):
-        """Test handling of invalid JSON response."""
-
-        class MockResponse:
-            def read(self):
-                return b"invalid json"
-
-            def __enter__(self):
-                return self
-
-            def __exit__(self, *args):
-                pass
-
+    def test_check_index_unparseable_output(self, monkeypatch):
+        """Test handling of unparseable output."""
         monkeypatch.setattr(
-            "ai_rules.bootstrap.updater.urllib.request.urlopen",
-            lambda req, timeout: MockResponse(),
+            "ai_rules.bootstrap.updater.is_command_available", lambda cmd: True
         )
-        update_info = check_pypi_updates("test-package", "1.0.0")
+
+        def mock_run(*args, **kwargs):
+            class Result:
+                returncode = 0
+                stdout = "Unexpected output format"
+                stderr = ""
+
+            return Result()
+
+        monkeypatch.setattr("ai_rules.bootstrap.updater.subprocess.run", mock_run)
+
+        update_info = check_index_updates("test-package", "1.0.0")
+        assert update_info.has_update is False
+
+    def test_check_index_timeout(self, monkeypatch):
+        """Test handling of timeout."""
+        monkeypatch.setattr(
+            "ai_rules.bootstrap.updater.is_command_available", lambda cmd: True
+        )
+
+        def mock_run(*args, **kwargs):
+            raise subprocess.TimeoutExpired("uvx", 30)
+
+        monkeypatch.setattr("ai_rules.bootstrap.updater.subprocess.run", mock_run)
+
+        update_info = check_index_updates("test-package", "1.0.0")
         assert update_info.has_update is False
 
 

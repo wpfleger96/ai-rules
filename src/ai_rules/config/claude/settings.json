@@ -87,6 +87,7 @@
       "Bash(tree:*)",
       "Bash(unzip:*)",
       "Bash(uv:*)",
+      "Bash(uvx:*)",
       "Bash(wc:*)",
       "Read(*)",
       "Search(*)",

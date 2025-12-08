@@ -1,10 +1,8 @@
 """Update checking and application utilities."""
 
-import json
 import logging
 import re
 import subprocess
-import urllib.request
 
 from collections.abc import Callable
 from dataclasses import dataclass
@@ -20,8 +18,6 @@ from .version import is_newer
 
 logger = logging.getLogger(__name__)
 
-PYPI_JSON_API_URL = "https://pypi.org/pypi/{package_name}/json"
-
 
 @dataclass
 class UpdateInfo:
@@ -30,57 +26,92 @@ class UpdateInfo:
     has_update: bool
     current_version: str
     latest_version: str
-    source: str  # "pypi"
+    source: str
 
 
-def check_pypi_updates(
-    package_name: str, current_version: str, timeout: int = 10
+def check_index_updates(
+    package_name: str, current_version: str, timeout: int = 30
 ) -> UpdateInfo:
-    """Check PyPI for newer version.
+    """Check configured package index for newer version.
+
+    Uses `uvx pip index versions` to query the user's configured index,
+    which respects pip.conf and environment variables.
 
     Args:
-        package_name: Package name on PyPI
+        package_name: Package name to check
         current_version: Currently installed version
-        timeout: Request timeout in seconds (default: 10)
+        timeout: Request timeout in seconds (default: 30)
 
     Returns:
         UpdateInfo with update status
     """
-    # Validate package name (PEP 508 compliant)
-    if not re.match(r"^[A-Za-z0-9]([A-Za-z0-9._-]*[A-Za-z0-9])?$", package_name):
+    if not _validate_package_name(package_name):
         return UpdateInfo(
             has_update=False,
             current_version=current_version,
             latest_version=current_version,
-            source="pypi",
+            source="index",
+        )
+
+    if not is_command_available("uvx"):
+        return UpdateInfo(
+            has_update=False,
+            current_version=current_version,
+            latest_version=current_version,
+            source="index",
         )
 
     try:
-        url = PYPI_JSON_API_URL.format(package_name=package_name)
-
-        req = urllib.request.Request(url)
-        req.add_header("User-Agent", f"{package_name}/{current_version}")
-
-        with urllib.request.urlopen(req, timeout=timeout) as response:
-            data = json.loads(response.read().decode())
-
-        latest_version = data["info"]["version"]
-        has_update = is_newer(latest_version, current_version)
-
-        return UpdateInfo(
-            has_update=has_update,
-            current_version=current_version,
-            latest_version=latest_version,
-            source="pypi",
+        result = subprocess.run(
+            ["uvx", "--refresh", "pip", "index", "versions", package_name],
+            capture_output=True,
+            text=True,
+            timeout=timeout,
         )
 
-    except (urllib.error.URLError, json.JSONDecodeError, KeyError) as e:
-        logger.debug(f"PyPI check failed: {e}")
+        if result.returncode != 0:
+            logger.debug(f"uvx pip index versions failed: {result.stderr}")
+            return UpdateInfo(
+                has_update=False,
+                current_version=current_version,
+                latest_version=current_version,
+                source="index",
+            )
+
+        output = result.stdout.strip()
+        match = re.search(r"^\S+\s+\(([^)]+)\)", output)
+        if match:
+            latest_version = match.group(1)
+            has_update = is_newer(latest_version, current_version)
+            return UpdateInfo(
+                has_update=has_update,
+                current_version=current_version,
+                latest_version=latest_version,
+                source="index",
+            )
+
         return UpdateInfo(
             has_update=False,
             current_version=current_version,
             latest_version=current_version,
-            source="pypi",
+            source="index",
+        )
+
+    except subprocess.TimeoutExpired:
+        logger.debug("uvx pip index versions timed out")
+        return UpdateInfo(
+            has_update=False,
+            current_version=current_version,
+            latest_version=current_version,
+            source="index",
+        )
+    except Exception as e:
+        logger.debug(f"Index check failed: {e}")
+        return UpdateInfo(
+            has_update=False,
+            current_version=current_version,
+            latest_version=current_version,
+            source="index",
         )
 
 
@@ -189,12 +220,12 @@ UPDATABLE_TOOLS: list[ToolSpec] = [
 ]
 
 
-def check_tool_updates(tool: ToolSpec, timeout: int = 10) -> UpdateInfo | None:
+def check_tool_updates(tool: ToolSpec, timeout: int = 30) -> UpdateInfo | None:
     """Check for updates for any tool.
 
     Args:
         tool: Tool specification
-        timeout: Request timeout in seconds (default: 10)
+        timeout: Request timeout in seconds (default: 30)
 
     Returns:
         UpdateInfo if tool is installed and update check succeeds, None otherwise
@@ -206,7 +237,7 @@ def check_tool_updates(tool: ToolSpec, timeout: int = 10) -> UpdateInfo | None:
     if current is None:
         return None
 
-    return check_pypi_updates(tool.package_name, current, timeout)
+    return check_index_updates(tool.package_name, current, timeout)
 
 
 def get_tool_by_id(tool_id: str) -> ToolSpec | None:
