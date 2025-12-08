@@ -1,6 +1,14 @@
 # CHANGELOG
 
 
+## v0.12.3 (2025-12-08)
+
+### Bug Fixes
+
+- Uvx pip still uses pip config not uv
+  ([`1593f0d`](https://github.com/wpfleger96/ai-rules/commit/1593f0d38f1781473a89ddec46d84fefe5ecff4e))
+
+
 ## v0.12.2 (2025-12-08)
 
 ### Bug Fixes
