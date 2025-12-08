@@ -1,6 +1,19 @@
 # CHANGELOG
 
 
+## v0.12.2 (2025-12-08)
+
+### Bug Fixes
+
+- Cc perm
+  ([`7ffeb1a`](https://github.com/wpfleger96/ai-rules/commit/7ffeb1a17948a245bc1e2969cfe1307c78f0fc02))
+
+### Chores
+
+- Update AGENTS.md
+  ([`86956f0`](https://github.com/wpfleger96/ai-rules/commit/86956f0121d8d2ba9e6d6cfb55e8bee1740c3fd0))
+
+
 ## v0.12.1 (2025-12-08)
 
 ### Bug Fixes
