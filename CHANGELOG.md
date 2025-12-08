@@ -1,6 +1,14 @@
 # CHANGELOG
 
 
+## v0.12.0 (2025-12-08)
+
+### Features
+
+- Agents-md slash command
+  ([`9edb6e3`](https://github.com/wpfleger96/ai-rules/commit/9edb6e30feeba26605d0b49921a3018964de397b))
+
+
 ## v0.11.0 (2025-12-08)
 
 ### Features
