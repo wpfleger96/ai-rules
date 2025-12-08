@@ -98,6 +98,11 @@ uv run pytest -m config         # Config tests only
    monkeypatch.setattr(Path, "home", staticmethod(lambda: home))
    ```
 
+3. **Package index config** - `uvx pip` and `uv tool` use different index configs:
+   - `uvx pip` → pip config (PIP_INDEX_URL)
+   - `uv tool` → uv config (UV_DEFAULT_INDEX/UV_INDEX_URL)
+   - Solution: Pass explicit `--index-url` to pip, `--default-index` to uv
+
 ## Slash Commands & Skills
 
 **Slash commands** (config/claude/commands/):

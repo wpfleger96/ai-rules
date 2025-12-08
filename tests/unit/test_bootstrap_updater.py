@@ -5,7 +5,45 @@ import subprocess
 import pytest
 
 from ai_rules.bootstrap.installer import UV_NOT_FOUND_ERROR
-from ai_rules.bootstrap.updater import check_index_updates, perform_pypi_update
+from ai_rules.bootstrap.updater import (
+    check_index_updates,
+    get_configured_index_url,
+    perform_pypi_update,
+)
+
+
+@pytest.mark.unit
+@pytest.mark.bootstrap
+class TestGetConfiguredIndexUrl:
+    """Tests for get_configured_index_url helper."""
+
+    def test_prefers_uv_default_index(self, monkeypatch):
+        """UV_DEFAULT_INDEX takes priority over deprecated options."""
+        monkeypatch.setenv("UV_DEFAULT_INDEX", "https://default.example.com")
+        monkeypatch.setenv("UV_INDEX_URL", "https://legacy.example.com")
+        monkeypatch.setenv("PIP_INDEX_URL", "https://pip.example.com")
+        assert get_configured_index_url() == "https://default.example.com"
+
+    def test_falls_back_to_uv_index_url(self, monkeypatch):
+        """Falls back to UV_INDEX_URL when UV_DEFAULT_INDEX not set."""
+        monkeypatch.delenv("UV_DEFAULT_INDEX", raising=False)
+        monkeypatch.setenv("UV_INDEX_URL", "https://legacy.example.com")
+        monkeypatch.setenv("PIP_INDEX_URL", "https://pip.example.com")
+        assert get_configured_index_url() == "https://legacy.example.com"
+
+    def test_falls_back_to_pip_index_url(self, monkeypatch):
+        """Falls back to PIP_INDEX_URL when UV vars not set."""
+        monkeypatch.delenv("UV_DEFAULT_INDEX", raising=False)
+        monkeypatch.delenv("UV_INDEX_URL", raising=False)
+        monkeypatch.setenv("PIP_INDEX_URL", "https://pip.example.com")
+        assert get_configured_index_url() == "https://pip.example.com"
+
+    def test_returns_none_when_not_configured(self, monkeypatch):
+        """Returns None when no index env vars set."""
+        monkeypatch.delenv("UV_DEFAULT_INDEX", raising=False)
+        monkeypatch.delenv("UV_INDEX_URL", raising=False)
+        monkeypatch.delenv("PIP_INDEX_URL", raising=False)
+        assert get_configured_index_url() is None
 
 
 @pytest.mark.unit

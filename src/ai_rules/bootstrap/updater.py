@@ -1,6 +1,7 @@
 """Update checking and application utilities."""
 
 import logging
+import os
 import re
 import subprocess
 
@@ -17,6 +18,24 @@ from .installer import (
 from .version import is_newer
 
 logger = logging.getLogger(__name__)
+
+
+def get_configured_index_url() -> str | None:
+    """Get package index URL from environment.
+
+    Checks in order of preference:
+    1. UV_DEFAULT_INDEX (modern uv, recommended)
+    2. UV_INDEX_URL (deprecated uv, still supported)
+    3. PIP_INDEX_URL (pip compatibility)
+
+    Returns:
+        Index URL if configured, None otherwise
+    """
+    return (
+        os.environ.get("UV_DEFAULT_INDEX")
+        or os.environ.get("UV_INDEX_URL")
+        or os.environ.get("PIP_INDEX_URL")
+    )
 
 
 @dataclass
@@ -62,8 +81,14 @@ def check_index_updates(
         )
 
     try:
+        cmd = ["uvx", "--refresh", "pip", "index", "versions", package_name]
+
+        # Pass index URL explicitly since pip doesn't understand UV_* env vars
+        if index_url := get_configured_index_url():
+            cmd.extend(["--index-url", index_url])
+
         result = subprocess.run(
-            ["uvx", "--refresh", "pip", "index", "versions", package_name],
+            cmd,
             capture_output=True,
             text=True,
             timeout=timeout,
@@ -139,6 +164,11 @@ def perform_pypi_update(package_name: str) -> tuple[bool, str, bool]:
         cmd = ["uv", "tool", "install", package_name, "--force", "--no-cache"]
     else:
         cmd = ["uv", "tool", "upgrade", package_name, "--no-cache"]
+
+    # Ensure upgrade uses same index as version check
+    # Use --default-index (modern) not --index-url (deprecated)
+    if index_url := get_configured_index_url():
+        cmd.extend(["--default-index", index_url])
 
     try:
         result = subprocess.run(
