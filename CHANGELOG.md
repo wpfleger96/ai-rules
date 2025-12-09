@@ -1,6 +1,14 @@
 # CHANGELOG
 
 
+## v0.12.4 (2025-12-09)
+
+### Bug Fixes
+
+- Cc perm
+  ([`f895aa0`](https://github.com/wpfleger96/ai-rules/commit/f895aa0fc6aeb8f9921b9ddcb98dc38b28eede60))
+
+
 ## v0.12.3 (2025-12-08)
 
 ### Bug Fixes
