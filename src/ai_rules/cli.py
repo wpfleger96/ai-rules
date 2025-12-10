@@ -633,9 +633,14 @@ def setup(
         install_tool,
     )
 
-    statusline_result = ensure_statusline_installed(dry_run=dry_run)
+    statusline_result, statusline_message = ensure_statusline_installed(
+        dry_run=dry_run, from_github=github
+    )
     if statusline_result == "installed":
-        console.print("[green]✓[/green] Installed claude-statusline\n")
+        if dry_run and statusline_message:
+            console.print(f"[dim]{statusline_message}[/dim]\n")
+        else:
+            console.print("[green]✓[/green] Installed claude-statusline\n")
     elif statusline_result == "failed":
         console.print(
             "[yellow]⚠[/yellow] Failed to install claude-statusline (continuing anyway)\n"
@@ -780,9 +785,12 @@ def install(
     """Install AI agent configs via symlinks."""
     from ai_rules.bootstrap import ensure_statusline_installed
 
-    statusline_result = ensure_statusline_installed(dry_run=dry_run)
+    statusline_result, statusline_message = ensure_statusline_installed(dry_run=dry_run)
     if statusline_result == "installed":
-        console.print("[green]✓[/green] Installed claude-statusline\n")
+        if dry_run and statusline_message:
+            console.print(f"[dim]{statusline_message}[/dim]\n")
+        else:
+            console.print("[green]✓[/green] Installed claude-statusline\n")
     elif statusline_result == "failed":
         console.print(
             "[yellow]⚠[/yellow] Failed to install claude-statusline (continuing anyway)\n"

@@ -17,6 +17,8 @@ UV_NOT_FOUND_ERROR = "uv not found in PATH. Install from https://docs.astral.sh/
 PACKAGE_NAME = "ai-agent-rules"
 GITHUB_REPO = "wpfleger96/ai-rules"
 GITHUB_REPO_URL = f"git+ssh://git@github.com/{GITHUB_REPO}.git"
+STATUSLINE_GITHUB_REPO = "wpfleger96/claude-code-status-line"
+STATUSLINE_GITHUB_REPO_URL = f"git+ssh://git@github.com/{STATUSLINE_GITHUB_REPO}.git"
 
 
 def _validate_package_name(package_name: str) -> bool:
@@ -107,6 +109,7 @@ def is_command_available(command: str) -> bool:
 def install_tool(
     package_name: str = "ai-agent-rules",
     from_github: bool = False,
+    github_url: str | None = None,
     force: bool = False,
     dry_run: bool = False,
 ) -> tuple[bool, str]:
@@ -115,6 +118,7 @@ def install_tool(
     Args:
         package_name: Name of package to install (ignored if from_github=True)
         from_github: Install from GitHub instead of PyPI
+        github_url: GitHub URL to install from (only used if from_github=True)
         force: Force reinstall if already installed
         dry_run: Show what would be done without executing
 
@@ -127,7 +131,10 @@ def install_tool(
     if not is_command_available("uv"):
         return False, UV_NOT_FOUND_ERROR
 
-    source = GITHUB_REPO_URL if from_github else package_name
+    if from_github:
+        source = github_url if github_url else GITHUB_REPO_URL
+    else:
+        source = package_name
     cmd = ["uv", "tool", "install", source]
 
     if force:
@@ -239,23 +246,34 @@ def get_tool_version(tool_name: str) -> str | None:
         return None
 
 
-def ensure_statusline_installed(dry_run: bool = False) -> str:
+def ensure_statusline_installed(
+    dry_run: bool = False, from_github: bool = False
+) -> tuple[str, str | None]:
     """Install claude-code-statusline if not already present. Fails open.
 
     Args:
-        dry_run: If True, skip installation
+        dry_run: If True, show what would be done without executing
+        from_github: Install from GitHub instead of PyPI
 
     Returns:
-        Status: "already_installed", "installed", "failed", or "skipped"
+        Tuple of (status, message) where status is:
+        "already_installed", "installed", "failed", or "skipped"
+        Message is only provided in dry_run mode
     """
     if is_command_available("claude-statusline"):
-        return "already_installed"
-
-    if dry_run:
-        return "skipped"
+        return "already_installed", None
 
     try:
-        success, _ = install_tool("claude-code-statusline", force=False, dry_run=False)
-        return "installed" if success else "failed"
+        success, message = install_tool(
+            "claude-code-statusline",
+            from_github=from_github,
+            github_url=STATUSLINE_GITHUB_REPO_URL if from_github else None,
+            force=False,
+            dry_run=dry_run,
+        )
+        if success:
+            return "installed", message if dry_run else None
+        else:
+            return "failed", None
     except Exception:
-        return "failed"
+        return "failed", None
