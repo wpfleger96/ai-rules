@@ -64,6 +64,7 @@ def test_repo(tmp_path):
     claude_dir = config_root / "claude"
     claude_dir.mkdir()
     (claude_dir / "settings.json").write_text('{"test": "settings"}')
+    (claude_dir / "CLAUDE.md").write_text("@~/AGENTS.md\n")
 
     claude_agents = claude_dir / "agents"
     claude_agents.mkdir()
@@ -76,6 +77,7 @@ def test_repo(tmp_path):
     goose_dir = config_root / "goose"
     goose_dir.mkdir()
     (goose_dir / "config.yaml").write_text("test: config")
+    (goose_dir / ".goosehints").write_text("@~/AGENTS.md\n")
 
     cursor_dir = config_root / "cursor"
     cursor_dir.mkdir()

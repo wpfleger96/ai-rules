@@ -26,7 +26,7 @@ class TestInstallFlow:
 
         claude_md = mock_home / ".claude" / "CLAUDE.md"
         assert claude_md.is_symlink()
-        assert claude_md.resolve() == (test_repo / "AGENTS.md").resolve()
+        assert claude_md.resolve() == (test_repo / "claude" / "CLAUDE.md").resolve()
 
         claude_settings = mock_home / ".claude" / "settings.json"
         assert claude_settings.is_symlink()
@@ -39,7 +39,7 @@ class TestInstallFlow:
 
         goose_hints = mock_home / ".config" / "goose" / ".goosehints"
         assert goose_hints.is_symlink()
-        assert goose_hints.resolve() == (test_repo / "AGENTS.md").resolve()
+        assert goose_hints.resolve() == (test_repo / "goose" / ".goosehints").resolve()
 
         goose_config = mock_home / ".config" / "goose" / "config.yaml"
         assert goose_config.is_symlink()
@@ -166,7 +166,7 @@ class TestInstallFlow:
         result, message = create_symlink(target_path, source, force=True, dry_run=False)
 
         assert target_path.is_symlink()
-        assert target_path.resolve() == (test_repo / "AGENTS.md").resolve()
+        assert target_path.resolve() == (test_repo / "claude" / "CLAUDE.md").resolve()
 
     def test_install_leaves_correct_symlinks_unchanged(self, test_repo, mock_home):
         config = Config(exclude_symlinks=[])

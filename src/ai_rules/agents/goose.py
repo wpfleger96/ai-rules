@@ -31,7 +31,10 @@ class GooseAgent(Agent):
         result = []
 
         result.append(
-            (Path("~/.config/goose/.goosehints"), self.config_dir / "AGENTS.md")
+            (
+                Path("~/.config/goose/.goosehints"),
+                self.config_dir / "goose" / ".goosehints",
+            )
         )
 
         config_file = self.config_dir / "goose" / "config.yaml"
