@@ -1,6 +1,22 @@
 # CHANGELOG
 
 
+## v0.13.0 (2025-12-10)
+
+### Bug Fixes
+
+- Dont install completions if already installed
+  ([`b95e30d`](https://github.com/wpfleger96/ai-rules/commit/b95e30d8a170007d7070e4af2987b6dfaf2b87d2))
+
+- Dont waste tokens, other hints files should @mention the main AGENTS.md
+  ([`fab89e7`](https://github.com/wpfleger96/ai-rules/commit/fab89e721a851472d37f0af4cb7519c3c2501b0b))
+
+### Features
+
+- Add supported CursorAgent
+  ([`b648e66`](https://github.com/wpfleger96/ai-rules/commit/b648e660730906ca6c3f017fc9ec8dabe05d0d0c))
+
+
 ## v0.12.4 (2025-12-09)
 
 ### Bug Fixes
