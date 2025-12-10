@@ -1,14 +1,18 @@
 """Update checking and application utilities."""
 
+import json
 import logging
 import os
 import re
 import subprocess
+import urllib.request
 
 from collections.abc import Callable
 from dataclasses import dataclass
 
 from .installer import (
+    GITHUB_REPO,
+    GITHUB_REPO_URL,
     UV_NOT_FOUND_ERROR,
     _validate_package_name,
     get_tool_source,
@@ -140,8 +144,60 @@ def check_index_updates(
         )
 
 
+def check_github_updates(
+    repo: str, current_version: str, timeout: int = 10
+) -> UpdateInfo:
+    """Check GitHub tags for newer version.
+
+    Args:
+        repo: GitHub repository in format "owner/repo"
+        current_version: Currently installed version
+        timeout: Request timeout in seconds (default: 10)
+
+    Returns:
+        UpdateInfo with update status
+    """
+    try:
+        url = f"https://api.github.com/repos/{repo}/tags"
+
+        req = urllib.request.Request(url)
+        req.add_header("User-Agent", f"ai-rules/{current_version}")
+
+        with urllib.request.urlopen(req, timeout=timeout) as response:
+            data = json.loads(response.read().decode())
+
+        if not data or len(data) == 0:
+            return UpdateInfo(
+                has_update=False,
+                current_version=current_version,
+                latest_version=current_version,
+                source="github",
+            )
+
+        latest_tag = data[0]["name"]
+        latest_version = latest_tag.lstrip("v")
+
+        has_update = is_newer(latest_version, current_version)
+
+        return UpdateInfo(
+            has_update=has_update,
+            current_version=current_version,
+            latest_version=latest_version,
+            source="github",
+        )
+
+    except (urllib.error.URLError, json.JSONDecodeError, KeyError, IndexError) as e:
+        logger.debug(f"GitHub check failed: {e}")
+        return UpdateInfo(
+            has_update=False,
+            current_version=current_version,
+            latest_version=current_version,
+            source="github",
+        )
+
+
 def perform_pypi_update(package_name: str) -> tuple[bool, str, bool]:
-    """Upgrade via uv tool upgrade.
+    """Upgrade via uv tool upgrade or GitHub.
 
     Args:
         package_name: Name of package to upgrade
@@ -152,23 +208,24 @@ def perform_pypi_update(package_name: str) -> tuple[bool, str, bool]:
         - message: Human-readable status message
         - was_upgraded: True if package was actually upgraded (not already up-to-date)
     """
-    if not _validate_package_name(package_name):
-        return False, f"Invalid package name: {package_name}", False
-
     if not is_command_available("uv"):
         return False, UV_NOT_FOUND_ERROR, False
 
     source = get_tool_source(package_name)
 
-    if source == "local":
+    if source == "github":
+        cmd = ["uv", "tool", "install", "--force", "--reinstall", GITHUB_REPO_URL]
+    elif source == "local":
         cmd = ["uv", "tool", "install", package_name, "--force", "--no-cache"]
     else:
+        if not _validate_package_name(package_name):
+            return False, f"Invalid package name: {package_name}", False
         cmd = ["uv", "tool", "upgrade", package_name, "--no-cache"]
 
-    # Ensure upgrade uses same index as version check
-    # Use --default-index (modern) not --index-url (deprecated)
-    if index_url := get_configured_index_url():
-        cmd.extend(["--default-index", index_url])
+        # Ensure upgrade uses same index as version check
+        # Use --default-index (modern) not --index-url (deprecated)
+        if index_url := get_configured_index_url():
+            cmd.extend(["--default-index", index_url])
 
     try:
         result = subprocess.run(
@@ -251,7 +308,7 @@ UPDATABLE_TOOLS: list[ToolSpec] = [
 
 
 def check_tool_updates(tool: ToolSpec, timeout: int = 30) -> UpdateInfo | None:
-    """Check for updates for any tool.
+    """Check for updates for any tool - auto-detect PyPI vs GitHub source.
 
     Args:
         tool: Tool specification
@@ -267,7 +324,12 @@ def check_tool_updates(tool: ToolSpec, timeout: int = 30) -> UpdateInfo | None:
     if current is None:
         return None
 
-    return check_index_updates(tool.package_name, current, timeout)
+    source = get_tool_source(tool.package_name)
+
+    if source == "github" and tool.tool_id == "ai-rules":
+        return check_github_updates(GITHUB_REPO, current, timeout)
+    else:
+        return check_index_updates(tool.package_name, current, timeout)
 
 
 def get_tool_by_id(tool_id: str) -> ToolSpec | None:

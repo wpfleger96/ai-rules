@@ -606,6 +606,7 @@ def install_user_symlinks(
 
 
 @main.command()
+@click.option("--github", is_flag=True, help="Install from GitHub instead of PyPI")
 @click.option("--force", is_flag=True, help="Skip confirmation prompts")
 @click.option("--dry-run", is_flag=True, help="Show what would be done")
 @click.option("--skip-symlinks", is_flag=True, help="Skip symlink installation step")
@@ -613,6 +614,7 @@ def install_user_symlinks(
 @click.pass_context
 def setup(
     ctx: click.Context,
+    github: bool,
     force: bool,
     dry_run: bool,
     skip_symlinks: bool,
@@ -651,7 +653,9 @@ def setup(
 
     tool_install_success = False
     try:
-        success, message = install_tool("ai-agent-rules", force=force, dry_run=dry_run)
+        success, message = install_tool(
+            "ai-agent-rules", from_github=github, force=force, dry_run=dry_run
+        )
 
         if dry_run:
             console.print(f"\n[dim]{message}[/dim]")

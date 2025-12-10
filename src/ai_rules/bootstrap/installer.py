@@ -14,6 +14,9 @@ else:
     import tomli as tomllib
 
 UV_NOT_FOUND_ERROR = "uv not found in PATH. Install from https://docs.astral.sh/uv/"
+PACKAGE_NAME = "ai-agent-rules"
+GITHUB_REPO = "wpfleger96/ai-rules"
+GITHUB_REPO_URL = f"git+ssh://git@github.com/{GITHUB_REPO}.git"
 
 
 def _validate_package_name(package_name: str) -> bool:
@@ -51,14 +54,15 @@ def get_tool_config_dir(package_name: str = "ai-agent-rules") -> Path:
 
 
 def get_tool_source(package_name: str) -> str | None:
-    """Detect how a uv tool was installed (PyPI vs local file).
+    """Detect how a uv tool was installed.
 
     Args:
         package_name: Name of the uv tool package
 
     Returns:
-        "pypi" if installed from PyPI (no path key in requirements)
-        "local" if installed from local file (has path key)
+        "pypi" if installed from PyPI
+        "github" if installed from GitHub
+        "local" if installed from local file
         None if tool not installed or receipt file not found
     """
     data_home = os.environ.get("XDG_DATA_HOME", str(Path.home() / ".local" / "share"))
@@ -75,10 +79,12 @@ def get_tool_source(package_name: str) -> str | None:
         if not requirements:
             return None
 
-        # Check first requirement for path key (indicates local install)
         first_req = requirements[0]
-        if isinstance(first_req, dict) and "path" in first_req:
-            return "local"
+        if isinstance(first_req, dict):
+            if "path" in first_req:
+                return "local"
+            if "git" in first_req and "github.com" in first_req["git"]:
+                return "github"
 
         return "pypi"
 
@@ -100,28 +106,34 @@ def is_command_available(command: str) -> bool:
 
 def install_tool(
     package_name: str = "ai-agent-rules",
+    from_github: bool = False,
     force: bool = False,
     dry_run: bool = False,
 ) -> tuple[bool, str]:
-    """Install package as a uv tool from PyPI.
+    """Install package as a uv tool.
 
     Args:
-        package_name: Name of package to install
+        package_name: Name of package to install (ignored if from_github=True)
+        from_github: Install from GitHub instead of PyPI
         force: Force reinstall if already installed
         dry_run: Show what would be done without executing
 
     Returns:
         Tuple of (success, message)
     """
-    if not _validate_package_name(package_name):
+    if not from_github and not _validate_package_name(package_name):
         return False, f"Invalid package name: {package_name}"
 
     if not is_command_available("uv"):
         return False, UV_NOT_FOUND_ERROR
 
-    cmd = ["uv", "tool", "install", package_name]
+    source = GITHUB_REPO_URL if from_github else package_name
+    cmd = ["uv", "tool", "install", source]
+
     if force:
         cmd.insert(3, "--force")
+        if from_github:
+            cmd.insert(4, "--reinstall")
 
     if dry_run:
         return True, f"Would run: {' '.join(cmd)}"
