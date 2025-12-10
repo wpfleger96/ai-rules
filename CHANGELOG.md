@@ -1,6 +1,19 @@
 # CHANGELOG
 
 
+## v0.14.0 (2025-12-10)
+
+### Chores
+
+- Update AGENTS.md
+  ([`1f3e7fd`](https://github.com/wpfleger96/ai-rules/commit/1f3e7fd7dc33b928f6ff3e03397abb7cf6152e0a))
+
+### Features
+
+- Add profiles feature
+  ([`f82159c`](https://github.com/wpfleger96/ai-rules/commit/f82159cb6752fc119a0820c009da8720fbe1879c))
+
+
 ## v0.13.0 (2025-12-10)
 
 ### Bug Fixes
