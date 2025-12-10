@@ -693,15 +693,20 @@ def setup(
     if not skip_completions:
         from ai_rules.completions import (
             detect_shell,
+            find_config_file,
             get_supported_shells,
             install_completion,
+            is_completion_installed,
         )
 
         console.print("\n[bold cyan]Step 3/3: Shell completion setup[/bold cyan]\n")
 
         shell = detect_shell()
         if shell:
-            if force or Confirm.ask(f"Install {shell} tab completion?", default=True):
+            config_path = find_config_file(shell)
+            if config_path and is_completion_installed(config_path):
+                console.print(f"[green]✓[/green] {shell} completion already installed")
+            elif force or Confirm.ask(f"Install {shell} tab completion?", default=True):
                 success, msg = install_completion(shell, dry_run=dry_run)
                 if success:
                     console.print(f"[green]✓[/green] {msg}")
