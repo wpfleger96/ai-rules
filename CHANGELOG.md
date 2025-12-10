@@ -1,6 +1,14 @@
 # CHANGELOG
 
 
+## v0.15.0 (2025-12-10)
+
+### Features
+
+- Add github installation support
+  ([`a7c00cf`](https://github.com/wpfleger96/ai-rules/commit/a7c00cfb224b78ea089f2ada1ae394bdac514ba1))
+
+
 ## v0.14.0 (2025-12-10)
 
 ### Chores
