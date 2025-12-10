@@ -46,11 +46,13 @@ src/ai_rules/
 ├── agents/
 │   ├── base.py         # Abstract Agent base class
 │   ├── claude.py       # ClaudeAgent
+│   ├── cursor.py       # CursorAgent
 │   ├── goose.py        # GooseAgent
 │   └── shared.py       # SharedAgent
 ├── bootstrap/          # Auto-update utilities
 └── config/             # Source configs (bundled in package)
     ├── claude/         # Claude Code configs (settings, agents, commands, skills)
+    ├── cursor/         # Cursor IDE configs (settings, keybindings)
     └── goose/          # Goose configs
 tests/
 ├── unit/               # No filesystem side effects
@@ -68,6 +70,9 @@ All AI tools inherit from `Agent` (`agents/base.py`). To add a new tool:
 ### Config System
 - User config: `~/.ai-rules-config.yaml`
 - `settings_overrides` for machine-specific agent settings
+- Cache-based override merging for settings.json files (Claude, Cursor, Goose)
+- Cursor uses cache for settings.json, direct symlinks for keybindings.json
+- Agent-specific hints (CLAUDE.md, .goosehints) use `@~/AGENTS.md` to reference main file (token-saving)
 
 ## Testing
 
@@ -102,6 +107,11 @@ uv run pytest -m config         # Config tests only
    - `uvx pip` → pip config (PIP_INDEX_URL)
    - `uv tool` → uv config (UV_DEFAULT_INDEX/UV_INDEX_URL)
    - Solution: Pass explicit `--index-url` to pip, `--default-index` to uv
+
+4. **Local testing vs uv tool** - Installing locally doesn't affect the installed tool:
+   - `uv pip install -e .` → installs to .venv (use `uv run ai-rules`)
+   - `ai-rules` command → runs from uv tool at `~/.local/share/uv/tools/`
+   - For local testing: use `uv run ai-rules` or `uv tool install -e . --force`
 
 ## Slash Commands & Skills
 
