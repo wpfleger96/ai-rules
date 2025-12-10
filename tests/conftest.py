@@ -77,6 +77,13 @@ def test_repo(tmp_path):
     goose_dir.mkdir()
     (goose_dir / "config.yaml").write_text("test: config")
 
+    cursor_dir = config_root / "cursor"
+    cursor_dir.mkdir()
+    (cursor_dir / "settings.json").write_text('{"test": "cursor-settings"}')
+    (cursor_dir / "keybindings.json").write_text(
+        '[{"key": "ctrl+c", "command": "test"}]'
+    )
+
     mcps_file = claude_dir / "mcps.json"
     mcps_file.write_text("{}")
 

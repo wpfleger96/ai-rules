@@ -1,0 +1,81 @@
+{
+    "[python]": {
+        "editor.formatOnSave": true,
+        "editor.defaultFormatter": "charliermarsh.ruff",
+        "editor.codeActionsOnSave": {
+            "source.organizeImports": "explicit"
+        }
+    },
+    "[rust]": {
+        "editor.formatOnSave": true
+    },
+    "breadcrumbs.enabled": false,
+    "claudeCode.preferredLocation": "panel",
+    "cursor.cmdk.autoSelect": false,
+    "cursor.composer.shouldAutoScrollToBottom": false,
+    "cursor.cpp.disabledLanguages": [
+        "plaintext",
+        "scminput"
+    ],
+    "cursor.cpp.enablePartialAccepts": true,
+    "cursor.semanticSearch.includePullRequests": false,
+    "explorer.confirmDelete": false,
+    "explorer.confirmDragAndDrop": false,
+    "files.exclude": {
+        "**/.git": true,
+        "**/.svn": true,
+        "**/.hg": true,
+        "**/CVS": true,
+        "**/.DS_Store": true,
+        "**/Thumbs.db": true,
+        "**/.venv": true,
+        "**/.pytest_cache": true
+    },
+    "files.watcherExclude": {
+        "**/.git/objects/**": true,
+        "**/.git/subtree-cache/**": true,
+        "**/node_modules/*/**": true,
+        "**/.hg/store/**": true,
+        "**/.venv/**": true,
+        "**/.pytest_cache": true
+    },
+    "go.toolsManagement.autoUpdate": true,
+    "python.terminal.activateEnvironment": false,
+    "rubyLsp.enabledFeatures": {
+        "codeActions": true,
+        "diagnostics": true,
+        "documentHighlights": true,
+        "documentLink": true,
+        "documentSymbols": true,
+        "foldingRanges": true,
+        "formatting": true,
+        "hover": true,
+        "inlayHint": true,
+        "onTypeFormatting": true,
+        "selectionRanges": true,
+        "semanticHighlighting": true,
+        "completion": true,
+        "codeLens": true,
+        "definition": true,
+        "workspaceSymbol": true,
+        "signatureHelp": true,
+        "typeHierarchy": true
+    },
+    "rust-analyzer.rustfmt.overrideCommand": null,
+    "security.workspace.trust.untrustedFiles": "open",
+    "terminal.explorerKind": "external",
+    "terminal.external.osxExec": "iTerm.app",
+    "terminal.integrated.allowedLinkSchemes": [
+        "file",
+        "http",
+        "https",
+        "mailto",
+        "vscode",
+        "vscode-insiders",
+        "docker-desktop"
+    ],
+    "terminal.integrated.copyOnSelection": true,
+    "terminal.integrated.defaultLocation": "editor",
+    "terminal.integrated.enableMultiLinePasteWarning": false,
+    "workbench.colorTheme": "Visual Studio Dark"
+}

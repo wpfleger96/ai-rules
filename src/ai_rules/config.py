@@ -25,6 +25,10 @@ AGENT_CONFIG_METADATA = {
         "config_file": "settings.json",
         "format": "json",
     },
+    "cursor": {
+        "config_file": "settings.json",
+        "format": "json",
+    },
     "goose": {
         "config_file": "config.yaml",
         "format": "yaml",
