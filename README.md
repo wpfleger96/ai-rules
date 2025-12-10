@@ -223,6 +223,42 @@ settings_overrides:
 
 > **Note:** `keybindings.json` uses direct symlinks without override merging (array structure).
 
+### Profiles - Machine-Specific Configuration
+
+Profiles let you group configuration overrides into named presets. Instead of manually maintaining different `~/.ai-rules-config.yaml` files across machines, define profiles once and select them at install time.
+
+```bash
+# List available profiles
+ai-rules profile list
+
+# View profile details
+ai-rules profile show work
+ai-rules profile show work --resolved  # Show with inheritance
+
+# Install with a specific profile
+ai-rules install --profile work
+```
+
+Profiles are stored in `src/ai_rules/config/profiles/` and support inheritance:
+
+```yaml
+# profiles/work.yaml
+name: work
+description: Work laptop with extended context model
+extends: null
+settings_overrides:
+  claude:
+    env:
+      ANTHROPIC_DEFAULT_SONNET_MODEL: "claude-sonnet-4-5-20250929[1m]"
+    model: opusplan
+```
+
+Configuration layers (lowest to highest priority):
+1. Profile overrides
+2. Local `~/.ai-rules-config.yaml` overrides
+
+Your local config always wins, so you can use a profile as a base and tweak specific settings per-machine. Profiles are git-tracked and can be shared across your team.
+
 ## Structure
 
 ```

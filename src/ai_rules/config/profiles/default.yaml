@@ -1,0 +1,6 @@
+name: default
+description: Default configuration (no overrides)
+extends: null
+settings_overrides: {}
+exclude_symlinks: []
+mcp_overrides: {}

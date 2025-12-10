@@ -1,0 +1,239 @@
+"""Unit tests for profile loading and inheritance."""
+
+import pytest
+
+from ai_rules.profiles import (
+    CircularInheritanceError,
+    ProfileError,
+    ProfileLoader,
+    ProfileNotFoundError,
+)
+
+
+@pytest.fixture
+def profiles_dir(tmp_path):
+    """Create test profiles directory."""
+    profiles = tmp_path / "profiles"
+    profiles.mkdir()
+    return profiles
+
+
+@pytest.mark.unit
+class TestProfileLoading:
+    """Test basic profile loading."""
+
+    def test_load_simple_profile(self, profiles_dir):
+        """Test loading a profile without inheritance."""
+        profile_file = profiles_dir / "test.yaml"
+        profile_file.write_text("""
+name: test
+description: Test profile
+settings_overrides:
+  claude:
+    model: test-model
+""")
+
+        loader = ProfileLoader(profiles_dir=profiles_dir)
+        profile = loader.load_profile("test")
+
+        assert profile.name == "test"
+        assert profile.description == "Test profile"
+        assert profile.settings_overrides["claude"]["model"] == "test-model"
+
+    def test_load_nonexistent_profile_raises_error(self, profiles_dir):
+        """Test that loading missing profile raises error."""
+        loader = ProfileLoader(profiles_dir=profiles_dir)
+
+        with pytest.raises(ProfileNotFoundError, match="not found"):
+            loader.load_profile("nonexistent")
+
+    def test_default_profile_always_available(self, profiles_dir):
+        """Test that default profile works even without file."""
+        loader = ProfileLoader(profiles_dir=profiles_dir)
+        profile = loader.load_profile("default")
+
+        assert profile.name == "default"
+        assert profile.settings_overrides == {}
+
+
+@pytest.mark.unit
+class TestProfileInheritance:
+    """Test profile inheritance resolution."""
+
+    def test_single_level_inheritance(self, profiles_dir):
+        """Test profile extends another profile."""
+        (profiles_dir / "base.yaml").write_text("""
+name: base
+settings_overrides:
+  claude:
+    model: base-model
+    timeout: 30
+""")
+        (profiles_dir / "child.yaml").write_text("""
+name: child
+extends: base
+settings_overrides:
+  claude:
+    model: child-model
+""")
+
+        loader = ProfileLoader(profiles_dir=profiles_dir)
+        profile = loader.load_profile("child")
+
+        assert profile.settings_overrides["claude"]["model"] == "child-model"
+        assert profile.settings_overrides["claude"]["timeout"] == 30
+
+    def test_multi_level_inheritance(self, profiles_dir):
+        """Test deep inheritance chain."""
+        (profiles_dir / "grandparent.yaml").write_text("""
+name: grandparent
+settings_overrides:
+  claude:
+    model: gp-model
+    theme: dark
+""")
+        (profiles_dir / "parent.yaml").write_text("""
+name: parent
+extends: grandparent
+settings_overrides:
+  claude:
+    model: parent-model
+""")
+        (profiles_dir / "child.yaml").write_text("""
+name: child
+extends: parent
+settings_overrides:
+  claude:
+    timeout: 60
+""")
+
+        loader = ProfileLoader(profiles_dir=profiles_dir)
+        profile = loader.load_profile("child")
+
+        assert profile.settings_overrides["claude"]["model"] == "parent-model"
+        assert profile.settings_overrides["claude"]["theme"] == "dark"
+        assert profile.settings_overrides["claude"]["timeout"] == 60
+
+    def test_circular_inheritance_detected(self, profiles_dir):
+        """Test that circular inheritance raises error."""
+        (profiles_dir / "a.yaml").write_text("""
+name: a
+extends: b
+""")
+        (profiles_dir / "b.yaml").write_text("""
+name: b
+extends: a
+""")
+
+        loader = ProfileLoader(profiles_dir=profiles_dir)
+
+        with pytest.raises(CircularInheritanceError, match="Circular"):
+            loader.load_profile("a")
+
+
+@pytest.mark.unit
+class TestExcludeSymlinksMerge:
+    """Test exclude_symlinks merging behavior."""
+
+    def test_exclude_symlinks_union(self, profiles_dir):
+        """Test that exclude_symlinks are combined."""
+        (profiles_dir / "base.yaml").write_text("""
+name: base
+exclude_symlinks:
+  - ~/.claude/settings.json
+""")
+        (profiles_dir / "child.yaml").write_text("""
+name: child
+extends: base
+exclude_symlinks:
+  - ~/.config/goose/config.yaml
+""")
+
+        loader = ProfileLoader(profiles_dir=profiles_dir)
+        profile = loader.load_profile("child")
+
+        assert "~/.claude/settings.json" in profile.exclude_symlinks
+        assert "~/.config/goose/config.yaml" in profile.exclude_symlinks
+
+
+@pytest.mark.unit
+class TestProfileListing:
+    """Test profile listing functionality."""
+
+    def test_list_profiles(self, profiles_dir):
+        """Test listing available profiles."""
+        (profiles_dir / "work.yaml").write_text("name: work")
+        (profiles_dir / "personal.yaml").write_text("name: personal")
+
+        loader = ProfileLoader(profiles_dir=profiles_dir)
+        profiles = loader.list_profiles()
+
+        assert "work" in profiles
+        assert "personal" in profiles
+        assert "default" in profiles
+
+
+@pytest.mark.unit
+class TestProfileErrorHandling:
+    """Test error handling for profiles."""
+
+    def test_self_referential_inheritance_detected(self, profiles_dir):
+        """Test that a profile cannot extend itself."""
+        (profiles_dir / "self.yaml").write_text("""
+name: self
+extends: self
+""")
+
+        loader = ProfileLoader(profiles_dir=profiles_dir)
+
+        with pytest.raises(CircularInheritanceError, match="Circular"):
+            loader.load_profile("self")
+
+    def test_yaml_error_provides_helpful_message(self, profiles_dir):
+        """Test that malformed YAML provides helpful error."""
+        (profiles_dir / "bad.yaml").write_text("""
+name: bad
+settings_overrides:
+  invalid: yaml: syntax: here
+""")
+
+        loader = ProfileLoader(profiles_dir=profiles_dir)
+
+        with pytest.raises(ProfileError, match="invalid YAML"):
+            loader.load_profile("bad")
+
+    def test_invalid_settings_overrides_type(self, profiles_dir):
+        """Test that invalid settings_overrides type raises error."""
+        (profiles_dir / "invalid.yaml").write_text("""
+name: invalid
+settings_overrides: "should be a dict"
+""")
+
+        loader = ProfileLoader(profiles_dir=profiles_dir)
+
+        with pytest.raises(ProfileError, match="settings_overrides must be a dict"):
+            loader.load_profile("invalid")
+
+    def test_invalid_exclude_symlinks_type(self, profiles_dir):
+        """Test that invalid exclude_symlinks type raises error."""
+        (profiles_dir / "invalid.yaml").write_text("""
+name: invalid
+exclude_symlinks: "should be a list"
+""")
+
+        loader = ProfileLoader(profiles_dir=profiles_dir)
+
+        with pytest.raises(ProfileError, match="exclude_symlinks must be a list"):
+            loader.load_profile("invalid")
+
+    def test_invalid_mcp_overrides_type(self, profiles_dir):
+        """Test that invalid mcp_overrides type raises error."""
+        (profiles_dir / "invalid.yaml").write_text("""
+name: invalid
+mcp_overrides: "should be a dict"
+""")
+
+        loader = ProfileLoader(profiles_dir=profiles_dir)
+
+        with pytest.raises(ProfileError, match="mcp_overrides must be a dict"):
+            loader.load_profile("invalid")

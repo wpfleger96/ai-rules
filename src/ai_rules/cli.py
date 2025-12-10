@@ -134,6 +134,18 @@ def complete_agents(
     return [CompletionItem(aid) for aid in agent_ids if aid.startswith(incomplete)]
 
 
+def complete_profiles(
+    ctx: click.Context, param: click.Parameter, incomplete: str
+) -> list[CompletionItem]:
+    """Dynamically complete profile names for --profile option."""
+    from ai_rules.profiles import ProfileLoader
+
+    loader = ProfileLoader()
+    profiles = loader.list_profiles()
+
+    return [CompletionItem(p) for p in profiles if p.startswith(incomplete)]
+
+
 def detect_old_config_symlinks() -> list[tuple[Path, Path]]:
     """Detect symlinks pointing to old config/ location.
 
@@ -741,6 +753,12 @@ def setup(
     help="Skip shell completion installation",
 )
 @click.option(
+    "--profile",
+    default=None,
+    shell_complete=complete_profiles,
+    help="Profile to use (default: 'default' for backward compatibility)",
+)
+@click.option(
     "--config-dir",
     "config_dir_override",
     hidden=True,
@@ -752,6 +770,7 @@ def install(
     rebuild_cache: bool,
     agents: str | None,
     skip_completions: bool,
+    profile: str | None,
     config_dir_override: str | None = None,
 ) -> None:
     """Install AI agent configs via symlinks."""
@@ -773,7 +792,16 @@ def install(
     else:
         config_dir = get_config_dir()
 
-    config = Config.load()
+    from ai_rules.profiles import ProfileNotFoundError
+
+    try:
+        config = Config.load(profile=profile)
+    except ProfileNotFoundError as e:
+        console.print(f"[red]Error:[/red] {e}")
+        sys.exit(1)
+
+    if profile and profile != "default":
+        console.print(f"[dim]Using profile: {profile}[/dim]\n")
 
     if rebuild_cache and not dry_run:
         import shutil
@@ -2192,6 +2220,95 @@ def config_init() -> None:
         )
     else:
         console.print("[dim]Configuration not saved[/dim]")
+
+
+@main.group()
+def profile() -> None:
+    """Manage configuration profiles."""
+    pass
+
+
+@profile.command("list")
+def profile_list() -> None:
+    """List available profiles."""
+    from rich.table import Table
+
+    from ai_rules.profiles import ProfileLoader
+
+    loader = ProfileLoader()
+    profiles = loader.list_profiles()
+
+    table = Table(title="Available Profiles", show_header=True)
+    table.add_column("Name", style="cyan")
+    table.add_column("Description")
+    table.add_column("Extends")
+
+    for name in profiles:
+        try:
+            info = loader.get_profile_info(name)
+            desc = info.get("description", "")
+            extends = info.get("extends") or "-"
+            table.add_row(name, desc, extends)
+        except Exception:
+            table.add_row(name, "[dim]Error loading[/dim]", "-")
+
+    console.print(table)
+
+
+@profile.command("show")
+@click.argument("name")
+@click.option(
+    "--resolved", is_flag=True, help="Show resolved profile with inheritance applied"
+)
+def profile_show(name: str, resolved: bool) -> None:
+    """Show profile details."""
+    from ai_rules.profiles import (
+        CircularInheritanceError,
+        ProfileLoader,
+        ProfileNotFoundError,
+    )
+
+    loader = ProfileLoader()
+
+    try:
+        if resolved:
+            profile = loader.load_profile(name)
+            console.print(f"[bold]Profile: {profile.name}[/bold] (resolved)")
+            console.print(f"[dim]Description:[/dim] {profile.description}")
+            if profile.extends:
+                console.print(f"[dim]Extends:[/dim] {profile.extends}")
+
+            if profile.settings_overrides:
+                console.print("\n[bold]Settings Overrides:[/bold]")
+                for agent, overrides in sorted(profile.settings_overrides.items()):
+                    console.print(f"  [cyan]{agent}:[/cyan]")
+                    for key, value in sorted(overrides.items()):
+                        console.print(f"    {key}: {value}")
+
+            if profile.exclude_symlinks:
+                console.print("\n[bold]Exclude Symlinks:[/bold]")
+                for pattern in sorted(profile.exclude_symlinks):
+                    console.print(f"  - {pattern}")
+
+            if profile.mcp_overrides:
+                console.print("\n[bold]MCP Overrides:[/bold]")
+                for mcp, overrides in sorted(profile.mcp_overrides.items()):
+                    console.print(f"  [cyan]{mcp}:[/cyan]")
+                    for key, value in sorted(overrides.items()):
+                        console.print(f"    {key}: {value}")
+        else:
+            import yaml
+
+            info = loader.get_profile_info(name)
+            console.print(f"[bold]Profile: {info.get('name', name)}[/bold]")
+            console.print(yaml.dump(info, default_flow_style=False, sort_keys=False))
+
+    except ProfileNotFoundError as e:
+        console.print(f"[red]Error:[/red] {e}")
+        sys.exit(1)
+    except CircularInheritanceError as e:
+        console.print(f"[red]Error:[/red] {e}")
+        sys.exit(1)
 
 
 @main.group()

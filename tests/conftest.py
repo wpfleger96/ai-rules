@@ -7,14 +7,14 @@ from click.testing import CliRunner
 
 @pytest.fixture(autouse=True)
 def clear_config_cache():
-    """Clear Config.load() cache before each test to prevent cache pollution."""
+    """Clear Config._load_cached() cache before each test to prevent cache pollution."""
     from ai_rules.config import Config
 
-    if hasattr(Config.load, "cache_clear"):
-        Config.load.cache_clear()
+    if hasattr(Config._load_cached, "cache_clear"):
+        Config._load_cached.cache_clear()
     yield
-    if hasattr(Config.load, "cache_clear"):
-        Config.load.cache_clear()
+    if hasattr(Config._load_cached, "cache_clear"):
+        Config._load_cached.cache_clear()
 
 
 def pytest_configure(config):

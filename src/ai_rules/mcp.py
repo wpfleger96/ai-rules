@@ -12,6 +12,7 @@ from pathlib import Path
 from typing import Any, cast
 
 from .config import Config
+from .utils import deep_merge
 
 
 class OperationResult(Enum):
@@ -66,9 +67,7 @@ class MCPManager:
         merged_mcps = {}
         for name, _mcp_config in {**base_mcps, **mcp_overrides}.items():
             if name in base_mcps and name in mcp_overrides:
-                merged_mcps[name] = Config._deep_merge(
-                    base_mcps[name], mcp_overrides[name]
-                )
+                merged_mcps[name] = deep_merge(base_mcps[name], mcp_overrides[name])
             elif name in base_mcps:
                 merged_mcps[name] = copy.deepcopy(base_mcps[name])
             else:

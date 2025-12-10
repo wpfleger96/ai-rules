@@ -12,6 +12,8 @@ from typing import Any
 
 import yaml
 
+from ai_rules.utils import deep_merge
+
 __all__ = [
     "Config",
     "AGENT_CONFIG_METADATA",
@@ -248,40 +250,65 @@ class Config:
         exclude_symlinks: list[str] | None = None,
         settings_overrides: dict[str, dict[str, Any]] | None = None,
         mcp_overrides: dict[str, dict[str, Any]] | None = None,
+        profile_name: str | None = None,
     ):
         self.exclude_symlinks = set(exclude_symlinks or [])
         self.settings_overrides = settings_overrides or {}
         self.mcp_overrides = mcp_overrides or {}
+        self.profile_name = profile_name
 
     @classmethod
-    @lru_cache(maxsize=1)
-    def load(cls) -> "Config":
-        """Load configuration from ~/.ai-rules-config.yaml.
+    def load(cls, profile: str | None = None) -> "Config":
+        """Load configuration from profile and ~/.ai-rules-config.yaml.
 
-        Cached to avoid redundant YAML parsing within a single CLI invocation.
+        Merge order (lowest to highest priority):
+        1. Profile overrides (if profile specified, defaults to "default")
+        2. Local overrides from ~/.ai-rules-config.yaml
 
-        Returns empty config if file doesn't exist.
+        Args:
+            profile: Optional profile name to load (default: "default")
 
-        Note: Repo-level config support was removed in v0.5.0.
-        All configuration is now user-specific.
+        Returns:
+            Config instance with merged overrides
         """
+        return cls._load_cached(profile or "default")
+
+    @classmethod
+    @lru_cache(maxsize=8)
+    def _load_cached(cls, profile_name: str) -> "Config":
+        """Internal cached loader keyed by profile name."""
+        from ai_rules.profiles import ProfileLoader, ProfileNotFoundError
+
+        loader = ProfileLoader()
+
+        try:
+            profile_data = loader.load_profile(profile_name)
+        except ProfileNotFoundError:
+            raise
+
+        exclude_symlinks = list(profile_data.exclude_symlinks)
+        settings_overrides = copy.deepcopy(profile_data.settings_overrides)
+        mcp_overrides = copy.deepcopy(profile_data.mcp_overrides)
+
         user_config_path = Path.home() / ".ai-rules-config.yaml"
-
-        exclude_symlinks = []
-        settings_overrides = {}
-        mcp_overrides = {}
-
         if user_config_path.exists():
             with open(user_config_path) as f:
-                data = yaml.safe_load(f) or {}
-                exclude_symlinks = data.get("exclude_symlinks", [])
-                settings_overrides = data.get("settings_overrides", {})
-                mcp_overrides = data.get("mcp_overrides", {})
+                user_data = yaml.safe_load(f) or {}
+
+            user_excludes = user_data.get("exclude_symlinks", [])
+            exclude_symlinks = list(set(exclude_symlinks) | set(user_excludes))
+
+            user_settings = user_data.get("settings_overrides", {})
+            settings_overrides = deep_merge(settings_overrides, user_settings)
+
+            user_mcp = user_data.get("mcp_overrides", {})
+            mcp_overrides = deep_merge(mcp_overrides, user_mcp)
 
         return cls(
             exclude_symlinks=exclude_symlinks,
             settings_overrides=settings_overrides,
             mcp_overrides=mcp_overrides,
+            profile_name=profile_name,
         )
 
     def is_excluded(self, symlink_target: str) -> bool:
@@ -305,36 +332,6 @@ class Config:
         cache_dir.mkdir(parents=True, exist_ok=True)
         return cache_dir
 
-    @staticmethod
-    def _deep_merge(base: dict[str, Any], override: dict[str, Any]) -> dict[str, Any]:
-        """Deep merge two dictionaries, with override values taking precedence.
-
-        Supports merging nested dictionaries and arrays. Arrays are merged element-by-element,
-        with dict elements being recursively merged.
-
-        Uses deep copy to prevent mutation of the base dictionary.
-        """
-        result = copy.deepcopy(base)
-        for key, value in override.items():
-            if key not in result:
-                result[key] = value
-            elif isinstance(result[key], dict) and isinstance(value, dict):
-                result[key] = Config._deep_merge(result[key], value)
-            elif isinstance(result[key], list) and isinstance(value, list):
-                merged_array = copy.deepcopy(result[key])
-                for i, item in enumerate(value):
-                    if i < len(merged_array):
-                        if isinstance(merged_array[i], dict) and isinstance(item, dict):
-                            merged_array[i] = Config._deep_merge(merged_array[i], item)
-                        else:
-                            merged_array[i] = item
-                    else:
-                        merged_array.append(item)
-                result[key] = merged_array
-            else:
-                result[key] = value
-        return result
-
     def merge_settings(
         self, agent: str, base_settings: dict[str, Any]
     ) -> dict[str, Any]:
@@ -350,7 +347,7 @@ class Config:
         if agent not in self.settings_overrides:
             return base_settings
 
-        return self._deep_merge(base_settings, self.settings_overrides[agent])
+        return deep_merge(base_settings, self.settings_overrides[agent])
 
     def get_merged_settings_path(self, agent: str) -> Path | None:
         """Get the path to cached merged settings for an agent.
@@ -431,6 +428,14 @@ class Config:
         user_config_path = Path.home() / ".ai-rules-config.yaml"
         if user_config_path.exists():
             if user_config_path.stat().st_mtime > cache_mtime:
+                return True
+
+        if self.profile_name and self.profile_name != "default":
+            from ai_rules.profiles import ProfileLoader
+
+            loader = ProfileLoader()
+            profile_path = loader._profiles_dir / f"{self.profile_name}.yaml"
+            if profile_path.exists() and profile_path.stat().st_mtime > cache_mtime:
                 return True
 
         return False

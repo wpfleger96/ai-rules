@@ -576,17 +576,19 @@ class TestDeepMergeWithArrays:
 
     def test_merge_arrays_element_by_element(self):
         """Test that arrays are merged element by element."""
-        config = Config()
+        from ai_rules.utils import deep_merge
+
         base = {"items": ["a", "b", "c"]}
         override = {"items": ["x", "y"]}
 
-        result = config._deep_merge(base, override)
+        result = deep_merge(base, override)
 
         assert result["items"] == ["x", "y", "c"]
 
     def test_merge_array_with_dict_elements(self):
         """Test merging arrays containing dicts."""
-        config = Config()
+        from ai_rules.utils import deep_merge
+
         base = {
             "hooks": {
                 "SubagentStop": [
@@ -597,7 +599,7 @@ class TestDeepMergeWithArrays:
         }
         override = {"hooks": {"SubagentStop": [{"command": "new.py"}]}}
 
-        result = config._deep_merge(base, override)
+        result = deep_merge(base, override)
 
         assert result["hooks"]["SubagentStop"][0]["command"] == "new.py"
         assert result["hooks"]["SubagentStop"][0]["type"] == "command"
@@ -605,27 +607,30 @@ class TestDeepMergeWithArrays:
 
     def test_merge_extends_base_array_if_override_longer(self):
         """Test that override can extend base array."""
-        config = Config()
+        from ai_rules.utils import deep_merge
+
         base = {"items": ["a"]}
         override = {"items": ["x", "y", "z"]}
 
-        result = config._deep_merge(base, override)
+        result = deep_merge(base, override)
 
         assert result["items"] == ["x", "y", "z"]
 
     def test_merge_preserves_base_array_elements_not_overridden(self):
         """Test that array elements not in override are preserved."""
-        config = Config()
+        from ai_rules.utils import deep_merge
+
         base = {"items": ["a", "b", "c", "d"]}
         override = {"items": ["x"]}
 
-        result = config._deep_merge(base, override)
+        result = deep_merge(base, override)
 
         assert result["items"] == ["x", "b", "c", "d"]
 
     def test_merge_nested_arrays_in_dicts(self):
         """Test merging nested structures with arrays."""
-        config = Config()
+        from ai_rules.utils import deep_merge
+
         base = {
             "hooks": {
                 "SubagentStop": [{"hooks": [{"type": "command", "command": "old.py"}]}]
@@ -633,7 +638,7 @@ class TestDeepMergeWithArrays:
         }
         override = {"hooks": {"SubagentStop": [{"hooks": [{"command": "new.py"}]}]}}
 
-        result = config._deep_merge(base, override)
+        result = deep_merge(base, override)
 
         hooks_elem = result["hooks"]["SubagentStop"][0]["hooks"][0]
         assert hooks_elem["command"] == "new.py"
@@ -690,3 +695,78 @@ class TestCacheCleanup:
         config = Config(settings_overrides={})
         removed = config.cleanup_orphaned_cache()
         assert removed == []
+
+
+@pytest.mark.unit
+@pytest.mark.config
+class TestConfigWithProfiles:
+    """Test Config.load() with profile support."""
+
+    def test_config_load_with_profile(self, tmp_path, monkeypatch):
+        """Test loading config with a profile."""
+        Config._load_cached.cache_clear()
+
+        home = tmp_path / "home"
+        home.mkdir()
+        monkeypatch.setattr(Path, "home", staticmethod(lambda: home))
+
+        profiles_dir = tmp_path / "profiles"
+        profiles_dir.mkdir()
+        (profiles_dir / "work.yaml").write_text("""
+name: work
+settings_overrides:
+  claude:
+    model: work-model
+""")
+
+        from ai_rules.profiles import ProfileLoader
+
+        original_init = ProfileLoader.__init__
+
+        def mock_init(self, profiles_dir_arg=None):
+            original_init(self, profiles_dir=profiles_dir_arg or profiles_dir)
+
+        monkeypatch.setattr(ProfileLoader, "__init__", mock_init)
+
+        config = Config.load(profile="work")
+
+        assert config.settings_overrides["claude"]["model"] == "work-model"
+        assert config.profile_name == "work"
+
+    def test_user_overrides_take_precedence_over_profile(self, tmp_path, monkeypatch):
+        """Test that user config overrides profile settings."""
+        Config._load_cached.cache_clear()
+
+        home = tmp_path / "home"
+        home.mkdir()
+        monkeypatch.setattr(Path, "home", staticmethod(lambda: home))
+
+        (home / ".ai-rules-config.yaml").write_text("""
+settings_overrides:
+  claude:
+    model: user-model
+""")
+
+        profiles_dir = tmp_path / "profiles"
+        profiles_dir.mkdir()
+        (profiles_dir / "work.yaml").write_text("""
+name: work
+settings_overrides:
+  claude:
+    model: work-model
+    timeout: 30
+""")
+
+        from ai_rules.profiles import ProfileLoader
+
+        original_init = ProfileLoader.__init__
+
+        def mock_init(self, profiles_dir_arg=None):
+            original_init(self, profiles_dir=profiles_dir_arg or profiles_dir)
+
+        monkeypatch.setattr(ProfileLoader, "__init__", mock_init)
+
+        config = Config.load(profile="work")
+
+        assert config.settings_overrides["claude"]["model"] == "user-model"
+        assert config.settings_overrides["claude"]["timeout"] == 30

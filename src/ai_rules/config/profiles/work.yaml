@@ -1,0 +1,11 @@
+name: work
+description: Work laptop with extended context model
+extends: null
+settings_overrides:
+  claude:
+    env:
+      ANTHROPIC_DEFAULT_SONNET_MODEL: "claude-sonnet-4-5-20250929[1m]"
+      CLAUDE_CODE_SUBAGENT_MODEL: "claude-sonnet-4-5-20250929[1m]"
+    model: opusplan
+exclude_symlinks: []
+mcp_overrides: {}
