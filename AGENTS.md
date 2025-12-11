@@ -21,6 +21,9 @@ just test                     # Run tests
 just test-fast                # Tests without performance benchmarks (parallel)
 just benchmark-compare        # Run and compare performance benchmarks
 uv run ai-rules <cmd>         # Run CLI
+
+# GitHub installation
+uv run ai-rules setup --github  # Install from GitHub instead of PyPI
 ```
 
 ## Tech Stack
@@ -39,6 +42,8 @@ uv run ai-rules <cmd>         # Run CLI
 src/ai_rules/
 ├── cli.py              # Click CLI commands
 ├── config.py           # Config loading, path parsing, merging
+├── profiles.py         # Profile loading and inheritance resolution
+├── utils.py            # Deep merge and utility functions
 ├── display.py          # Rich console display utilities
 ├── symlinks.py         # Symlink operations with backups
 ├── mcp.py              # MCP server management
@@ -49,11 +54,15 @@ src/ai_rules/
 │   ├── cursor.py       # CursorAgent
 │   ├── goose.py        # GooseAgent
 │   └── shared.py       # SharedAgent
-├── bootstrap/          # Auto-update utilities
+├── bootstrap/          # Auto-update and GitHub install utilities
+│   ├── installer.py    # Tool installation (PyPI and GitHub)
+│   ├── updater.py      # Update checking
+│   └── version.py      # Version parsing
 └── config/             # Source configs (bundled in package)
     ├── claude/         # Claude Code configs (settings, agents, commands, skills)
     ├── cursor/         # Cursor IDE configs (settings, keybindings)
-    └── goose/          # Goose configs
+    ├── goose/          # Goose configs (.goosehints, config.yaml)
+    └── profiles/       # Built-in profiles (default.yaml, work.yaml)
 tests/
 ├── unit/               # No filesystem side effects
 └── integration/        # Modifies files/symlinks
@@ -69,6 +78,10 @@ All AI tools inherit from `Agent` (`agents/base.py`). To add a new tool:
 
 ### Config System
 - User config: `~/.ai-rules-config.yaml`
+- **Profiles**: Named collections of overrides (default, work) with inheritance
+  - Built-in: `config/profiles/{default,work}.yaml`
+  - User: `~/.ai-rules/profiles/*.yaml`
+  - Inheritance via `extends:` key (e.g., work extends default)
 - `settings_overrides` for machine-specific agent settings
 - Cache-based override merging for settings.json files (Claude, Cursor, Goose)
 - Cursor uses cache for settings.json, direct symlinks for keybindings.json
@@ -113,6 +126,14 @@ uv run pytest -m config         # Config tests only
    - `ai-rules` command → runs from uv tool at `~/.local/share/uv/tools/`
    - For local testing: use `uv run ai-rules` or `uv tool install -e . --force`
 
+5. **Package data dotfiles** - Dotfiles require explicit glob pattern:
+   - `pyproject.toml`: `ai_rules = ["config/**/*", "config/**/.*"]`
+   - Second pattern needed for `.goosehints` and other dotfiles to be included in wheel
+
+6. **GitHub installs** - `setup --github` installs from HEAD of main branch, not tags:
+   - Update checks use GitHub API tags
+   - Useful for pre-release features before PyPI publish
+
 ## Slash Commands & Skills
 
 **Slash commands** (config/claude/commands/):
@@ -135,8 +156,10 @@ uv run pytest -m config         # Config tests only
 |------|-------|
 | Add CLI command | `cli.py` |
 | Config loading | `config.py` |
+| Profile management | `profiles.py`, `cli.py` (profile command) |
 | Symlink behavior | `symlinks.py` |
 | Shell completions | `completions.py` |
 | New agent | `agents/base.py`, `agents/<new>.py`, `cli.py` |
 | MCP management | `mcp.py`, `agents/claude.py` |
 | Auto-update/upgrade | `bootstrap/updater.py`, `bootstrap/installer.py` |
+| GitHub install support | `bootstrap/installer.py` (GITHUB_REPO_URL) |

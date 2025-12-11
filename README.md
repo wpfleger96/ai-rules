@@ -40,6 +40,16 @@ This will:
 
 After setup, you can run `ai-rules` from any directory.
 
+### From GitHub (Development)
+
+Install from GitHub to get the latest development code:
+
+```bash
+uvx --from ai-agent-rules ai-rules setup --github
+```
+
+This installs from the main branch and auto-detects the GitHub source for future updates.
+
 ### Local Development
 
 For contributing or local development:
@@ -74,6 +84,7 @@ notify_only: false
 
 ```bash
 ai-rules setup                      # One-time setup: install symlinks + make available system-wide
+ai-rules setup --github             # Install from GitHub (pre-release)
 ai-rules upgrade                    # Upgrade to latest version
 ai-rules upgrade --check            # Check for updates without installing
 
