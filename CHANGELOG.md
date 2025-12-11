@@ -1,6 +1,14 @@
 # CHANGELOG
 
 
+## v0.15.2 (2025-12-11)
+
+### Bug Fixes
+
+- Goosehints not getting built in wheel
+  ([`c0c4b8b`](https://github.com/wpfleger96/ai-rules/commit/c0c4b8be353b0f66cf38655398e42eeba847435b))
+
+
 ## v0.15.1 (2025-12-11)
 
 ### Bug Fixes
