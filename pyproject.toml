@@ -54,7 +54,7 @@ include-package-data = true
 where = ["src"]
 
 [tool.setuptools.package-data]
-ai_rules = ["config/**/*"]
+ai_rules = ["config/**/*", "config/**/.*"]
 
 [tool.semantic_release]
 version_toml = ["pyproject.toml:project.version"]
