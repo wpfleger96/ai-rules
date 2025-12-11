@@ -1,6 +1,14 @@
 # CHANGELOG
 
 
+## v0.15.1 (2025-12-11)
+
+### Bug Fixes
+
+- Statusline install should respect install source
+  ([`8b0bada`](https://github.com/wpfleger96/ai-rules/commit/8b0bada7a725ddc74ac4aa25b5e4fd45164bc9b2))
+
+
 ## v0.15.0 (2025-12-10)
 
 ### Features
