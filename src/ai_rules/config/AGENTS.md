@@ -187,15 +187,16 @@ def test_register_user_calls_hash_password():
 ## Priority 3: Style & Formatting Guidelines
 
 ### Code Comment Standards
-**Rule:** ONLY add comments explaining WHY, NOT WHAT.
+**Rule:** ONLY add comments explaining WHY, NOT WHAT. Never add code comments that simply restate what the code does.
 
-**Prohibited (WHAT):**
+**Prohibited - Comments that restate code behavior (WHAT):**
 ```python
 counter += 1  # Increment counter by 1
 for user in users:  # Loop through users
+result = calculate_total(items)  # Calculate the total from items
 ```
 
-**Required (WHY):**
+**Required - Comments that explain reasoning or context (WHY):**
 ```python
 # Use exponential backoff to avoid Stripe API rate limiting
 delay = 2 ** retry_count
@@ -207,7 +208,7 @@ results.sort(key=lambda x: x.timestamp, reverse=True)
 sanitized = validate_and_sanitize(user_input)
 ```
 
-**Why:** Code should be self-explanatory via naming. Comments explaining WHAT become outdated. Comments explaining WHY preserve critical context not visible in code.
+**Why:** Code should be self-explanatory via naming. Comments that restate what code does become outdated and add noise. Comments explaining WHY preserve critical context (business rules, security requirements, performance considerations) not visible in the code itself.
 
 ### Whitespace Standards
 **Rule:** Remove ALL trailing whitespace | Ensure blank lines have NO whitespace | Preserve existing newlines | All files end with single newline
