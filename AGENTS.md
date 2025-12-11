@@ -43,6 +43,7 @@ src/ai_rules/
 ├── cli.py              # Click CLI commands
 ├── config.py           # Config loading, path parsing, merging
 ├── profiles.py         # Profile loading and inheritance resolution
+├── state.py            # State management (active profile tracking)
 ├── utils.py            # Deep merge and utility functions
 ├── display.py          # Rich console display utilities
 ├── symlinks.py         # Symlink operations with backups
@@ -78,10 +79,12 @@ All AI tools inherit from `Agent` (`agents/base.py`). To add a new tool:
 
 ### Config System
 - User config: `~/.ai-rules-config.yaml`
+- **State file**: `~/.ai-rules/state.yaml` (tracks active profile, last install time)
 - **Profiles**: Named collections of overrides (default, work) with inheritance
   - Built-in: `config/profiles/{default,work}.yaml`
   - User: `~/.ai-rules/profiles/*.yaml`
   - Inheritance via `extends:` key (e.g., work extends default)
+  - Commands: `profile list`, `profile show`, `profile current`, `profile switch`
 - `settings_overrides` for machine-specific agent settings
 - Cache-based override merging for settings.json files (Claude, Cursor, Goose)
 - Cursor uses cache for settings.json, direct symlinks for keybindings.json
@@ -96,6 +99,7 @@ uv run pytest -m agents         # Agent tests only
 uv run pytest -m bootstrap      # Bootstrap tests only
 uv run pytest -m completions    # Shell completion tests only
 uv run pytest -m config         # Config tests only
+uv run pytest -m state          # State management tests only
 ```
 
 ## Code Style
@@ -156,7 +160,8 @@ uv run pytest -m config         # Config tests only
 |------|-------|
 | Add CLI command | `cli.py` |
 | Config loading | `config.py` |
-| Profile management | `profiles.py`, `cli.py` (profile command) |
+| Profile management | `profiles.py`, `state.py`, `cli.py` (profile command) |
+| State management | `state.py` (active profile tracking) |
 | Symlink behavior | `symlinks.py` |
 | Shell completions | `completions.py` |
 | New agent | `agents/base.py`, `agents/<new>.py`, `cli.py` |

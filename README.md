@@ -171,6 +171,9 @@ settings_overrides:
 
 **Config File Location:**
 - `~/.ai-rules-config.yaml` - User-specific config (exclusions and overrides)
+- `~/.ai-rules/state.yaml` - Active profile and last install timestamp (auto-managed)
+- `~/.ai-rules/cache/` - Merged settings cache (auto-generated)
+- `~/.ai-rules/update_config.yaml` - Update check configuration
 
 ### Settings Overrides - Syncing Configs Across Machines
 
