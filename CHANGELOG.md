@@ -1,6 +1,19 @@
 # CHANGELOG
 
 
+## v0.15.3 (2025-12-11)
+
+### Bug Fixes
+
+- This burns through pro sub
+  ([`828de97`](https://github.com/wpfleger96/ai-rules/commit/828de97921774e45a416fc953c6cb30ced90eda6))
+
+### Chores
+
+- Docs
+  ([`859d3b4`](https://github.com/wpfleger96/ai-rules/commit/859d3b4c3c448e591b0fd4a80065616ecc5dfc7a))
+
+
 ## v0.15.2 (2025-12-11)
 
 ### Bug Fixes
