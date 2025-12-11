@@ -1,6 +1,14 @@
 # CHANGELOG
 
 
+## v0.15.4 (2025-12-11)
+
+### Bug Fixes
+
+- Profile should show current and let you switch
+  ([`7133c0e`](https://github.com/wpfleger96/ai-rules/commit/7133c0e4e480f4f23c4b0b5ab1de64dceaf13c77))
+
+
 ## v0.15.3 (2025-12-11)
 
 ### Bug Fixes
