@@ -109,7 +109,7 @@
     ],
     "defaultMode": "plan"
   },
-  "model": "opusplan",
+  "model": "sonnet",
   "hooks": {},
   "statusLine": {
     "type": "command",
