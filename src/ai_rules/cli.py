@@ -611,6 +611,12 @@ def install_user_symlinks(
 @click.option("--dry-run", is_flag=True, help="Show what would be done")
 @click.option("--skip-symlinks", is_flag=True, help="Skip symlink installation step")
 @click.option("--skip-completions", is_flag=True, help="Skip shell completion setup")
+@click.option(
+    "--profile",
+    default=None,
+    shell_complete=complete_profiles,
+    help="Profile to use (default: 'default')",
+)
 @click.pass_context
 def setup(
     ctx: click.Context,
@@ -619,6 +625,7 @@ def setup(
     dry_run: bool,
     skip_symlinks: bool,
     skip_completions: bool,
+    profile: str | None,
 ) -> None:
     """One-time setup: install symlinks and make ai-rules available system-wide.
 
@@ -708,6 +715,7 @@ def setup(
             rebuild_cache=False,
             agents=None,
             skip_completions=True,
+            profile=profile,
             config_dir_override=config_dir_override,
         )
 
@@ -805,12 +813,16 @@ def install(
         config_dir = get_config_dir()
 
     from ai_rules.profiles import ProfileNotFoundError
+    from ai_rules.state import set_active_profile
 
     try:
         config = Config.load(profile=profile)
     except ProfileNotFoundError as e:
         console.print(f"[red]Error:[/red] {e}")
         sys.exit(1)
+
+    if not dry_run:
+        set_active_profile(profile or "default")
 
     if profile and profile != "default":
         console.print(f"[dim]Using profile: {profile}[/dim]\n")
@@ -1038,12 +1050,18 @@ def _display_symlink_status(
 )
 def status(agents: str | None) -> None:
     """Check status of AI agent symlinks."""
+    from ai_rules.state import get_active_profile
+
     config_dir = get_config_dir()
     config = Config.load()
     all_agents = get_agents(config_dir, config)
     selected_agents = select_agents(all_agents, agents)
 
     console.print("[bold]AI Rules Status[/bold]\n")
+
+    active_profile = get_active_profile()
+    if active_profile:
+        console.print(f"[dim]Profile: {active_profile}[/dim]\n")
 
     all_correct = True
 
@@ -2321,6 +2339,45 @@ def profile_show(name: str, resolved: bool) -> None:
     except CircularInheritanceError as e:
         console.print(f"[red]Error:[/red] {e}")
         sys.exit(1)
+
+
+@profile.command("current")
+def profile_current() -> None:
+    """Show currently active profile."""
+    from ai_rules.state import get_active_profile
+
+    active = get_active_profile()
+    if active:
+        console.print(f"Active profile: [cyan]{active}[/cyan]")
+    else:
+        console.print("[dim]No profile set (using default)[/dim]")
+
+
+@profile.command("switch")
+@click.argument("name", shell_complete=complete_profiles)
+@click.pass_context
+def profile_switch(ctx: click.Context, name: str) -> None:
+    """Switch to a different profile."""
+    from ai_rules.profiles import ProfileLoader, ProfileNotFoundError
+
+    loader = ProfileLoader()
+    try:
+        loader.load_profile(name)
+    except ProfileNotFoundError as e:
+        console.print(f"[red]Error:[/red] {e}")
+        sys.exit(1)
+
+    console.print(f"Switching to profile: [cyan]{name}[/cyan]")
+    ctx.invoke(
+        install,
+        profile=name,
+        rebuild_cache=True,
+        force=True,
+        skip_completions=True,
+        agents=None,
+        dry_run=False,
+        config_dir_override=None,
+    )
 
 
 @main.group()

@@ -119,4 +119,5 @@ markers = [
     "bootstrap: marks tests for bootstrap functionality",
     "completions: marks tests for shell completion functionality",
     "config: marks tests for configuration functionality",
+    "state: mark tests for profile state tracking",
 ]

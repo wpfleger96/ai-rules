@@ -85,6 +85,7 @@ notify_only: false
 ```bash
 ai-rules setup                      # One-time setup: install symlinks + make available system-wide
 ai-rules setup --github             # Install from GitHub (pre-release)
+ai-rules setup --profile work       # Setup with a specific profile
 ai-rules upgrade                    # Upgrade to latest version
 ai-rules upgrade --check            # Check for updates without installing
 
@@ -94,7 +95,7 @@ ai-rules install --dry-run          # Preview changes
 ai-rules install --force            # Skip confirmations
 ai-rules install --rebuild-cache    # Rebuild merged settings cache
 
-ai-rules status                     # Check symlink status + optional tools (✓✗⚠○)
+ai-rules status                     # Check symlink status + optional tools + active profile (✓✗⚠○)
 ai-rules diff                       # Show config differences
 ai-rules validate                   # Verify source files exist
 ai-rules update                     # Re-sync after adding files
@@ -246,6 +247,12 @@ ai-rules profile list
 ai-rules profile show work
 ai-rules profile show work --resolved  # Show with inheritance
 
+# Check which profile is active
+ai-rules profile current
+
+# Switch to a different profile
+ai-rules profile switch work
+
 # Install with a specific profile
 ai-rules install --profile work
 ```
@@ -269,6 +276,8 @@ Configuration layers (lowest to highest priority):
 2. Local `~/.ai-rules-config.yaml` overrides
 
 Your local config always wins, so you can use a profile as a base and tweak specific settings per-machine. Profiles are git-tracked and can be shared across your team.
+
+The active profile is tracked in `~/.ai-rules/state.yaml` and persists across sessions. Use `profile current` to see which profile is active, or `profile switch` to quickly change profiles without re-running the full install.
 
 ## Structure
 
