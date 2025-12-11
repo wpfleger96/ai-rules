@@ -1,6 +1,19 @@
 # CHANGELOG
 
 
+## v0.15.5 (2025-12-11)
+
+### Bug Fixes
+
+- Update code comment instructions
+  ([`ef78069`](https://github.com/wpfleger96/ai-rules/commit/ef78069ac6f4b2838251737a681deb74acc4019f))
+
+### Chores
+
+- Docs
+  ([`9a2dbdc`](https://github.com/wpfleger96/ai-rules/commit/9a2dbdc01e36a8eab3303bb75cc1a3371ca743a1))
+
+
 ## v0.15.4 (2025-12-11)
 
 ### Bug Fixes
