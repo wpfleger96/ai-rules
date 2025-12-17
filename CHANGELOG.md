@@ -1,6 +1,14 @@
 # CHANGELOG
 
 
+## v0.15.9 (2025-12-17)
+
+### Bug Fixes
+
+- Intelligent uninstall+reinstall logic
+  ([`09274c4`](https://github.com/wpfleger96/ai-rules/commit/09274c43a3856850e6f33908e971cc39a3737101))
+
+
 ## v0.15.8 (2025-12-17)
 
 ### Bug Fixes
