@@ -1,6 +1,14 @@
 # CHANGELOG
 
 
+## v0.15.8 (2025-12-17)
+
+### Bug Fixes
+
+- Remove local install option expose info command for troubleshooting
+  ([`b998e5d`](https://github.com/wpfleger96/ai-rules/commit/b998e5d0d2e638e117f6b06f1950c963f9c7e68f))
+
+
 ## v0.15.7 (2025-12-17)
 
 ### Bug Fixes
