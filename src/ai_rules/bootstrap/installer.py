@@ -20,7 +20,6 @@ class ToolSource(Enum):
 
     PYPI = auto()
     GITHUB = auto()
-    LOCAL = auto()
 
 
 def make_github_install_url(repo: str) -> str:
@@ -84,7 +83,6 @@ def get_tool_source(package_name: str) -> ToolSource | None:
     Returns:
         ToolSource.PYPI if installed from PyPI
         ToolSource.GITHUB if installed from GitHub
-        ToolSource.LOCAL if installed from local file
         None if tool not installed or receipt file not found
     """
     data_home = os.environ.get("XDG_DATA_HOME", str(Path.home() / ".local" / "share"))
@@ -103,8 +101,6 @@ def get_tool_source(package_name: str) -> ToolSource | None:
 
         first_req = requirements[0]
         if isinstance(first_req, dict):
-            if "path" in first_req:
-                return ToolSource.LOCAL
             if "git" in first_req and "github.com" in first_req["git"]:
                 return ToolSource.GITHUB
 

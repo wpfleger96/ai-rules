@@ -125,10 +125,10 @@ uv run pytest -m state          # State management tests only
    - `uv tool` → uv config (UV_DEFAULT_INDEX/UV_INDEX_URL)
    - Solution: Pass explicit `--index-url` to pip, `--default-index` to uv
 
-4. **Local testing vs uv tool** - Installing locally doesn't affect the installed tool:
+4. **Local testing vs uv tool** - Use `uv run` for local development:
    - `uv pip install -e .` → installs to .venv (use `uv run ai-rules`)
    - `ai-rules` command → runs from uv tool at `~/.local/share/uv/tools/`
-   - For local testing: use `uv run ai-rules` or `uv tool install -e . --force`
+   - For local testing: use `uv run ai-rules <command>`
 
 5. **Package data dotfiles** - Dotfiles require explicit glob pattern:
    - `pyproject.toml`: `ai_rules = ["config/**/*", "config/**/.*"]`

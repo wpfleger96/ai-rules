@@ -243,8 +243,6 @@ def perform_tool_upgrade(tool: ToolSpec) -> tuple[bool, str, bool]:
             "--reinstall",
             tool.github_install_url,
         ]
-    elif source == ToolSource.LOCAL:
-        cmd = ["uv", "tool", "install", tool.package_name, "--force", "--no-cache"]
     else:
         if not _validate_package_name(tool.package_name):
             return False, f"Invalid package name: {tool.package_name}", False

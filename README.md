@@ -57,9 +57,10 @@ For contributing or local development:
 ```bash
 git clone https://github.com/wpfleger96/ai-rules.git
 cd ai-rules
-uv tool install -e .
-ai-rules install
+uv run ai-rules install
 ```
+
+Use `uv run ai-rules <command>` to test local changes. The global `ai-rules` command continues to run your installed version (PyPI/GitHub).
 
 ### Updating
 

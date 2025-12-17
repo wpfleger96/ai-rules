@@ -453,6 +453,20 @@ def version_callback(ctx: click.Context, param: click.Parameter, value: bool) ->
     console.print(f"ai-rules, version {__version__}")
 
     try:
+        from ai_rules.bootstrap import get_tool_version, is_command_available
+
+        if is_command_available("claude-statusline"):
+            statusline_version = get_tool_version("claude-code-statusline")
+            if statusline_version:
+                console.print(f"statusline, version {statusline_version}")
+            else:
+                console.print(
+                    "statusline, version [dim](installed, version unknown)[/dim]"
+                )
+    except Exception as e:
+        logger.debug(f"Failed to get statusline version: {e}")
+
+    try:
         from ai_rules.bootstrap import check_tool_updates, get_tool_by_id
 
         tool = get_tool_by_id("ai-rules")
@@ -1574,6 +1588,59 @@ def upgrade(check: bool, force: bool, skip_install: bool, only: str | None) -> N
             console.print("[dim]Run 'ai-rules install --rebuild-cache' manually[/dim]")
 
         console.print("[dim]Restart your terminal if the command doesn't work[/dim]")
+
+
+@main.command()
+def info() -> None:
+    """Show installation method and version info for ai-rules tools.
+
+    Displays how each tool was installed (PyPI, GitHub, or local development)
+    along with current versions and update availability.
+    """
+    from rich.table import Table
+
+    from ai_rules.bootstrap import (
+        UPDATABLE_TOOLS,
+        check_tool_updates,
+        get_tool_source,
+    )
+
+    table = Table(title="AI Rules Installation Info", show_header=True)
+    table.add_column("Tool", style="cyan")
+    table.add_column("Source", style="bold")
+    table.add_column("Version")
+    table.add_column("Update")
+
+    has_updates = False
+
+    for tool in UPDATABLE_TOOLS:
+        tool_name = tool.display_name
+
+        if not tool.is_installed():
+            table.add_row(tool_name, "-", "-", "[dim](not installed)[/dim]")
+            continue
+
+        source = get_tool_source(tool.package_name)
+        source_display = source.name.lower() if source else "[dim]unknown[/dim]"
+
+        version = tool.get_version()
+        version_display = version if version else "[dim]unknown[/dim]"
+
+        update_display = "-"
+        try:
+            update_info = check_tool_updates(tool, timeout=5)
+            if update_info and update_info.has_update:
+                update_display = f"[cyan]{update_info.latest_version} available[/cyan]"
+                has_updates = True
+        except Exception:
+            update_display = "[dim](check failed)[/dim]"
+
+        table.add_row(tool_name, source_display, version_display, update_display)
+
+    console.print(table)
+
+    if has_updates:
+        console.print("\n[dim]Run 'ai-rules upgrade' to install updates.[/dim]")
 
 
 @main.command()

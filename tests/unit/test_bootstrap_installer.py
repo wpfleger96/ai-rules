@@ -262,19 +262,6 @@ class TestGetToolConfigDir:
 class TestGetToolSource:
     """Tests for get_tool_source function."""
 
-    def test_detects_local_installation(self, tmp_path, monkeypatch):
-        """Test that local file installations are detected."""
-        tools_dir = tmp_path / "uv" / "tools" / "test-package"
-        tools_dir.mkdir(parents=True)
-        receipt = tools_dir / "uv-receipt.toml"
-        receipt.write_text(
-            '[tool]\nrequirements = [{ name = "test-package", path = "/path/to/local.whl" }]\n'
-        )
-
-        monkeypatch.setenv("XDG_DATA_HOME", str(tmp_path))
-        result = get_tool_source("test-package")
-        assert result == ToolSource.LOCAL
-
     def test_detects_pypi_installation(self, tmp_path, monkeypatch):
         """Test that PyPI installations are detected."""
         tools_dir = tmp_path / "uv" / "tools" / "test-package"
