@@ -1,6 +1,14 @@
 # CHANGELOG
 
 
+## v0.15.6 (2025-12-17)
+
+### Bug Fixes
+
+- **upgrade**: Flaky upgrade for GitHub-based installs
+  ([`a8ed872`](https://github.com/wpfleger96/ai-rules/commit/a8ed872c20b0a0cae6cd2c17de6b7c45d0b720ac))
+
+
 ## v0.15.5 (2025-12-11)
 
 ### Bug Fixes
