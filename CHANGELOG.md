@@ -1,6 +1,17 @@
 # CHANGELOG
 
 
+## v0.15.7 (2025-12-17)
+
+### Bug Fixes
+
+- Dryrun/force flags and cc perms
+  ([`5f0d73e`](https://github.com/wpfleger96/ai-rules/commit/5f0d73e3b680ab5624f00bc19a41890ca7b9894c))
+
+- Setup commmand should also upgrade if already installed
+  ([`f381cef`](https://github.com/wpfleger96/ai-rules/commit/f381cef83c2bfeb6aed9006660d44da10b574139))
+
+
 ## v0.15.6 (2025-12-17)
 
 ### Bug Fixes
