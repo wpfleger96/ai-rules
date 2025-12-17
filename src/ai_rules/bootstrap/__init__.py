@@ -38,7 +38,7 @@ from .updater import (
     check_index_updates,
     check_tool_updates,
     get_tool_by_id,
-    perform_pypi_update,
+    perform_tool_upgrade,
 )
 from .version import get_package_version, is_newer, parse_version
 
@@ -59,7 +59,7 @@ __all__ = [
     "check_index_updates",
     "check_tool_updates",
     "get_tool_by_id",
-    "perform_pypi_update",
+    "perform_tool_upgrade",
     "AutoUpdateConfig",
     "clear_all_pending_updates",
     "clear_pending_update",

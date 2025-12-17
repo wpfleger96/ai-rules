@@ -1370,7 +1370,7 @@ def upgrade(check: bool, force: bool, skip_install: bool, only: str | None) -> N
     from ai_rules.bootstrap import (
         UPDATABLE_TOOLS,
         check_tool_updates,
-        perform_pypi_update,
+        perform_tool_upgrade,
     )
 
     tools = [t for t in UPDATABLE_TOOLS if only is None or t.tool_id == only]
@@ -1419,13 +1419,12 @@ def upgrade(check: bool, force: bool, skip_install: bool, only: str | None) -> N
         console.print("[green]✓[/green] All tools are up to date!")
         return
 
-    if not check:
-        for tool, update_info in tool_updates:
-            if update_info.has_update:
-                console.print(
-                    f"[cyan]Update available for {tool.display_name}:[/cyan] "
-                    f"{update_info.current_version} → {update_info.latest_version}"
-                )
+    for tool, update_info in tool_updates:
+        if update_info.has_update:
+            console.print(
+                f"[cyan]Update available for {tool.display_name}:[/cyan] "
+                f"{update_info.current_version} → {update_info.latest_version}"
+            )
 
     if check:
         if tool_updates:
@@ -1445,7 +1444,7 @@ def upgrade(check: bool, force: bool, skip_install: bool, only: str | None) -> N
     for tool, update_info in tool_updates:
         with console.status(f"Upgrading {tool.display_name}..."):
             try:
-                success, msg, was_upgraded = perform_pypi_update(tool.package_name)
+                success, msg, was_upgraded = perform_tool_upgrade(tool)
             except Exception as e:
                 console.print(
                     f"\n[red]Error:[/red] {tool.display_name} upgrade failed: {e}"

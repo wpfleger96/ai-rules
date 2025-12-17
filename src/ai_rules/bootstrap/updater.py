@@ -12,12 +12,14 @@ from dataclasses import dataclass
 
 from .installer import (
     GITHUB_REPO,
-    GITHUB_REPO_URL,
+    STATUSLINE_GITHUB_REPO,
     UV_NOT_FOUND_ERROR,
+    ToolSource,
     _validate_package_name,
     get_tool_source,
     get_tool_version,
     is_command_available,
+    make_github_install_url,
 )
 from .version import is_newer
 
@@ -50,6 +52,25 @@ class UpdateInfo:
     current_version: str
     latest_version: str
     source: str
+
+
+@dataclass
+class ToolSpec:
+    """Specification for an updatable tool."""
+
+    tool_id: str
+    package_name: str
+    display_name: str
+    get_version: Callable[[], str | None]
+    is_installed: Callable[[], bool]
+    github_repo: str | None = None
+
+    @property
+    def github_install_url(self) -> str | None:
+        """Get the GitHub install URL for uv tool install."""
+        if self.github_repo:
+            return make_github_install_url(self.github_repo)
+        return None
 
 
 def check_index_updates(
@@ -196,11 +217,11 @@ def check_github_updates(
         )
 
 
-def perform_pypi_update(package_name: str) -> tuple[bool, str, bool]:
-    """Upgrade via uv tool upgrade or GitHub.
+def perform_tool_upgrade(tool: ToolSpec) -> tuple[bool, str, bool]:
+    """Upgrade a tool via uv, handling PyPI, GitHub, and local sources.
 
     Args:
-        package_name: Name of package to upgrade
+        tool: Tool specification to upgrade
 
     Returns:
         Tuple of (success, message, was_upgraded)
@@ -211,16 +232,23 @@ def perform_pypi_update(package_name: str) -> tuple[bool, str, bool]:
     if not is_command_available("uv"):
         return False, UV_NOT_FOUND_ERROR, False
 
-    source = get_tool_source(package_name)
+    source = get_tool_source(tool.package_name)
 
-    if source == "github":
-        cmd = ["uv", "tool", "install", "--force", "--reinstall", GITHUB_REPO_URL]
-    elif source == "local":
-        cmd = ["uv", "tool", "install", package_name, "--force", "--no-cache"]
+    if source == ToolSource.GITHUB and tool.github_install_url:
+        cmd = [
+            "uv",
+            "tool",
+            "install",
+            "--force",
+            "--reinstall",
+            tool.github_install_url,
+        ]
+    elif source == ToolSource.LOCAL:
+        cmd = ["uv", "tool", "install", tool.package_name, "--force", "--no-cache"]
     else:
-        if not _validate_package_name(package_name):
-            return False, f"Invalid package name: {package_name}", False
-        cmd = ["uv", "tool", "upgrade", package_name, "--no-cache"]
+        if not _validate_package_name(tool.package_name):
+            return False, f"Invalid package name: {tool.package_name}", False
+        cmd = ["uv", "tool", "upgrade", tool.package_name, "--no-cache"]
 
         # Ensure upgrade uses same index as version check
         # Use --default-index (modern) not --index-url (deprecated)
@@ -278,17 +306,6 @@ def perform_pypi_update(package_name: str) -> tuple[bool, str, bool]:
         return False, f"Unexpected error: {e}", False
 
 
-@dataclass
-class ToolSpec:
-    """Specification for an updatable tool."""
-
-    tool_id: str
-    package_name: str
-    display_name: str
-    get_version: Callable[[], str | None]
-    is_installed: Callable[[], bool]
-
-
 UPDATABLE_TOOLS: list[ToolSpec] = [
     ToolSpec(
         tool_id="ai-rules",
@@ -296,6 +313,7 @@ UPDATABLE_TOOLS: list[ToolSpec] = [
         display_name="ai-rules",
         get_version=lambda: get_tool_version("ai-agent-rules"),
         is_installed=lambda: True,  # Always installed (it's us)
+        github_repo=GITHUB_REPO,
     ),
     ToolSpec(
         tool_id="statusline",
@@ -303,6 +321,7 @@ UPDATABLE_TOOLS: list[ToolSpec] = [
         display_name="statusline",
         get_version=lambda: get_tool_version("claude-code-statusline"),
         is_installed=lambda: is_command_available("claude-statusline"),
+        github_repo=STATUSLINE_GITHUB_REPO,
     ),
 ]
 
@@ -326,8 +345,8 @@ def check_tool_updates(tool: ToolSpec, timeout: int = 30) -> UpdateInfo | None:
 
     source = get_tool_source(tool.package_name)
 
-    if source == "github" and tool.tool_id == "ai-rules":
-        return check_github_updates(GITHUB_REPO, current, timeout)
+    if source == ToolSource.GITHUB and tool.github_repo:
+        return check_github_updates(tool.github_repo, current, timeout)
     else:
         return check_index_updates(tool.package_name, current, timeout)
 

@@ -7,6 +7,7 @@ import pytest
 
 from ai_rules.bootstrap.installer import (
     UV_NOT_FOUND_ERROR,
+    ToolSource,
     get_tool_config_dir,
     get_tool_source,
     install_tool,
@@ -272,7 +273,7 @@ class TestGetToolSource:
 
         monkeypatch.setenv("XDG_DATA_HOME", str(tmp_path))
         result = get_tool_source("test-package")
-        assert result == "local"
+        assert result == ToolSource.LOCAL
 
     def test_detects_pypi_installation(self, tmp_path, monkeypatch):
         """Test that PyPI installations are detected."""
@@ -285,7 +286,7 @@ class TestGetToolSource:
 
         monkeypatch.setenv("XDG_DATA_HOME", str(tmp_path))
         result = get_tool_source("test-package")
-        assert result == "pypi"
+        assert result == ToolSource.PYPI
 
     def test_returns_none_when_not_installed(self, tmp_path, monkeypatch):
         """Test that None is returned for tools that aren't installed."""

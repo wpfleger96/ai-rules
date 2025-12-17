@@ -6,6 +6,7 @@ import shutil
 import subprocess
 import sys
 
+from enum import Enum, auto
 from pathlib import Path
 
 if sys.version_info >= (3, 11):
@@ -13,12 +14,31 @@ if sys.version_info >= (3, 11):
 else:
     import tomli as tomllib
 
+
+class ToolSource(Enum):
+    """Source from which a tool was installed."""
+
+    PYPI = auto()
+    GITHUB = auto()
+    LOCAL = auto()
+
+
+def make_github_install_url(repo: str) -> str:
+    """Construct GitHub install URL for uv tool install.
+
+    Args:
+        repo: GitHub repository in format "owner/repo"
+
+    Returns:
+        Full git+ssh URL for uv tool install
+    """
+    return f"git+ssh://git@github.com/{repo}.git"
+
+
 UV_NOT_FOUND_ERROR = "uv not found in PATH. Install from https://docs.astral.sh/uv/"
 PACKAGE_NAME = "ai-agent-rules"
 GITHUB_REPO = "wpfleger96/ai-rules"
-GITHUB_REPO_URL = f"git+ssh://git@github.com/{GITHUB_REPO}.git"
 STATUSLINE_GITHUB_REPO = "wpfleger96/claude-code-status-line"
-STATUSLINE_GITHUB_REPO_URL = f"git+ssh://git@github.com/{STATUSLINE_GITHUB_REPO}.git"
 
 
 def _validate_package_name(package_name: str) -> bool:
@@ -55,16 +75,16 @@ def get_tool_config_dir(package_name: str = "ai-agent-rules") -> Path:
     )
 
 
-def get_tool_source(package_name: str) -> str | None:
+def get_tool_source(package_name: str) -> ToolSource | None:
     """Detect how a uv tool was installed.
 
     Args:
         package_name: Name of the uv tool package
 
     Returns:
-        "pypi" if installed from PyPI
-        "github" if installed from GitHub
-        "local" if installed from local file
+        ToolSource.PYPI if installed from PyPI
+        ToolSource.GITHUB if installed from GitHub
+        ToolSource.LOCAL if installed from local file
         None if tool not installed or receipt file not found
     """
     data_home = os.environ.get("XDG_DATA_HOME", str(Path.home() / ".local" / "share"))
@@ -84,11 +104,11 @@ def get_tool_source(package_name: str) -> str | None:
         first_req = requirements[0]
         if isinstance(first_req, dict):
             if "path" in first_req:
-                return "local"
+                return ToolSource.LOCAL
             if "git" in first_req and "github.com" in first_req["git"]:
-                return "github"
+                return ToolSource.GITHUB
 
-        return "pypi"
+        return ToolSource.PYPI
 
     except (OSError, tomllib.TOMLDecodeError, KeyError, IndexError):
         return None
@@ -132,7 +152,7 @@ def install_tool(
         return False, UV_NOT_FOUND_ERROR
 
     if from_github:
-        source = github_url if github_url else GITHUB_REPO_URL
+        source = github_url if github_url else make_github_install_url(GITHUB_REPO)
     else:
         source = package_name
     cmd = ["uv", "tool", "install", source]
@@ -267,7 +287,9 @@ def ensure_statusline_installed(
         success, message = install_tool(
             "claude-code-statusline",
             from_github=from_github,
-            github_url=STATUSLINE_GITHUB_REPO_URL if from_github else None,
+            github_url=make_github_install_url(STATUSLINE_GITHUB_REPO)
+            if from_github
+            else None,
             force=False,
             dry_run=dry_run,
         )

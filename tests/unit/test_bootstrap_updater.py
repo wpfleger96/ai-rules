@@ -6,9 +6,10 @@ import pytest
 
 from ai_rules.bootstrap.installer import UV_NOT_FOUND_ERROR
 from ai_rules.bootstrap.updater import (
+    ToolSpec,
     check_index_updates,
     get_configured_index_url,
-    perform_pypi_update,
+    perform_tool_upgrade,
 )
 
 
@@ -173,22 +174,34 @@ class TestCheckIndexUpdates:
         assert update_info.has_update is False
 
 
+@pytest.fixture
+def test_tool():
+    """Create a minimal ToolSpec for testing."""
+    return ToolSpec(
+        tool_id="test",
+        package_name="test-package",
+        display_name="test",
+        get_version=lambda: "1.0.0",
+        is_installed=lambda: True,
+    )
+
+
 @pytest.mark.unit
 @pytest.mark.bootstrap
-class TestPerformPyPIUpdate:
-    """Tests for perform_pypi_update function."""
+class TestPerformToolUpgrade:
+    """Tests for perform_tool_upgrade function."""
 
-    def test_perform_pypi_update_without_uv(self, monkeypatch):
+    def test_perform_tool_upgrade_without_uv(self, test_tool, monkeypatch):
         """Test that missing uv returns error."""
         monkeypatch.setattr(
             "ai_rules.bootstrap.updater.is_command_available", lambda cmd: False
         )
-        success, message, was_upgraded = perform_pypi_update("test-package")
+        success, message, was_upgraded = perform_tool_upgrade(test_tool)
         assert success is False
         assert message == UV_NOT_FOUND_ERROR
         assert was_upgraded is False
 
-    def test_perform_pypi_update_success(self, monkeypatch):
+    def test_perform_tool_upgrade_success(self, test_tool, monkeypatch):
         """Test successful upgrade."""
         monkeypatch.setattr(
             "ai_rules.bootstrap.updater.is_command_available", lambda cmd: True
@@ -203,12 +216,12 @@ class TestPerformPyPIUpdate:
             return Result()
 
         monkeypatch.setattr("ai_rules.bootstrap.updater.subprocess.run", mock_run)
-        success, message, was_upgraded = perform_pypi_update("test-package")
+        success, message, was_upgraded = perform_tool_upgrade(test_tool)
         assert success is True
         assert "successful" in message.lower()
         assert was_upgraded is True
 
-    def test_perform_pypi_update_failure(self, monkeypatch):
+    def test_perform_tool_upgrade_failure(self, test_tool, monkeypatch):
         """Test upgrade failure."""
         monkeypatch.setattr(
             "ai_rules.bootstrap.updater.is_command_available", lambda cmd: True
@@ -223,12 +236,12 @@ class TestPerformPyPIUpdate:
             return Result()
 
         monkeypatch.setattr("ai_rules.bootstrap.updater.subprocess.run", mock_run)
-        success, message, was_upgraded = perform_pypi_update("nonexistent")
+        success, message, was_upgraded = perform_tool_upgrade(test_tool)
         assert success is False
         assert "Package not found" in message
         assert was_upgraded is False
 
-    def test_perform_pypi_update_timeout(self, monkeypatch):
+    def test_perform_tool_upgrade_timeout(self, test_tool, monkeypatch):
         """Test handling of timeout."""
         monkeypatch.setattr(
             "ai_rules.bootstrap.updater.is_command_available", lambda cmd: True
@@ -238,12 +251,12 @@ class TestPerformPyPIUpdate:
             raise subprocess.TimeoutExpired("uv", 60)
 
         monkeypatch.setattr("ai_rules.bootstrap.updater.subprocess.run", mock_run)
-        success, message, was_upgraded = perform_pypi_update("test-package")
+        success, message, was_upgraded = perform_tool_upgrade(test_tool)
         assert success is False
         assert "timed out" in message.lower()
         assert was_upgraded is False
 
-    def test_perform_pypi_update_unexpected_exception(self, monkeypatch):
+    def test_perform_tool_upgrade_unexpected_exception(self, test_tool, monkeypatch):
         """Test handling of unexpected errors."""
         monkeypatch.setattr(
             "ai_rules.bootstrap.updater.is_command_available", lambda cmd: True
@@ -253,12 +266,12 @@ class TestPerformPyPIUpdate:
             raise ValueError("Unexpected error")
 
         monkeypatch.setattr("ai_rules.bootstrap.updater.subprocess.run", mock_run)
-        success, message, was_upgraded = perform_pypi_update("test-package")
+        success, message, was_upgraded = perform_tool_upgrade(test_tool)
         assert success is False
         assert "Unexpected error" in message
         assert was_upgraded is False
 
-    def test_perform_pypi_update_empty_stderr(self, monkeypatch):
+    def test_perform_tool_upgrade_empty_stderr(self, test_tool, monkeypatch):
         """Test handling of failures with no stderr."""
         monkeypatch.setattr(
             "ai_rules.bootstrap.updater.is_command_available", lambda cmd: True
@@ -273,12 +286,12 @@ class TestPerformPyPIUpdate:
             return Result()
 
         monkeypatch.setattr("ai_rules.bootstrap.updater.subprocess.run", mock_run)
-        success, message, was_upgraded = perform_pypi_update("test-package")
+        success, message, was_upgraded = perform_tool_upgrade(test_tool)
         assert success is False
         assert "failed" in message.lower()
         assert was_upgraded is False
 
-    def test_local_installation_upgrades_successfully(self, monkeypatch):
+    def test_local_installation_upgrades_successfully(self, test_tool, monkeypatch):
         """Test that tools installed from local files can be upgraded."""
         monkeypatch.setattr(
             "ai_rules.bootstrap.updater.is_command_available", lambda cmd: True
@@ -296,12 +309,12 @@ class TestPerformPyPIUpdate:
             return Result()
 
         monkeypatch.setattr("ai_rules.bootstrap.updater.subprocess.run", mock_run)
-        success, message, was_upgraded = perform_pypi_update("test-package")
+        success, message, was_upgraded = perform_tool_upgrade(test_tool)
 
         assert success is True
         assert was_upgraded is True
 
-    def test_pypi_installation_upgrades_successfully(self, monkeypatch):
+    def test_pypi_installation_upgrades_successfully(self, test_tool, monkeypatch):
         """Test that PyPI installations still upgrade correctly."""
         monkeypatch.setattr(
             "ai_rules.bootstrap.updater.is_command_available", lambda cmd: True
@@ -319,7 +332,7 @@ class TestPerformPyPIUpdate:
             return Result()
 
         monkeypatch.setattr("ai_rules.bootstrap.updater.subprocess.run", mock_run)
-        success, message, was_upgraded = perform_pypi_update("test-package")
+        success, message, was_upgraded = perform_tool_upgrade(test_tool)
 
         assert success is True
         assert was_upgraded is True
