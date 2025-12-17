@@ -639,50 +639,96 @@ def setup(
         get_tool_config_dir,
         install_tool,
     )
+    from ai_rules.bootstrap.updater import (
+        check_tool_updates,
+        get_tool_by_id,
+        perform_tool_upgrade,
+    )
+
+    console.print("[bold cyan]Step 1/3: Install ai-rules system-wide[/bold cyan]")
+    console.print("This allows you to run 'ai-rules' from any directory.\n")
 
     statusline_result, statusline_message = ensure_statusline_installed(
         dry_run=dry_run, from_github=github
     )
     if statusline_result == "installed":
         if dry_run and statusline_message:
-            console.print(f"[dim]{statusline_message}[/dim]\n")
+            console.print(f"[dim]{statusline_message}[/dim]")
         else:
-            console.print("[green]✓[/green] Installed claude-statusline\n")
+            console.print("[green]✓[/green] Installed claude-statusline")
+    elif statusline_result == "upgraded":
+        console.print(
+            f"[green]✓[/green] Upgraded claude-statusline ({statusline_message})"
+        )
+    elif statusline_result == "upgrade_available":
+        console.print(f"[dim]{statusline_message}[/dim]")
     elif statusline_result == "failed":
         console.print(
-            "[yellow]⚠[/yellow] Failed to install claude-statusline (continuing anyway)\n"
+            "[yellow]⚠[/yellow] Failed to install claude-statusline (continuing anyway)"
         )
 
-    console.print("[bold cyan]Step 1/3: Install ai-rules system-wide[/bold cyan]")
-    console.print("This allows you to run 'ai-rules' from any directory.\n")
-
-    if not force and not dry_run:
-        if not Confirm.ask("Install ai-rules permanently?", default=True):
-            console.print(
-                "\n[yellow]Skipped.[/yellow] You can still run via: uvx ai-rules <command>"
-            )
-            return
-
+    ai_rules_tool = get_tool_by_id("ai-rules")
     tool_install_success = False
-    try:
-        success, message = install_tool(
-            "ai-agent-rules", from_github=github, force=force, dry_run=dry_run
-        )
 
-        if dry_run:
-            console.print(f"\n[dim]{message}[/dim]")
-            tool_install_success = True
-        elif success:
-            console.print("[green]✓ Tool installed successfully[/green]\n")
-            tool_install_success = True
-        else:
-            console.print(f"\n[red]Error:[/red] {message}")
-            console.print("\n[yellow]Manual installation:[/yellow]")
-            console.print("  uv tool install ai-agent-rules")
+    if ai_rules_tool and ai_rules_tool.is_installed():
+        try:
+            update_info = check_tool_updates(ai_rules_tool, timeout=10)
+            if update_info and update_info.has_update:
+                if dry_run:
+                    console.print(
+                        f"[dim]Would upgrade ai-rules {update_info.current_version} → {update_info.latest_version}[/dim]"
+                    )
+                    tool_install_success = True
+                else:
+                    if not force and not Confirm.ask(
+                        f"Upgrade ai-rules {update_info.current_version} → {update_info.latest_version}?",
+                        default=True,
+                    ):
+                        console.print("[yellow]Skipped ai-rules upgrade[/yellow]")
+                        tool_install_success = True
+                    else:
+                        success, msg, _ = perform_tool_upgrade(ai_rules_tool)
+                        if success:
+                            console.print(
+                                f"[green]✓[/green] Upgraded ai-rules ({update_info.current_version} → {update_info.latest_version})"
+                            )
+                            tool_install_success = True
+                        else:
+                            console.print(
+                                "[red]Error:[/red] Failed to upgrade ai-rules"
+                            )
+            else:
+                tool_install_success = True
+        except Exception:
+            pass
+
+    if not tool_install_success:
+        if not force and not dry_run:
+            if not Confirm.ask("Install ai-rules permanently?", default=True):
+                console.print(
+                    "\n[yellow]Skipped.[/yellow] You can still run via: uvx ai-rules <command>"
+                )
+                return
+
+        try:
+            success, message = install_tool(
+                "ai-agent-rules", from_github=github, force=force, dry_run=dry_run
+            )
+
+            if dry_run:
+                console.print(f"[dim]{message}[/dim]")
+                tool_install_success = True
+            elif success:
+                console.print("[green]✓[/green] Tool installed successfully")
+                tool_install_success = True
+            else:
+                console.print(f"\n[red]Error:[/red] {message}")
+                console.print("\n[yellow]Manual installation:[/yellow]")
+                console.print("  uv tool install ai-agent-rules")
+                return
+        except Exception as e:
+            console.print(f"\n[red]Error:[/red] {e}")
             return
-    except Exception as e:
-        console.print(f"\n[red]Error:[/red] {e}")
-        return
 
     if not skip_symlinks:
         console.print(
@@ -751,8 +797,11 @@ def setup(
                 f"[dim]Shell completion not available for your shell (only {supported} supported)[/dim]"
             )
 
-    console.print("\n[green]✓ Setup complete![/green]")
-    console.print("You can now run [bold]ai-rules[/bold] from anywhere.")
+    if dry_run:
+        console.print("\n[dim]Dry run complete - no changes were made.[/dim]")
+    else:
+        console.print("\n[green]✓ Setup complete![/green]")
+        console.print("You can now run [bold]ai-rules[/bold] from anywhere.")
 
 
 @main.command()

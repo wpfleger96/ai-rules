@@ -269,7 +269,7 @@ def get_tool_version(tool_name: str) -> str | None:
 def ensure_statusline_installed(
     dry_run: bool = False, from_github: bool = False
 ) -> tuple[str, str | None]:
-    """Install claude-code-statusline if not already present. Fails open.
+    """Install or upgrade claude-code-statusline if needed. Fails open.
 
     Args:
         dry_run: If True, show what would be done without executing
@@ -277,10 +277,34 @@ def ensure_statusline_installed(
 
     Returns:
         Tuple of (status, message) where status is:
-        "already_installed", "installed", "failed", or "skipped"
-        Message is only provided in dry_run mode
+        "already_installed", "installed", "upgraded", "upgrade_available", "failed", or "skipped"
+        Message is only provided in dry_run mode or when upgraded
     """
     if is_command_available("claude-statusline"):
+        try:
+            from ai_rules.bootstrap.updater import (
+                check_tool_updates,
+                get_tool_by_id,
+                perform_tool_upgrade,
+            )
+
+            statusline_tool = get_tool_by_id("statusline")
+            if statusline_tool:
+                update_info = check_tool_updates(statusline_tool, timeout=10)
+                if update_info and update_info.has_update:
+                    if dry_run:
+                        return (
+                            "upgrade_available",
+                            f"Would upgrade statusline {update_info.current_version} → {update_info.latest_version}",
+                        )
+                    success, msg, _ = perform_tool_upgrade(statusline_tool)
+                    if success:
+                        return (
+                            "upgraded",
+                            f"{update_info.current_version} → {update_info.latest_version}",
+                        )
+        except Exception:
+            pass
         return "already_installed", None
 
     try:
