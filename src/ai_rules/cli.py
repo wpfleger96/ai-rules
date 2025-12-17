@@ -656,7 +656,7 @@ def setup(
     console.print("[bold cyan]Step 1/3: Install ai-rules system-wide[/bold cyan]")
     console.print("This allows you to run 'ai-rules' from any directory.\n")
 
-    if not force:
+    if not force and not dry_run:
         if not Confirm.ask("Install ai-rules permanently?", default=True):
             console.print(
                 "\n[yellow]Skipped.[/yellow] You can still run via: uvx ai-rules <command>"
@@ -735,7 +735,11 @@ def setup(
             config_path = find_config_file(shell)
             if config_path and is_completion_installed(config_path):
                 console.print(f"[green]✓[/green] {shell} completion already installed")
-            elif force or Confirm.ask(f"Install {shell} tab completion?", default=True):
+            elif (
+                force
+                or dry_run
+                or Confirm.ask(f"Install {shell} tab completion?", default=True)
+            ):
                 success, msg = install_completion(shell, dry_run=dry_run)
                 if success:
                     console.print(f"[green]✓[/green] {msg}")
