@@ -685,36 +685,75 @@ def setup(
     tool_install_success = False
 
     if ai_rules_tool and ai_rules_tool.is_installed():
-        try:
-            update_info = check_tool_updates(ai_rules_tool, timeout=10)
-            if update_info and update_info.has_update:
-                if dry_run:
-                    console.print(
-                        f"[dim]Would upgrade ai-rules {update_info.current_version} → {update_info.latest_version}[/dim]"
-                    )
+        from ai_rules.bootstrap import ToolSource, get_tool_source, uninstall_tool
+
+        current_source = get_tool_source(ai_rules_tool.package_name)
+        desired_source = ToolSource.GITHUB if github else ToolSource.PYPI
+        needs_source_switch = current_source != desired_source
+
+        if needs_source_switch:
+            source_name = "GitHub" if github else "PyPI"
+            if dry_run:
+                console.print(
+                    f"[dim]Would switch ai-rules from {current_source.name if current_source else 'unknown'} to {source_name}[/dim]"
+                )
+                tool_install_success = True
+            else:
+                if not force and not Confirm.ask(
+                    f"Switch ai-rules to {source_name} install?", default=True
+                ):
+                    console.print("[yellow]Skipped source switch[/yellow]")
                     tool_install_success = True
                 else:
-                    if not force and not Confirm.ask(
-                        f"Upgrade ai-rules {update_info.current_version} → {update_info.latest_version}?",
-                        default=True,
-                    ):
-                        console.print("[yellow]Skipped ai-rules upgrade[/yellow]")
-                        tool_install_success = True
-                    else:
-                        success, msg, _ = perform_tool_upgrade(ai_rules_tool)
+                    uninstall_success, _ = uninstall_tool(ai_rules_tool.package_name)
+                    if uninstall_success:
+                        success, message = install_tool(
+                            "ai-agent-rules", from_github=github, force=True
+                        )
                         if success:
                             console.print(
-                                f"[green]✓[/green] Upgraded ai-rules ({update_info.current_version} → {update_info.latest_version})"
+                                f"[green]✓[/green] Switched to {source_name} install"
                             )
                             tool_install_success = True
                         else:
                             console.print(
-                                "[red]Error:[/red] Failed to upgrade ai-rules"
+                                f"[red]Error:[/red] Failed to install: {message}"
                             )
-            else:
-                tool_install_success = True
-        except Exception:
-            pass
+                    else:
+                        console.print(
+                            "[red]Error:[/red] Failed to uninstall current version"
+                        )
+        else:
+            try:
+                update_info = check_tool_updates(ai_rules_tool, timeout=10)
+                if update_info and update_info.has_update:
+                    if dry_run:
+                        console.print(
+                            f"[dim]Would upgrade ai-rules {update_info.current_version} → {update_info.latest_version}[/dim]"
+                        )
+                        tool_install_success = True
+                    else:
+                        if not force and not Confirm.ask(
+                            f"Upgrade ai-rules {update_info.current_version} → {update_info.latest_version}?",
+                            default=True,
+                        ):
+                            console.print("[yellow]Skipped ai-rules upgrade[/yellow]")
+                            tool_install_success = True
+                        else:
+                            success, msg, _ = perform_tool_upgrade(ai_rules_tool)
+                            if success:
+                                console.print(
+                                    f"[green]✓[/green] Upgraded ai-rules ({update_info.current_version} → {update_info.latest_version})"
+                                )
+                                tool_install_success = True
+                            else:
+                                console.print(
+                                    "[red]Error:[/red] Failed to upgrade ai-rules"
+                                )
+                else:
+                    tool_install_success = True
+            except Exception:
+                pass
 
     if not tool_install_success:
         if not force and not dry_run:
