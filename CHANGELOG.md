@@ -1,6 +1,14 @@
 # CHANGELOG
 
 
+## v0.15.10 (2025-12-17)
+
+### Bug Fixes
+
+- Remove useless hook
+  ([`ad4d540`](https://github.com/wpfleger96/ai-rules/commit/ad4d5403a12ca7f8a5f64041da1c43c513117038))
+
+
 ## v0.15.9 (2025-12-17)
 
 ### Bug Fixes
