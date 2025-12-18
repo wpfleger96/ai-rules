@@ -1,6 +1,19 @@
 # CHANGELOG
 
 
+## v0.15.12 (2025-12-18)
+
+### Bug Fixes
+
+- Get prompt-engineer skill to auto trigger
+  ([`5490942`](https://github.com/wpfleger96/ai-rules/commit/5490942778813fa8aa59980c628877dda62f0a00))
+
+### Chores
+
+- Cleanup dead code
+  ([`b98d4d7`](https://github.com/wpfleger96/ai-rules/commit/b98d4d7f5fad5eb40eb1ebde6ef8518ea8305c58))
+
+
 ## v0.15.11 (2025-12-18)
 
 ### Bug Fixes
