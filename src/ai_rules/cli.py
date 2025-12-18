@@ -88,23 +88,6 @@ def get_git_repo_root() -> Path:
     )
 
 
-def get_repo_root() -> Path:
-    """Get repository root - wrapper for backward compatibility.
-
-    DEPRECATED: Use get_config_dir() for config access or get_git_repo_root() for git operations.
-    This function exists only for backward compatibility during migration.
-
-    Returns:
-        Path to repository root (in dev mode) or package parent (in installed mode)
-    """
-    try:
-        return get_git_repo_root()
-    except RuntimeError:
-        # Not in git repo - fall back to package location
-        # This allows commands to work in PyPI-installed mode
-        return Path(__file__).parent.parent.parent.absolute()
-
-
 def get_agents(config_dir: Path, config: Config) -> list[Agent]:
     """Get all agent instances.
 
@@ -1462,8 +1445,6 @@ def update(force: bool) -> None:
         dry_run=False,
         rebuild_cache=False,
         agents=None,
-        projects=None,
-        user_only=False,
     )
 
 
@@ -1600,7 +1581,7 @@ def upgrade(check: bool, force: bool, skip_install: bool, only: str | None) -> N
             import subprocess
 
             try:
-                repo_root = get_repo_root()
+                repo_root = get_git_repo_root()
             except Exception:
                 console.print(
                     "\n[dim]Not in ai-rules repository - skipping install[/dim]"

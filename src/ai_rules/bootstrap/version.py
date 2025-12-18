@@ -1,7 +1,5 @@
 """Version utilities for package management."""
 
-from importlib.metadata import version as get_version
-
 from packaging.version import InvalidVersion, Version
 
 
@@ -35,18 +33,3 @@ def is_newer(latest: str, current: str) -> bool:
         return parse_version(latest) > parse_version(current)
     except InvalidVersion:
         return False
-
-
-def get_package_version(package_name: str) -> str:
-    """Get installed version of a package.
-
-    Args:
-        package_name: Name of the package (e.g., "ai-rules")
-
-    Returns:
-        Version string (e.g., "0.3.0")
-
-    Raises:
-        PackageNotFoundError: If package is not installed
-    """
-    return get_version(package_name)

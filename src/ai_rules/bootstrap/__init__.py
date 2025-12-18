@@ -42,10 +42,9 @@ from .updater import (
     get_tool_by_id,
     perform_tool_upgrade,
 )
-from .version import get_package_version, is_newer, parse_version
+from .version import is_newer, parse_version
 
 __all__ = [
-    "get_package_version",
     "is_newer",
     "parse_version",
     "UV_NOT_FOUND_ERROR",

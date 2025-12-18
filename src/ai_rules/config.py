@@ -126,7 +126,6 @@ def navigate_path(data: Any, path_components: list[str | int]) -> tuple[Any, boo
 
             if component not in current:
                 path_so_far = _format_path(path_components[: i + 1])
-                list(current.keys()) if isinstance(current, dict) else []
                 return (
                     None,
                     False,

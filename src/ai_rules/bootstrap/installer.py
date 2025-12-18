@@ -35,7 +35,6 @@ def make_github_install_url(repo: str) -> str:
 
 
 UV_NOT_FOUND_ERROR = "uv not found in PATH. Install from https://docs.astral.sh/uv/"
-PACKAGE_NAME = "ai-agent-rules"
 GITHUB_REPO = "wpfleger96/ai-rules"
 STATUSLINE_GITHUB_REPO = "wpfleger96/claude-code-status-line"
 
