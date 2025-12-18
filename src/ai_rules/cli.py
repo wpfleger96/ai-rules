@@ -31,6 +31,7 @@ from ai_rules.config import (
     parse_setting_path,
     validate_override_path,
 )
+from ai_rules.profiles import Profile
 from ai_rules.symlinks import (
     SymlinkResult,
     check_symlink,
@@ -918,8 +919,22 @@ def install(
     else:
         config_dir = get_config_dir()
 
-    from ai_rules.profiles import ProfileNotFoundError
+    from ai_rules.profiles import ProfileLoader, ProfileNotFoundError
     from ai_rules.state import set_active_profile
+
+    if profile and not force:
+        try:
+            loader = ProfileLoader()
+            profile_obj = loader.load_profile(profile)
+            user_config = Config.load_user_config()
+            profile_conflicts = _detect_profile_override_conflicts(
+                profile_obj, user_config
+            )
+            if profile_conflicts:
+                _handle_profile_conflicts(profile_conflicts, profile, user_config)
+        except ProfileNotFoundError as e:
+            console.print(f"[red]Error:[/red] {e}")
+            sys.exit(1)
 
     try:
         config = Config.load(profile=profile)
@@ -2511,6 +2526,65 @@ def profile_current() -> None:
         console.print("[dim]No profile set (using default)[/dim]")
 
 
+def _detect_profile_override_conflicts(
+    profile: Profile, user_config: dict[str, Any]
+) -> list[tuple[str, str, Any]]:
+    """Detect conflicts between profile settings and user overrides.
+
+    Args:
+        profile: The profile being installed
+        user_config: User config dict from ~/.ai-rules-config.yaml
+
+    Returns:
+        List of (agent, key, value) tuples for settings that conflict
+    """
+    conflicts = []
+    user_settings = user_config.get("settings_overrides", {})
+
+    for agent, profile_overrides in profile.settings_overrides.items():
+        if agent in user_settings:
+            for key in profile_overrides:
+                if key in user_settings[agent]:
+                    conflicts.append((agent, key, user_settings[agent][key]))
+
+    return conflicts
+
+
+def _handle_profile_conflicts(
+    conflicts: list[tuple[str, str, Any]],
+    profile_name: str,
+    user_config: dict[str, Any],
+) -> None:
+    """Show conflicts and prompt user to clear them.
+
+    Args:
+        conflicts: List of (agent, key, value) tuples
+        profile_name: Name of profile being installed
+        user_config: User config dict to potentially modify
+    """
+    if not conflicts:
+        return
+
+    console.print(
+        f"\n[yellow]⚠[/yellow]  User overrides conflict with profile '{profile_name}':"
+    )
+    for agent, key, value in conflicts:
+        console.print(f"  • {agent}.{key}: {value}")
+
+    if click.confirm("\nRemove these from user config?", default=False):
+        user_settings = user_config.get("settings_overrides", {})
+        for agent, key, _ in conflicts:
+            if agent in user_settings and key in user_settings[agent]:
+                del user_settings[agent][key]
+                if not user_settings[agent]:
+                    del user_settings[agent]
+
+        Config.save_user_config(user_config)
+        console.print("[green]✓[/green] Cleared conflicting overrides\n")
+    else:
+        console.print()
+
+
 @profile.command("switch")
 @click.argument("name", shell_complete=complete_profiles)
 @click.pass_context
@@ -2520,10 +2594,15 @@ def profile_switch(ctx: click.Context, name: str) -> None:
 
     loader = ProfileLoader()
     try:
-        loader.load_profile(name)
+        profile_obj = loader.load_profile(name)
     except ProfileNotFoundError as e:
         console.print(f"[red]Error:[/red] {e}")
         sys.exit(1)
+
+    user_config = Config.load_user_config()
+    profile_conflicts = _detect_profile_override_conflicts(profile_obj, user_config)
+    if profile_conflicts:
+        _handle_profile_conflicts(profile_conflicts, name, user_config)
 
     console.print(f"Switching to profile: [cyan]{name}[/cyan]")
     ctx.invoke(
