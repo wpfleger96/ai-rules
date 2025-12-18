@@ -1,6 +1,14 @@
 # CHANGELOG
 
 
+## v0.15.15 (2025-12-18)
+
+### Bug Fixes
+
+- Clarify between user/manual vs. profile overrides
+  ([`975694e`](https://github.com/wpfleger96/ai-rules/commit/975694e54e734e6dd68477921f91ff42dbcd2537))
+
+
 ## v0.15.14 (2025-12-18)
 
 ### Bug Fixes
