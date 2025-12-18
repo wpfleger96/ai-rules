@@ -2705,5 +2705,50 @@ def completions_uninstall(shell: str | None) -> None:
         sys.exit(1)
 
 
+@completions.command(name="status")
+def completions_status() -> None:
+    """Show shell completion installation status."""
+    from ai_rules.completions import (
+        detect_shell,
+        find_config_file,
+        get_supported_shells,
+        is_completion_installed,
+    )
+
+    detected_shell = detect_shell()
+    console.print("[bold cyan]Shell Completions Status[/bold cyan]\n")
+
+    if detected_shell:
+        console.print(f"Detected shell: [cyan]{detected_shell}[/cyan]\n")
+    else:
+        console.print("[yellow]No supported shell detected[/yellow]\n")
+
+    from rich.table import Table
+
+    table = Table(show_header=True)
+    table.add_column("Shell")
+    table.add_column("Status")
+    table.add_column("Config File")
+
+    for shell in get_supported_shells():
+        config_path = find_config_file(shell)
+
+        if config_path is None:
+            status = "[dim]-[/dim]"
+            config_str = "[dim]No config file found[/dim]"
+        elif is_completion_installed(config_path):
+            status = "[green]✓[/green]"
+            config_str = str(config_path)
+        else:
+            status = "[yellow]○[/yellow]"
+            config_str = f"{config_path} [dim](not installed)[/dim]"
+
+        shell_name = f"[bold]{shell}[/bold]" if shell == detected_shell else shell
+        table.add_row(shell_name, status, config_str)
+
+    console.print(table)
+    console.print("\n[dim]To install: ai-rules completions install[/dim]")
+
+
 if __name__ == "__main__":
     main()
