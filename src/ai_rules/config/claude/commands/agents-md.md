@@ -20,6 +20,19 @@ You are creating comprehensive documentation to help LLM coding agents (Claude C
 **Target audience:** LLM coding agents starting fresh on this codebase
 **Output:** AGENTS.md file at repository root with actionable, concise guidance
 
+## Phase 0: Invoke prompt-engineer Skill
+
+**REQUIRED FIRST STEP:** Before proceeding, invoke the `prompt-engineer` skill using the Skill tool.
+
+**Why:** AGENTS.md is documentation for LLM coding agents. Applying prompt engineering best practices ensures the output is maximally effective for its audience.
+
+**Apply these principles from the skill:**
+- Use explicit, unambiguous instructions (LLMs interpret literally)
+- Structure with clear sections and formatting
+- Put most important info first (commands) - LLMs have primacy bias
+- Be specific over vague ("pytest -v" not "run tests")
+- Use examples over explanations where applicable
+
 ## Phase 1: Determine Mode
 
 Check the "Mode" field from Context section:

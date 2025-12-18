@@ -15,6 +15,12 @@ Activate this skill when the user:
 - Says "prompt for [task]" or "help me prompt [model]"
 - Discusses prompt quality, effectiveness, or techniques
 
+**Auto-activate for LLM-facing content:**
+- Creating or updating AGENTS.md, CLAUDE.md, or similar LLM instruction files
+- Writing slash commands (`.claude/commands/*.md`) or skills (`.claude/skills/`)
+- Generating system prompts, custom instructions, or agent configurations
+- Any documentation explicitly targeting LLM coding agents as the audience
+
 ## Core Workflow
 
 ### For New Prompts
