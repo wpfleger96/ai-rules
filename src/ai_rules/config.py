@@ -261,16 +261,20 @@ class Config:
         """Load configuration from profile and ~/.ai-rules-config.yaml.
 
         Merge order (lowest to highest priority):
-        1. Profile overrides (if profile specified, defaults to "default")
+        1. Profile overrides (if profile specified, defaults to active profile or "default")
         2. Local overrides from ~/.ai-rules-config.yaml
 
         Args:
-            profile: Optional profile name to load (default: "default")
+            profile: Optional profile name to load (default: active profile or "default")
 
         Returns:
             Config instance with merged overrides
         """
-        return cls._load_cached(profile or "default")
+        if profile is None:
+            from ai_rules.state import get_active_profile
+
+            profile = get_active_profile() or "default"
+        return cls._load_cached(profile)
 
     @classmethod
     @lru_cache(maxsize=8)

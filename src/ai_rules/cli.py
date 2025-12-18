@@ -903,7 +903,10 @@ def install(
         config_dir = get_config_dir()
 
     from ai_rules.profiles import ProfileLoader, ProfileNotFoundError
-    from ai_rules.state import set_active_profile
+    from ai_rules.state import get_active_profile, set_active_profile
+
+    if profile is None:
+        profile = get_active_profile() or "default"
 
     if profile and not force:
         try:
@@ -926,7 +929,7 @@ def install(
         sys.exit(1)
 
     if not dry_run:
-        set_active_profile(profile or "default")
+        set_active_profile(profile)
 
     if profile and profile != "default":
         console.print(f"[dim]Using profile: {profile}[/dim]\n")
@@ -1596,8 +1599,18 @@ def upgrade(check: bool, force: bool, skip_install: bool, only: str | None) -> N
 
             console.print("\n[dim]Running 'ai-rules install --rebuild-cache'...[/dim]")
 
+            from ai_rules.state import get_active_profile
+
+            current_profile = get_active_profile() or "default"
+
             result = subprocess.run(
-                ["ai-rules", "install", "--rebuild-cache"],
+                [
+                    "ai-rules",
+                    "install",
+                    "--rebuild-cache",
+                    "--profile",
+                    current_profile,
+                ],
                 capture_output=False,
                 text=True,
                 cwd=str(repo_root),
