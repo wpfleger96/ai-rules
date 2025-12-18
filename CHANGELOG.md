@@ -1,6 +1,14 @@
 # CHANGELOG
 
 
+## v0.15.11 (2025-12-18)
+
+### Bug Fixes
+
+- Switching profiles should gracefully handle conflicting overrides
+  ([`7080a3d`](https://github.com/wpfleger96/ai-rules/commit/7080a3df51608381be23805080765622828a6125))
+
+
 ## v0.15.10 (2025-12-17)
 
 ### Bug Fixes
