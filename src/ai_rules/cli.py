@@ -2095,15 +2095,16 @@ def override_unset(key: str) -> None:
 @override.command("list")
 def override_list() -> None:
     """List all settings overrides."""
-    config = Config.load()
+    user_data = Config.load_user_config()
+    user_overrides = user_data.get("settings_overrides", {})
 
-    if not config.settings_overrides:
+    if not user_overrides:
         console.print("[dim]No settings overrides configured[/dim]")
         return
 
     console.print("[bold]Settings Overrides:[/bold]\n")
 
-    for agent, overrides in sorted(config.settings_overrides.items()):
+    for agent, overrides in sorted(user_overrides.items()):
         console.print(f"[bold]{agent}:[/bold]")
         for key, value in sorted(overrides.items()):
             console.print(f"  • {key}: {value}")
