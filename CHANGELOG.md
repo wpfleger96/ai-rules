@@ -1,6 +1,14 @@
 # CHANGELOG
 
 
+## v0.15.14 (2025-12-18)
+
+### Bug Fixes
+
+- All commands should respect current profile if set
+  ([`2a7cdd9`](https://github.com/wpfleger96/ai-rules/commit/2a7cdd90f2ba8fe9c8dda127bd8109caa44d36a6))
+
+
 ## v0.15.13 (2025-12-18)
 
 ### Bug Fixes
