@@ -1,6 +1,14 @@
 # CHANGELOG
 
 
+## v0.15.13 (2025-12-18)
+
+### Bug Fixes
+
+- Add completions status command
+  ([`5fbe247`](https://github.com/wpfleger96/ai-rules/commit/5fbe2472ebd08262767ab9c4fb0162e58a6ef939))
+
+
 ## v0.15.12 (2025-12-18)
 
 ### Bug Fixes
