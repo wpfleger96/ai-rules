@@ -291,7 +291,9 @@ config/
 ├── claude/
 │   ├── settings.json      # → ~/.claude/settings.json
 │   ├── agents/*.md        # → ~/.claude/agents/*.md (dynamic)
-│   └── commands/*.md      # → ~/.claude/commands/*.md (dynamic)
+│   ├── commands/*.md      # → ~/.claude/commands/*.md (dynamic)
+│   ├── hooks/*.py         # → ~/.claude/hooks/*.py (dynamic)
+│   └── skills/*/SKILL.md  # → ~/.claude/skills/*/SKILL.md (dynamic)
 ├── cursor/
 │   ├── settings.json      # → ~/Library/Application Support/Cursor/User/ (macOS)
 │   │                      #    ~/AppData/Roaming/Cursor/User/ (Windows)
@@ -323,6 +325,25 @@ If a tool fails to install, ai-rules continues normally (fail-open behavior).
 **Add Claude agent/command:**
 1. Create `config/claude/agents/my-agent.md` or `config/claude/commands/my-cmd.md`
 2. Run `ai-rules install`
+
+**Add Claude skill with auto-activation:**
+1. Create `config/claude/skills/my-skill/SKILL.md` with frontmatter:
+```yaml
+---
+name: my-skill
+description: "Brief description"
+metadata:
+  trigger-keywords: "keyword1, keyword2"
+  trigger-patterns: "pattern1, pattern2"
+---
+```
+2. Run `ai-rules install`
+3. Skill auto-suggests when user prompt matches keywords/patterns
+
+**Add Claude hook:**
+1. Create `config/claude/hooks/my-hook.py`
+2. Run `ai-rules install`
+3. Configure in settings or overrides (e.g., UserPromptSubmit, SubagentStop)
 
 **Add new AI tool:**
 1. Add configs to `config/<tool>/`

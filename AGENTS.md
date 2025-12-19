@@ -24,6 +24,22 @@ uv run ai-rules <cmd>         # Run CLI
 
 # GitHub installation
 uv run ai-rules setup --github  # Install from GitHub instead of PyPI
+
+# Key CLI commands
+uv run ai-rules install        # Install symlinks
+uv run ai-rules status         # Check symlink status
+uv run ai-rules info           # Show installation method and version info
+uv run ai-rules upgrade        # Upgrade to latest version
+uv run ai-rules validate       # Validate config files
+uv run ai-rules diff           # Show diffs between repo and installed
+
+# Subcommands
+uv run ai-rules config show    # Show current config
+uv run ai-rules config edit    # Edit user config in $EDITOR
+uv run ai-rules override list  # List settings overrides
+uv run ai-rules completions install  # Install shell completions
+uv run ai-rules profile list   # List available profiles
+uv run ai-rules profile switch <name>  # Switch to different profile
 ```
 
 ## Tech Stack
@@ -40,12 +56,11 @@ uv run ai-rules setup --github  # Install from GitHub instead of PyPI
 
 ```
 src/ai_rules/
-├── cli.py              # Click CLI commands
+├── cli.py              # Click CLI commands (main, install, status, upgrade, etc.)
 ├── config.py           # Config loading, path parsing, merging
 ├── profiles.py         # Profile loading and inheritance resolution
 ├── state.py            # State management (active profile tracking)
 ├── utils.py            # Deep merge and utility functions
-├── display.py          # Rich console display utilities
 ├── symlinks.py         # Symlink operations with backups
 ├── mcp.py              # MCP server management
 ├── completions.py      # Shell completion management
@@ -61,6 +76,9 @@ src/ai_rules/
 │   └── version.py      # Version parsing
 └── config/             # Source configs (bundled in package)
     ├── claude/         # Claude Code configs (settings, agents, commands, skills)
+    │   ├── commands/   # Slash commands (.md files)
+    │   ├── skills/     # Skills (subdirs with SKILL.md)
+    │   └── hooks/      # UserPromptSubmit hook (skillRouter.py)
     ├── cursor/         # Cursor IDE configs (settings, keybindings)
     ├── goose/          # Goose configs (.goosehints, config.yaml)
     └── profiles/       # Built-in profiles (default.yaml, work.yaml)
@@ -158,13 +176,15 @@ uv run pytest -m state          # State management tests only
 
 | Task | Files |
 |------|-------|
-| Add CLI command | `cli.py` |
-| Config loading | `config.py` |
-| Profile management | `profiles.py`, `state.py`, `cli.py` (profile command) |
-| State management | `state.py` (active profile tracking) |
-| Symlink behavior | `symlinks.py` |
-| Shell completions | `completions.py` |
-| New agent | `agents/base.py`, `agents/<new>.py`, `cli.py` |
+| Add CLI command | `cli.py` (main function, command decorators) |
+| Add slash command | Create `.md` in `config/claude/commands/` |
+| Add skill | Create subdir in `config/claude/skills/` with `SKILL.md` |
+| Config loading | `config.py` (Config class, load_config) |
+| Profile management | `profiles.py`, `state.py`, `cli.py::profile()` |
+| State management | `state.py` (ProfileState class) |
+| Symlink behavior | `symlinks.py` (create_symlink, remove_symlink) |
+| Shell completions | `completions.py`, `cli.py::completions()` |
+| New agent | `agents/base.py`, `agents/<new>.py`, `cli.py::get_agents()` |
 | MCP management | `mcp.py`, `agents/claude.py` |
 | Auto-update/upgrade | `bootstrap/updater.py`, `bootstrap/installer.py` |
 | GitHub install support | `bootstrap/installer.py` (GITHUB_REPO_URL) |
