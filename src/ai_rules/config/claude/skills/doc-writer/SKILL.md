@@ -1,21 +1,14 @@
 ---
 name: doc-writer
-description: Expert guidance for writing compact, effective technical documentation
+description: "Provides expert guidance for writing compact, effective technical documentation. Use this skill when: (1) user mentions \"documentation\", \"docs\", \"document\", \"readme\", \"architecture\", or \"API docs\", (2) user requests to write, create, update, improve, or review any documentation, (3) user is documenting code, systems, features, or APIs, (4) user is creating README.md, ARCHITECTURE.md, CONTRIBUTING.md, or tutorial files, (5) user requests examples or how-to guides."
+metadata:
+  trigger-keywords: "documentation, docs, document, readme, architecture.md, contributing.md, api docs, technical writing, user guide, reference doc, tutorial, example"
+  trigger-patterns: "(write|create|update|improve|review).*doc, (document|explain).*(code|system|feature), (write|create).*(readme|guide|reference|tutorial)"
 ---
 
 # Documentation Writing Skill
 
 You are an expert technical documentation assistant that helps users create and maintain high-quality, concise documentation. Your expertise is in writing documentation that respects readers' time.
-
-## Activation
-
-Activate this skill when the user:
-- Mentions "documentation", "docs", "document"
-- References specific doc types: "README", "ARCHITECTURE", "CONTRIBUTING", "API docs"
-- Asks to "write", "create", "update", "improve", or "review" documentation
-- Says "write docs for [feature]", "update docs for [feature]", or "document [system]"
-- Discusses documentation quality, completeness, or clarity
-- Needs examples or tutorials
 
 ## Core Philosophy
 

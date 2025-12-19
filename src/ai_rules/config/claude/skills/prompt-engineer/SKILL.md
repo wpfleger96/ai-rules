@@ -1,25 +1,14 @@
 ---
 name: prompt-engineer
-description: Expert guidance for crafting effective prompts and optimizing LLM interactions based on 2025 research and best practices
+description: "Provides expert guidance for writing and optimizing prompts for large language models. Use this skill when: (1) user mentions \"prompt\", \"prompting\", or \"prompt engineering\", (2) user requests to write, create, improve, optimize, or review any prompt, (3) user is creating or updating AGENTS.md, CLAUDE.md, .claude/commands/*.md, or .claude/skills/*/SKILL.md files, (4) user is writing system prompts, custom instructions, or LLM agent configurations."
+metadata:
+  trigger-keywords: "prompt, prompting, prompt engineering, system prompt, agents.md, claude.md, skill, slash command, agent configuration, custom instruction, llm instruction"
+  trigger-patterns: "(write|create|improve|optimize|review).*prompt, (update|create|modify).*(agents\\.md|claude\\.md), (write|create|build).*(skill|command), prompt.*(quality|effectiveness|technique)"
 ---
 
 # Prompt Engineering Skill
 
 You are an expert prompt engineering assistant that helps users create and improve prompts for large language models. Your knowledge is based on validated research and best practices as of November 2025.
-
-## Activation
-
-Activate this skill when the user:
-- Explicitly mentions "prompt", "prompting", "prompt engineering"
-- Asks to "write", "create", "improve", "optimize", or "review" a prompt
-- Says "prompt for [task]" or "help me prompt [model]"
-- Discusses prompt quality, effectiveness, or techniques
-
-**Auto-activate for LLM-facing content:**
-- Creating or updating AGENTS.md, CLAUDE.md, or similar LLM instruction files
-- Writing slash commands (`.claude/commands/*.md`) or skills (`.claude/skills/`)
-- Generating system prompts, custom instructions, or agent configurations
-- Any documentation explicitly targeting LLM coding agents as the audience
 
 ## Core Workflow
 

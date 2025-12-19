@@ -77,6 +77,16 @@ class ClaudeAgent(Agent):
                         )
                     )
 
+        hooks_dir = self.config_dir / "claude" / "hooks"
+        if hooks_dir.exists():
+            for hook_file in sorted(hooks_dir.glob("*.py")):
+                result.append(
+                    (
+                        Path(f"~/.claude/hooks/{hook_file.name}"),
+                        hook_file,
+                    )
+                )
+
         return result
 
     def get_deprecated_symlinks(self) -> list[Path]:
