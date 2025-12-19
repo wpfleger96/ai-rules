@@ -1,6 +1,20 @@
 # CHANGELOG
 
 
+## v0.16.0 (2025-12-19)
+
+### Bug Fixes
+
+- /update-docs should auto invoke doc-writer skill, and remove unnecessary update command
+  ([`93c8f72`](https://github.com/wpfleger96/ai-rules/commit/93c8f72589f17e08363a76e74ec4f0222493435b))
+
+### Features
+
+- Userpromptsubmit hook to force skill activation, and claude code only autoloads skill frontmatter
+  so put activation instructions there
+  ([`fa37479`](https://github.com/wpfleger96/ai-rules/commit/fa374794e912dc8e87f5f063e8ffbe61fe413409))
+
+
 ## v0.15.15 (2025-12-18)
 
 ### Bug Fixes
