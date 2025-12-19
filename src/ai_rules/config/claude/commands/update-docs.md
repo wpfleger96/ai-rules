@@ -19,7 +19,20 @@ model: sonnet
 
 Automatically updates project documentation after code changes by intelligently analyzing recent commits, detecting what changed, and updating relevant documentation files while preserving existing style and structure.
 
-## Five-Phase Methodology
+## Six-Phase Methodology
+
+### Phase 0: Invoke doc-writer Skill
+
+**REQUIRED FIRST STEP:** Before proceeding, invoke the `doc-writer` skill using the Skill tool.
+
+**Why:** This command updates technical documentation. Applying doc-writer best practices ensures updates are concise, scannable, and maintain documentation quality.
+
+**Apply these principles from the skill:**
+- Compact over comprehensive (every sentence earns its place)
+- Readers scan, not read (front-load key info)
+- Code examples over prose where applicable
+- Cut ruthlessly (no placeholders, no redundant sections)
+- Match existing style while improving clarity
 
 ### Phase 1: Change Analysis & Scope Detection
 

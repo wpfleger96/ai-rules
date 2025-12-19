@@ -1436,22 +1436,6 @@ def list_agents_cmd() -> None:
 
 
 @main.command()
-@click.option("--force", is_flag=True, help="Skip confirmations")
-def update(force: bool) -> None:
-    """Re-sync symlinks (useful after adding new agents/commands)."""
-    console.print("[bold]Updating AI Rules symlinks...[/bold]\n")
-
-    ctx = click.get_current_context()
-    ctx.invoke(
-        install,
-        force=force,
-        dry_run=False,
-        rebuild_cache=False,
-        agents=None,
-    )
-
-
-@main.command()
 @click.option("--check", is_flag=True, help="Check for updates without installing")
 @click.option("--force", is_flag=True, help="Force reinstall even if up to date")
 @click.option(

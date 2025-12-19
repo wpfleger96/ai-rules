@@ -99,7 +99,7 @@ ai-rules install --rebuild-cache    # Rebuild merged settings cache
 ai-rules status                     # Check symlink status + optional tools + active profile (✓✗⚠○)
 ai-rules diff                       # Show config differences
 ai-rules validate                   # Verify source files exist
-ai-rules update                     # Re-sync after adding files
+ai-rules install                    # Re-sync after adding files
 ai-rules uninstall                  # Remove all symlinks
 ai-rules list-agents                # Show available agents
 ```
@@ -322,7 +322,7 @@ If a tool fails to install, ai-rules continues normally (fail-open behavior).
 
 **Add Claude agent/command:**
 1. Create `config/claude/agents/my-agent.md` or `config/claude/commands/my-cmd.md`
-2. Run `ai-rules update`
+2. Run `ai-rules install`
 
 **Add new AI tool:**
 1. Add configs to `config/<tool>/`
