@@ -1,6 +1,14 @@
 # CHANGELOG
 
 
+## v0.17.0 (2025-12-20)
+
+### Features
+
+- Migrating cursor settings to shell-configs project
+  ([`b95ea16`](https://github.com/wpfleger96/ai-rules/commit/b95ea16e327eba3c4ed2a543d98f7f239f2b3cbb))
+
+
 ## v0.16.1 (2025-12-20)
 
 ### Bug Fixes
