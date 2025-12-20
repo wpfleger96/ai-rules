@@ -12,6 +12,8 @@ Instructions for AI coding agents working on this repository.
 
 The name `ai-rules` was taken on PyPI, so the package is published as `ai-agent-rules`. Both CLI entry points work, but use `ai-rules` in docs and examples (shorter).
 
+**Supported agents:** Claude Code, Goose, Shared (AGENTS.md)
+
 ## Quick Commands
 
 ```bash
@@ -67,7 +69,6 @@ src/ai_rules/
 ├── agents/
 │   ├── base.py         # Abstract Agent base class
 │   ├── claude.py       # ClaudeAgent
-│   ├── cursor.py       # CursorAgent
 │   ├── goose.py        # GooseAgent
 │   └── shared.py       # SharedAgent
 ├── bootstrap/          # Auto-update and GitHub install utilities
@@ -79,7 +80,6 @@ src/ai_rules/
     │   ├── commands/   # Slash commands (.md files)
     │   ├── skills/     # Skills (subdirs with SKILL.md)
     │   └── hooks/      # UserPromptSubmit hook (skillRouter.py)
-    ├── cursor/         # Cursor IDE configs (settings, keybindings)
     ├── goose/          # Goose configs (.goosehints, config.yaml)
     └── profiles/       # Built-in profiles (default.yaml, work.yaml)
 tests/
@@ -104,8 +104,7 @@ All AI tools inherit from `Agent` (`agents/base.py`). To add a new tool:
   - Inheritance via `extends:` key (e.g., work extends default)
   - Commands: `profile list`, `profile show`, `profile current`, `profile switch`
 - `settings_overrides` for machine-specific agent settings
-- Cache-based override merging for settings.json files (Claude, Cursor, Goose)
-- Cursor uses cache for settings.json, direct symlinks for keybindings.json
+- Cache-based override merging for settings.json files (Claude, Goose)
 - Agent-specific hints (CLAUDE.md, .goosehints) use `@~/AGENTS.md` to reference main file (token-saving)
 
 ## Testing

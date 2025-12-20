@@ -12,14 +12,14 @@ Manage AI agent configurations through symlinks. Keep all your configs in one gi
 
 ## Overview
 
-Consolidates config files for AI coding agents (Claude Code, Cursor, Goose) into a single source of truth via symlinks:
+Consolidates config files for AI coding agents (Claude Code, Goose) into a single source of truth via symlinks:
 
 - Git-tracked configs synced across machines
 - Edit once, apply everywhere
 - Exclude specific files (e.g., company-managed)
 - Per-agent customizations
 
-**Supported:** Claude Code (settings, agents, commands), Cursor (settings, keybindings), Goose (hints, config), Shared (AGENTS.md)
+**Supported:** Claude Code (settings, agents, commands), Goose (hints, config), Shared (AGENTS.md)
 
 ## Installation
 
@@ -123,7 +123,6 @@ ai-rules exclude list                        # List all exclusions
 
 # Manage settings overrides (for machine-specific settings)
 ai-rules override set claude.model "claude-sonnet-4-5-20250929"  # Set simple override
-ai-rules override set cursor.editor.fontSize 14  # Override Cursor font size
 ai-rules override set claude.hooks.SubagentStop[0].hooks[0].command "script.py"  # Array notation
 ai-rules override unset claude.model         # Remove override
 ai-rules override list                       # List all overrides
@@ -164,8 +163,6 @@ settings_overrides:
   claude:
     model: "claude-sonnet-4-5-20250929"  # Override model on personal laptop
     # Other settings inherited from base config/claude/settings.json
-  cursor:
-    editor.fontSize: 14  # Override font size on this machine
   goose:
     provider: "anthropic"
 ```
@@ -225,20 +222,6 @@ ai-rules override set claude.modle "sonnet"
 
 Path validation ensures you only set valid overrides that exist in the base settings, preventing typos and configuration errors.
 
-### Cursor Settings
-
-Cursor settings support the same override mechanism as other agents:
-
-```yaml
-# ~/.ai-rules-config.yaml
-settings_overrides:
-  cursor:
-    editor.fontSize: 14
-    terminal.integrated.defaultLocation: "editor"
-```
-
-> **Note:** `keybindings.json` uses direct symlinks without override merging (array structure).
-
 ### Profiles - Machine-Specific Configuration
 
 Profiles let you group configuration overrides into named presets. Instead of manually maintaining different `~/.ai-rules-config.yaml` files across machines, define profiles once and select them at install time.
@@ -294,17 +277,9 @@ config/
 │   ├── commands/*.md      # → ~/.claude/commands/*.md (dynamic)
 │   ├── hooks/*.py         # → ~/.claude/hooks/*.py (dynamic)
 │   └── skills/*/SKILL.md  # → ~/.claude/skills/*/SKILL.md (dynamic)
-├── cursor/
-│   ├── settings.json      # → ~/Library/Application Support/Cursor/User/ (macOS)
-│   │                      #    ~/AppData/Roaming/Cursor/User/ (Windows)
-│   │                      #    ~/.config/Cursor/User/ (Linux)
-│   └── keybindings.json   # → (same paths as settings.json)
 └── goose/
     └── config.yaml        # → ~/.config/goose/config.yaml
 ```
-
-> **Note:** The Cursor config files contain the maintainer's personal preferences
-> (e.g., macOS-specific terminal settings). Customize for your environment.
 
 ## Optional Tools
 
