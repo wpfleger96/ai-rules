@@ -1,6 +1,19 @@
 # CHANGELOG
 
 
+## v0.16.1 (2025-12-20)
+
+### Bug Fixes
+
+- Optimize token usage
+  ([`bb93497`](https://github.com/wpfleger96/ai-rules/commit/bb93497f41fc32fcad2064fbec0cb97f2aa8fbfb))
+
+### Chores
+
+- Docs
+  ([`78ee562`](https://github.com/wpfleger96/ai-rules/commit/78ee56246d8639ed7492b3605126ae6c573f85e8))
+
+
 ## v0.16.0 (2025-12-19)
 
 ### Bug Fixes
