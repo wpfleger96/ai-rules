@@ -22,7 +22,6 @@ from rich.table import Table
 
 from ai_rules.agents.base import Agent
 from ai_rules.agents.claude import ClaudeAgent
-from ai_rules.agents.cursor import CursorAgent
 from ai_rules.agents.goose import GooseAgent
 from ai_rules.agents.shared import SharedAgent
 from ai_rules.config import (
@@ -100,7 +99,6 @@ def get_agents(config_dir: Path, config: Config) -> list[Agent]:
     """
     return [
         ClaudeAgent(config_dir, config),
-        CursorAgent(config_dir, config),
         GooseAgent(config_dir, config),
         SharedAgent(config_dir, config),
     ]
@@ -947,12 +945,6 @@ def install(
         if claude_settings.exists():
             config.build_merged_settings(
                 "claude", claude_settings, force_rebuild=rebuild_cache
-            )
-
-        cursor_settings = config_dir / "cursor" / "settings.json"
-        if cursor_settings.exists():
-            config.build_merged_settings(
-                "cursor", cursor_settings, force_rebuild=rebuild_cache
             )
 
         goose_settings = config_dir / "goose" / "config.yaml"

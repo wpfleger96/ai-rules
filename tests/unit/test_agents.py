@@ -1,9 +1,6 @@
-import sys
-
 import pytest
 
 from ai_rules.agents.claude import ClaudeAgent
-from ai_rules.agents.cursor import CursorAgent
 from ai_rules.agents.goose import GooseAgent
 from ai_rules.agents.shared import SharedAgent
 from ai_rules.config import Config
@@ -122,67 +119,3 @@ class TestSharedAgent:
         targets = [str(target) for target, _ in symlinks]
         assert "~/AGENTS.md" not in targets
         assert len(targets) == 0
-
-
-@pytest.mark.unit
-@pytest.mark.agents
-class TestCursorAgent:
-    """Test Cursor agent symlink discovery and filtering."""
-
-    def test_discovers_all_symlinks(self, test_repo):
-        agent = CursorAgent(test_repo, Config(exclude_symlinks=[]))
-
-        symlinks = agent.symlinks
-
-        # Extract just the filenames from paths for platform-agnostic testing
-        target_filenames = [str(target).split("/")[-1] for target, _ in symlinks]
-        assert "settings.json" in target_filenames
-        assert "keybindings.json" in target_filenames
-        assert len(target_filenames) == 2
-
-        # Verify paths contain platform-specific Cursor directory with ~ prefix
-        target_paths = [str(target) for target, _ in symlinks]
-        if sys.platform == "darwin":
-            assert any(
-                "~/Library/Application Support/Cursor/User" in p for p in target_paths
-            )
-        elif sys.platform == "win32":
-            assert any("~/AppData/Roaming/Cursor/User" in p for p in target_paths)
-        else:  # Linux/WSL
-            assert any("~/.config/Cursor/User" in p for p in target_paths)
-
-    def test_excludes_filtered_symlinks(self, test_repo):
-        # Platform-specific exclusion path
-        if sys.platform == "darwin":
-            exclude_path = "~/Library/Application Support/Cursor/User/settings.json"
-        elif sys.platform == "win32":
-            exclude_path = "~/AppData/Roaming/Cursor/User/settings.json"
-        else:  # Linux/WSL
-            exclude_path = "~/.config/Cursor/User/settings.json"
-
-        config = Config(exclude_symlinks=[exclude_path])
-        agent = CursorAgent(test_repo, config)
-
-        symlinks = agent.get_filtered_symlinks()
-
-        target_filenames = [
-            str(target).split("/")[-1].split("\\")[-1] for target, _ in symlinks
-        ]
-        assert "settings.json" not in target_filenames
-        assert "keybindings.json" in target_filenames
-
-    def test_handles_missing_keybindings(self, test_repo):
-        """Test that agent works when only settings.json exists."""
-        # Remove keybindings.json from test_repo to simulate missing file
-        cursor_dir = test_repo / "cursor"
-        keybindings_file = cursor_dir / "keybindings.json"
-        if keybindings_file.exists():
-            keybindings_file.unlink()
-
-        agent = CursorAgent(test_repo, Config(exclude_symlinks=[]))
-
-        symlinks = agent.symlinks
-
-        target_filenames = [str(target).split("/")[-1] for target, _ in symlinks]
-        assert "settings.json" in target_filenames
-        assert len(target_filenames) == 1
