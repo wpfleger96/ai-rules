@@ -218,7 +218,7 @@ def check_github_updates(
 
 
 def perform_tool_upgrade(tool: ToolSpec) -> tuple[bool, str, bool]:
-    """Upgrade a tool via uv, handling PyPI, GitHub, and local sources.
+    """Upgrade a tool via uv, handling PyPI and GitHub sources.
 
     Args:
         tool: Tool specification to upgrade

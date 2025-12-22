@@ -1559,20 +1559,6 @@ def upgrade(check: bool, force: bool, skip_install: bool, only: str | None) -> N
         try:
             import subprocess
 
-            try:
-                repo_root = get_git_repo_root()
-            except Exception:
-                console.print(
-                    "\n[dim]Not in ai-rules repository - skipping install[/dim]"
-                )
-                console.print(
-                    "[dim]Run 'ai-rules install --rebuild-cache' from repo to update[/dim]"
-                )
-                console.print(
-                    "[dim]Restart your terminal if the command doesn't work[/dim]"
-                )
-                return
-
             console.print("\n[dim]Running 'ai-rules install --rebuild-cache'...[/dim]")
 
             from ai_rules.state import get_active_profile
@@ -1589,7 +1575,6 @@ def upgrade(check: bool, force: bool, skip_install: bool, only: str | None) -> N
                 ],
                 capture_output=False,
                 text=True,
-                cwd=str(repo_root),
                 timeout=30,
             )
 
@@ -1618,7 +1603,7 @@ def upgrade(check: bool, force: bool, skip_install: bool, only: str | None) -> N
 def info() -> None:
     """Show installation method and version info for ai-rules tools.
 
-    Displays how each tool was installed (PyPI, GitHub, or local development)
+    Displays how each tool was installed (PyPI or GitHub)
     along with current versions and update availability.
     """
     from rich.table import Table
