@@ -20,6 +20,8 @@ class Profile:
     settings_overrides: dict[str, dict[str, Any]] = field(default_factory=dict)
     exclude_symlinks: list[str] = field(default_factory=list)
     mcp_overrides: dict[str, dict[str, Any]] = field(default_factory=dict)
+    plugins: list[dict[str, str]] = field(default_factory=list)
+    marketplaces: list[dict[str, str]] = field(default_factory=list)
 
 
 class ProfileError(Exception):
@@ -121,6 +123,8 @@ class ProfileLoader:
             settings_overrides=data.get("settings_overrides", {}),
             exclude_symlinks=data.get("exclude_symlinks", []),
             mcp_overrides=data.get("mcp_overrides", {}),
+            plugins=data.get("plugins", []),
+            marketplaces=data.get("marketplaces", []),
         )
 
         if profile.extends:
@@ -147,6 +151,32 @@ class ProfileLoader:
             raise ProfileError(
                 f"Profile '{profile_name}': mcp_overrides must be a dict"
             )
+        if "plugins" in data:
+            if not isinstance(data["plugins"], list):
+                raise ProfileError(f"Profile '{profile_name}': plugins must be a list")
+            for i, plugin in enumerate(data["plugins"]):
+                if not isinstance(plugin, dict):
+                    raise ProfileError(
+                        f"Profile '{profile_name}': plugins[{i}] must be a dict"
+                    )
+                if "name" not in plugin or "marketplace" not in plugin:
+                    raise ProfileError(
+                        f"Profile '{profile_name}': plugins[{i}] must have 'name' and 'marketplace' keys"
+                    )
+        if "marketplaces" in data:
+            if not isinstance(data["marketplaces"], list):
+                raise ProfileError(
+                    f"Profile '{profile_name}': marketplaces must be a list"
+                )
+            for i, marketplace in enumerate(data["marketplaces"]):
+                if not isinstance(marketplace, dict):
+                    raise ProfileError(
+                        f"Profile '{profile_name}': marketplaces[{i}] must be a dict"
+                    )
+                if "name" not in marketplace or "source" not in marketplace:
+                    raise ProfileError(
+                        f"Profile '{profile_name}': marketplaces[{i}] must have 'name' and 'source' keys"
+                    )
 
     def _merge_profiles(self, parent: Profile, child: Profile) -> Profile:
         """Merge parent profile into child, with child taking precedence."""
@@ -160,6 +190,16 @@ class ProfileLoader:
             set(parent.exclude_symlinks) | set(child.exclude_symlinks)
         )
 
+        plugins_by_name = {p["name"]: p for p in parent.plugins}
+        for plugin in child.plugins:
+            plugins_by_name[plugin["name"]] = plugin
+        merged_plugins = list(plugins_by_name.values())
+
+        marketplaces_by_name = {m["name"]: m for m in parent.marketplaces}
+        for marketplace in child.marketplaces:
+            marketplaces_by_name[marketplace["name"]] = marketplace
+        merged_marketplaces = list(marketplaces_by_name.values())
+
         return Profile(
             name=child.name,
             description=child.description,
@@ -167,6 +207,8 @@ class ProfileLoader:
             settings_overrides=merged_settings,
             exclude_symlinks=merged_excludes,
             mcp_overrides=merged_mcp,
+            plugins=merged_plugins,
+            marketplaces=merged_marketplaces,
         )
 
     def get_profile_info(self, name: str) -> dict[str, Any]:

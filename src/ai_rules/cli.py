@@ -50,6 +50,28 @@ _NON_INTERACTIVE_FLAGS = frozenset({"--dry-run", "--help", "-h"})
 GIT_SUBPROCESS_TIMEOUT = 5
 
 
+def _get_plugin_status(config: Config) -> tuple[Any, Any] | None:
+    """Get plugin manager and status if CLI is available and plugins configured.
+
+    Returns:
+        tuple of (PluginManager, PluginStatus) if available, None otherwise
+    """
+    if not (config.plugins or config.marketplaces):
+        return None
+
+    from ai_rules.plugins import PluginManager
+
+    plugin_manager = PluginManager()
+    if not plugin_manager.is_cli_available():
+        return None
+
+    desired_plugins = config.get_plugin_configs()
+    desired_marketplaces = config.get_marketplace_configs()
+    plugin_status = plugin_manager.get_status(desired_plugins, desired_marketplaces)
+
+    return (plugin_manager, plugin_status)
+
+
 def get_config_dir() -> Path:
     """Get the config directory.
 
@@ -287,6 +309,44 @@ def _display_pending_symlink_changes(agents: list[Agent]) -> bool:
                     console.print(f"  [green]+[/green] Create: {target} → {source}")
                 else:
                     console.print(f"  [yellow]↻[/yellow] Update: {target} → {source}")
+
+    return found_changes
+
+
+def _display_pending_plugin_changes(config: Config) -> bool:
+    """Display what plugin changes will be made.
+
+    Returns:
+        True if changes were found and displayed, False otherwise
+    """
+    result = _get_plugin_status(config)
+    if result is None:
+        return False
+
+    plugin_manager, plugin_status = result
+    found_changes = False
+
+    if plugin_status.marketplaces_missing:
+        found_changes = True
+        console.print("\n[bold]Marketplaces[/bold]")
+        for marketplace in plugin_status.marketplaces_missing:
+            console.print(
+                f"  [green]+[/green] Add: {marketplace['name']} ({marketplace['source']})"
+            )
+
+    if plugin_status.pending:
+        found_changes = True
+        console.print("\n[bold]Plugins[/bold]")
+        for plugin in plugin_status.pending:
+            console.print(
+                f"  [green]+[/green] Install: {plugin['name']}@{plugin['marketplace']}"
+            )
+
+    if plugin_status.extra:
+        if not found_changes:
+            console.print("\n[bold]Plugins[/bold]")
+        for name in sorted(plugin_status.extra):
+            console.print(f"  [dim]○[/dim] {name} (installed but not in config)")
 
     return found_changes
 
@@ -932,14 +992,6 @@ def install(
     if profile and profile != "default":
         console.print(f"[dim]Using profile: {profile}[/dim]\n")
 
-    if rebuild_cache and not dry_run:
-        import shutil
-
-        cache_dir = Config.get_cache_dir()
-        if cache_dir.exists():
-            shutil.rmtree(cache_dir)
-            console.print("[dim]✓ Cleared settings cache[/dim]")
-
     if not dry_run:
         claude_settings = config_dir / "claude" / "settings.json"
         if claude_settings.exists():
@@ -983,13 +1035,14 @@ def install(
 
     if not dry_run and not force:
         has_changes = _display_pending_symlink_changes(selected_agents)
+        has_plugin_changes = _display_pending_plugin_changes(config)
 
-        if has_changes:
+        if has_changes or has_plugin_changes:
             console.print()
             if not Confirm.ask("Apply these changes?", default=True):
                 console.print("[yellow]Installation cancelled[/yellow]")
                 sys.exit(0)
-        elif not has_changes:
+        elif not has_changes and not has_plugin_changes:
             if not check_first_run(selected_agents, force):
                 console.print("[yellow]Installation cancelled[/yellow]")
                 sys.exit(0)
@@ -1045,6 +1098,40 @@ def install(
             console.print(f"[dim]○[/dim] {message}")
         elif result != OperationResult.NOT_FOUND:
             console.print(f"[yellow]⚠[/yellow] {message}")
+
+        if config.plugins or config.marketplaces:
+            from ai_rules.plugins import (
+                OperationResult as PluginOperationResult,
+            )
+            from ai_rules.plugins import (
+                PluginManager,
+            )
+
+            plugin_manager = PluginManager()
+
+            if plugin_manager.is_cli_available():
+                desired_plugins = config.get_plugin_configs()
+                desired_marketplaces = config.get_marketplace_configs()
+
+                plugin_result, message, warnings = plugin_manager.sync_plugins(
+                    desired_plugins, desired_marketplaces, dry_run=dry_run
+                )
+
+                if plugin_result == PluginOperationResult.SUCCESS:
+                    console.print(f"[green]✓[/green] {message}")
+                elif plugin_result == PluginOperationResult.ALREADY_INSTALLED:
+                    console.print(f"[dim]○[/dim] {message}")
+                elif plugin_result == PluginOperationResult.DRY_RUN:
+                    console.print(f"[dim]{message}[/dim]")
+                elif plugin_result == PluginOperationResult.ERROR:
+                    console.print(f"[yellow]⚠[/yellow] {message}")
+
+                for warning in warnings:
+                    console.print(f"[yellow]⚠[/yellow] {warning}")
+            elif not dry_run:
+                console.print(
+                    "[dim]○[/dim] Skipped plugin sync (claude CLI not available)"
+                )
 
     total_created = user_results["created"]
     total_updated = user_results["updated"]
@@ -1233,6 +1320,36 @@ def status(agents: str | None) -> None:
                     all_correct = False
                 for name in sorted(mcp_status.unmanaged_mcps.keys()):
                     console.print(f"    {name:<20} [dim]Unmanaged[/dim]")
+
+            plugin_result = _get_plugin_status(config)
+            if plugin_result is not None:
+                plugin_manager, plugin_status = plugin_result
+                desired_plugins = config.get_plugin_configs()
+
+                if (
+                    plugin_status.installed
+                    or plugin_status.pending
+                    or plugin_status.extra
+                ):
+                    console.print("  [bold]Plugins:[/bold]")
+
+                    for plugin_config in desired_plugins:
+                        plugin_key = plugin_config.key
+                        if plugin_key in plugin_status.installed:
+                            console.print(
+                                f"    {plugin_config.name:<20} [green]Installed[/green] [dim](managed)[/dim]"
+                            )
+                        else:
+                            console.print(
+                                f"    {plugin_config.name:<20} [yellow]Not installed[/yellow] [dim](managed)[/dim]"
+                            )
+                            all_correct = False
+
+                    for key in sorted(plugin_status.extra):
+                        console.print(
+                            f"    {key:<20} [dim]Installed (not in config)[/dim]"
+                        )
+                        all_correct = False
 
         console.print()
 

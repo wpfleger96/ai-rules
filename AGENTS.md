@@ -59,11 +59,12 @@ uv run ai-rules profile switch <name>  # Switch to different profile
 ```
 src/ai_rules/
 ├── cli.py              # Click CLI commands (main, install, status, upgrade, etc.)
-├── config.py           # Config loading, path parsing, merging
+├── config.py           # Config loading, path parsing, merging, Claude-managed fields
 ├── profiles.py         # Profile loading and inheritance resolution
 ├── state.py            # State management (active profile tracking)
 ├── utils.py            # Deep merge and utility functions
 ├── symlinks.py         # Symlink operations with backups
+├── plugins.py          # Claude Code plugin management via marketplace
 ├── mcp.py              # MCP server management
 ├── completions.py      # Shell completion management
 ├── agents/
@@ -105,6 +106,8 @@ All AI tools inherit from `Agent` (`agents/base.py`). To add a new tool:
   - Commands: `profile list`, `profile show`, `profile current`, `profile switch`
 - `settings_overrides` for machine-specific agent settings
 - Cache-based override merging for settings.json files (Claude, Goose)
+  - **Critical**: Preserves Claude-managed fields (`enabledPlugins`) during cache rebuild
+- **Plugin management**: Declarative plugin installs from profiles (`plugins`, `marketplaces` keys)
 - Agent-specific hints (CLAUDE.md, .goosehints) use `@~/AGENTS.md` to reference main file (token-saving)
 
 ## Testing
@@ -155,6 +158,11 @@ uv run pytest -m state          # State management tests only
    - Update checks use GitHub API tags
    - Useful for pre-release features before PyPI publish
 
+7. **Claude-managed fields in settings.json** - `enabledPlugins` is managed by Claude Code:
+   - ai-rules preserves this field during cache rebuilds
+   - Defined in `CLAUDE_MANAGED_FIELDS` constant (config.py)
+   - Don't include in base settings or overrides - will be preserved automatically
+
 ## Slash Commands & Skills
 
 **Slash commands** (config/claude/commands/):
@@ -184,6 +192,7 @@ uv run pytest -m state          # State management tests only
 | Symlink behavior | `symlinks.py` (create_symlink, remove_symlink) |
 | Shell completions | `completions.py`, `cli.py::completions()` |
 | New agent | `agents/base.py`, `agents/<new>.py`, `cli.py::get_agents()` |
+| Plugin management | `plugins.py`, `config.py` (CLAUDE_MANAGED_FIELDS) |
 | MCP management | `mcp.py`, `agents/claude.py` |
 | Auto-update/upgrade | `bootstrap/updater.py`, `bootstrap/installer.py` |
 | GitHub install support | `bootstrap/installer.py` (GITHUB_REPO_URL) |

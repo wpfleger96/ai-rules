@@ -113,7 +113,6 @@ class MCPManager:
 
             shutil.move(temp_path, self.CLAUDE_JSON)
 
-            # Invalidate cache after write
             self.invalidate_cache()
         except Exception:
             if Path(temp_path).exists():

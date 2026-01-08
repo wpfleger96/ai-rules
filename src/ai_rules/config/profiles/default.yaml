@@ -4,3 +4,11 @@ extends: null
 settings_overrides: {}
 exclude_symlinks: []
 mcp_overrides: {}
+plugins:
+  - name: feature-dev
+    marketplace: claude-plugins-official
+  - name: python-expert
+    marketplace: cc-marketplace
+marketplaces:
+  - name: cc-marketplace
+    source: ananddtyagi/cc-marketplace

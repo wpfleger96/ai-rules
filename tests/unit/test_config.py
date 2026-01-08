@@ -308,20 +308,17 @@ settings_overrides:
         config = cache_setup["config"]
         base_path = cache_setup["base_settings_path"]
 
-        # First build
         cache_path1 = config.build_merged_settings("claude", base_path)
         assert cache_path1 is not None
         mtime1 = cache_path1.stat().st_mtime
 
         time.sleep(0.01)
 
-        # Second build without force - should skip (same mtime)
         cache_path2 = config.build_merged_settings("claude", base_path)
         assert cache_path2 is not None
         mtime2 = cache_path2.stat().st_mtime
         assert mtime1 == mtime2
 
-        # Third build with force_rebuild - should rebuild (different mtime)
         time.sleep(0.01)
         cache_path3 = config.build_merged_settings(
             "claude", base_path, force_rebuild=True
@@ -329,6 +326,42 @@ settings_overrides:
         assert cache_path3 is not None
         mtime3 = cache_path3.stat().st_mtime
         assert mtime3 > mtime2
+
+    def test_build_merged_settings_preserves_enabled_plugins(
+        self, tmp_path, monkeypatch
+    ):
+        """Rebuilding cache preserves Claude-managed enabledPlugins field."""
+        import json
+
+        home = tmp_path / "home"
+        home.mkdir()
+        monkeypatch.setenv("HOME", str(home))
+
+        cache_dir = home / ".ai-rules" / "cache" / "claude"
+        cache_dir.mkdir(parents=True)
+        cache_file = cache_dir / "settings.json"
+        cache_file.write_text(
+            json.dumps(
+                {
+                    "model": "old",
+                    "enabledPlugins": {"my-plugin@marketplace": True},
+                }
+            )
+        )
+
+        base_settings = tmp_path / "settings.json"
+        base_settings.write_text(json.dumps({"model": "base"}))
+
+        config = Config(settings_overrides={"claude": {"model": "new"}})
+        result_path = config.build_merged_settings(
+            "claude", base_settings, force_rebuild=True
+        )
+
+        assert result_path is not None
+        with open(result_path) as f:
+            result = json.load(f)
+        assert result["model"] == "new"
+        assert result["enabledPlugins"] == {"my-plugin@marketplace": True}
 
     def test_get_settings_file_for_symlink_returns_cache_when_exists(
         self, tmp_path, monkeypatch

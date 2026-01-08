@@ -179,7 +179,6 @@ class TestSaveAutoUpdateConfig:
             enabled=True, frequency="weekly", last_check=None, notify_only=False
         )
         save_auto_update_config(config)
-        # Just verify it doesn't crash - logger.debug was called
 
 
 @pytest.mark.unit
@@ -343,7 +342,6 @@ class TestSavePendingUpdate:
             source="pypi",
         )
         save_pending_update(update_info)
-        # Just verify it doesn't crash
 
 
 @pytest.mark.unit
@@ -381,4 +379,3 @@ class TestClearPendingUpdate:
         monkeypatch.setattr("ai_rules.bootstrap.config.logger", mock_logger)
 
         clear_pending_update()
-        # Just verify it doesn't crash

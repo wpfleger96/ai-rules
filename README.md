@@ -16,10 +16,11 @@ Consolidates config files for AI coding agents (Claude Code, Goose) into a singl
 
 - Git-tracked configs synced across machines
 - Edit once, apply everywhere
+- Declarative plugin management (Claude Code)
 - Exclude specific files (e.g., company-managed)
 - Per-agent customizations
 
-**Supported:** Claude Code (settings, agents, commands), Goose (hints, config), Shared (AGENTS.md)
+**Supported:** Claude Code (settings, agents, commands, plugins), Goose (hints, config), Shared (AGENTS.md)
 
 ## Installation
 
@@ -265,6 +266,35 @@ Configuration layers (lowest to highest priority):
 Your local config always wins, so you can use a profile as a base and tweak specific settings per-machine. Profiles are git-tracked and can be shared across your team.
 
 The active profile is tracked in `~/.ai-rules/state.yaml` and persists across sessions. Use `profile current` to see which profile is active, or `profile switch` to quickly change profiles without re-running the full install.
+
+### Plugin Management - Declarative Claude Code Plugins
+
+Specify Claude Code plugins in your profile or user config, and ai-rules automatically installs them via `claude plugin install`:
+
+```yaml
+# profiles/work.yaml or ~/.ai-rules-config.yaml
+plugins:
+  - name: feature-dev
+    marketplace: claude-plugins-official
+  - name: python-expert
+    marketplace: cc-marketplace
+
+marketplaces:
+  - name: cc-marketplace
+    source: ananddtyagi/cc-marketplace
+```
+
+When you run `ai-rules install`:
+1. Adds missing marketplaces via `claude plugin marketplace add`
+2. Installs missing plugins via `claude plugin install <name>@<marketplace>`
+3. Warns about extra plugins (doesn't auto-uninstall)
+
+Check plugin status:
+```bash
+ai-rules status  # Shows Plugins section with installed/pending/extra
+```
+
+Plugins are tracked in `~/.claude/plugins/installed_plugins.json` and synced across machines via your git-tracked profile configuration.
 
 ## Structure
 

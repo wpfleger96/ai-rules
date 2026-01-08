@@ -252,6 +252,8 @@ class TestStatusCacheValidation:
 
         config = Config.load()
         config.build_merged_settings("claude", test_repo / "claude" / "settings.json")
+        config.plugins = []
+        config.marketplaces = []
 
         claude = ClaudeAgent(test_repo, config)
         goose = GooseAgent(test_repo, config)
@@ -284,6 +286,8 @@ class TestStatusCacheValidation:
         )
 
         config = Config.load()
+        config.plugins = []
+        config.marketplaces = []
         claude = ClaudeAgent(test_repo, config)
         goose = GooseAgent(test_repo, config)
         shared = SharedAgent(test_repo, config)

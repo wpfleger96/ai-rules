@@ -86,14 +86,12 @@ class TestInstallFlow:
     @pytest.mark.parametrize(
         "agent_type,exclusions,expected_created,expected_skipped",
         [
-            # Claude and Goose with specific exclusions
             (
                 "multi",
                 ["~/.claude/settings.json", "~/.config/goose/config.yaml"],
                 ["~/.claude/CLAUDE.md", "~/.config/goose/.goosehints"],
                 ["~/.claude/settings.json", "~/.config/goose/config.yaml"],
             ),
-            # Shared agent with AGENTS.md excluded
             (
                 "shared",
                 ["~/AGENTS.md"],
@@ -116,7 +114,7 @@ class TestInstallFlow:
 
         if agent_type == "multi":
             agents = [ClaudeAgent(test_repo, config), GooseAgent(test_repo, config)]
-        else:  # shared
+        else:
             agents = [SharedAgent(test_repo, config)]
 
         for agent in agents:
@@ -124,11 +122,9 @@ class TestInstallFlow:
                 target_path = Path(str(target).replace("~", str(mock_home)))
                 create_symlink(target_path, source, dry_run=False, force=False)
 
-        # Verify created symlinks exist
         for path in expected_created:
             assert (Path(str(path).replace("~", str(mock_home)))).exists()
 
-        # Verify excluded symlinks don't exist
         for path in expected_skipped:
             assert not (Path(str(path).replace("~", str(mock_home)))).exists()
 

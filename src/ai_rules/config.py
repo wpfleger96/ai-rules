@@ -1,5 +1,7 @@
 """Configuration loading and management."""
 
+from __future__ import annotations
+
 import copy
 import json
 import re
@@ -8,11 +10,14 @@ import shutil
 from fnmatch import fnmatch
 from functools import lru_cache
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import yaml
 
 from ai_rules.utils import deep_merge
+
+if TYPE_CHECKING:
+    from ai_rules.plugins import MarketplaceConfig, PluginConfig
 
 __all__ = [
     "Config",
@@ -32,6 +37,10 @@ AGENT_CONFIG_METADATA = {
         "format": "yaml",
     },
 }
+
+# Fields in settings.json that Claude Code manages directly.
+# These should be preserved when rebuilding the settings cache.
+CLAUDE_MANAGED_FIELDS = ["enabledPlugins"]
 
 
 def parse_setting_path(path: str) -> list[str | int]:
@@ -246,14 +255,44 @@ class Config:
         settings_overrides: dict[str, dict[str, Any]] | None = None,
         mcp_overrides: dict[str, dict[str, Any]] | None = None,
         profile_name: str | None = None,
+        plugins: list[dict[str, str]] | None = None,
+        marketplaces: list[dict[str, str]] | None = None,
     ):
         self.exclude_symlinks = set(exclude_symlinks or [])
         self.settings_overrides = settings_overrides or {}
         self.mcp_overrides = mcp_overrides or {}
         self.profile_name = profile_name
+        self.plugins = plugins or []
+        self.marketplaces = marketplaces or []
+
+    def get_plugin_configs(self) -> list[PluginConfig]:
+        """Convert plugin dicts to PluginConfig objects."""
+        from ai_rules.plugins import PluginConfig
+
+        configs = []
+        for p in self.plugins:
+            if "name" not in p or "marketplace" not in p:
+                raise ValueError(
+                    f"Plugin config missing required fields (name, marketplace): {p}"
+                )
+            configs.append(PluginConfig(name=p["name"], marketplace=p["marketplace"]))
+        return configs
+
+    def get_marketplace_configs(self) -> list[MarketplaceConfig]:
+        """Convert marketplace dicts to MarketplaceConfig objects."""
+        from ai_rules.plugins import MarketplaceConfig
+
+        configs = []
+        for m in self.marketplaces:
+            if "name" not in m or "source" not in m:
+                raise ValueError(
+                    f"Marketplace config missing required fields (name, source): {m}"
+                )
+            configs.append(MarketplaceConfig(name=m["name"], source=m["source"]))
+        return configs
 
     @classmethod
-    def load(cls, profile: str | None = None) -> "Config":
+    def load(cls, profile: str | None = None) -> Config:
         """Load configuration from profile and ~/.ai-rules-config.yaml.
 
         Merge order (lowest to highest priority):
@@ -274,7 +313,7 @@ class Config:
 
     @classmethod
     @lru_cache(maxsize=8)
-    def _load_cached(cls, profile_name: str) -> "Config":
+    def _load_cached(cls, profile_name: str) -> Config:
         """Internal cached loader keyed by profile name."""
         from ai_rules.profiles import ProfileLoader, ProfileNotFoundError
 
@@ -288,6 +327,8 @@ class Config:
         exclude_symlinks = list(profile_data.exclude_symlinks)
         settings_overrides = copy.deepcopy(profile_data.settings_overrides)
         mcp_overrides = copy.deepcopy(profile_data.mcp_overrides)
+        plugins = copy.deepcopy(profile_data.plugins)
+        marketplaces = copy.deepcopy(profile_data.marketplaces)
 
         user_config_path = Path.home() / ".ai-rules-config.yaml"
         if user_config_path.exists():
@@ -303,11 +344,27 @@ class Config:
             user_mcp = user_data.get("mcp_overrides", {})
             mcp_overrides = deep_merge(mcp_overrides, user_mcp)
 
+            user_plugins = user_data.get("plugins", [])
+            if user_plugins:
+                plugins_by_name = {p["name"]: p for p in plugins}
+                for plugin in user_plugins:
+                    plugins_by_name[plugin["name"]] = plugin
+                plugins = list(plugins_by_name.values())
+
+            user_marketplaces = user_data.get("marketplaces", [])
+            if user_marketplaces:
+                marketplaces_by_name = {m["name"]: m for m in marketplaces}
+                for marketplace in user_marketplaces:
+                    marketplaces_by_name[marketplace["name"]] = marketplace
+                marketplaces = list(marketplaces_by_name.values())
+
         return cls(
             exclude_symlinks=exclude_symlinks,
             settings_overrides=settings_overrides,
             mcp_overrides=mcp_overrides,
             profile_name=profile_name,
+            plugins=plugins,
+            marketplaces=marketplaces,
         )
 
     def is_excluded(self, symlink_target: str) -> bool:
@@ -491,18 +548,24 @@ class Config:
 
         expected_settings = self.merge_settings(agent, base_settings)
 
-        if cached_settings == expected_settings:
+        cached_copy = copy.deepcopy(cached_settings)
+        expected_copy = copy.deepcopy(expected_settings)
+        for field in CLAUDE_MANAGED_FIELDS:
+            cached_copy.pop(field, None)
+            expected_copy.pop(field, None)
+
+        if cached_copy == expected_copy:
             return None
 
         if config_format == "json":
-            cached_text = json.dumps(cached_settings, indent=2)
-            expected_text = json.dumps(expected_settings, indent=2)
+            cached_text = json.dumps(cached_copy, indent=2)
+            expected_text = json.dumps(expected_copy, indent=2)
         elif config_format == "yaml":
             cached_text = yaml.dump(
-                cached_settings, default_flow_style=False, sort_keys=False
+                cached_copy, default_flow_style=False, sort_keys=False
             )
             expected_text = yaml.dump(
-                expected_settings, default_flow_style=False, sort_keys=False
+                expected_copy, default_flow_style=False, sort_keys=False
             )
         else:
             return None
@@ -587,6 +650,18 @@ class Config:
 
         merged = self.merge_settings(agent, base_settings)
         if cache_path:
+            cache_path.parent.mkdir(parents=True, exist_ok=True)
+
+            if config_format == "json" and cache_path.exists():
+                try:
+                    with open(cache_path) as f:
+                        existing = json.load(f)
+                    for field in CLAUDE_MANAGED_FIELDS:
+                        if field in existing:
+                            merged[field] = existing[field]
+                except (OSError, json.JSONDecodeError):
+                    pass
+
             with open(cache_path, "w") as f:
                 if config_format == "json":
                     json.dump(merged, f, indent=2)
