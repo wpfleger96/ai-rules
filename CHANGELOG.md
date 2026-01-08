@@ -1,6 +1,14 @@
 # CHANGELOG
 
 
+## v0.18.1 (2026-01-08)
+
+### Bug Fixes
+
+- Wordy PR descriptions
+  ([`1a9fc3a`](https://github.com/wpfleger96/ai-rules/commit/1a9fc3a66bc4a72aaa5b17a2620a15ab69394d1a))
+
+
 ## v0.18.0 (2026-01-08)
 
 ### Chores
