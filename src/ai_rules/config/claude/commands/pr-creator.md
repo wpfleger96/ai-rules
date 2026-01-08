@@ -47,46 +47,43 @@ Expert software engineer creating high-quality PR descriptions that facilitate e
 git log origin/{base}..HEAD
 git diff origin/{base}...HEAD --stat
 git diff origin/{base}...HEAD
+gh issue list --limit 20  # Search for related open issues
 ```
 
-**Look for:** GitHub issue refs | Breaking changes | New dependencies | Security changes (auth, validation) | Performance implications
+**Look for:** GitHub issue refs in commits/branch name | Related open issues via `gh issue list` | Breaking changes | New dependencies | Security changes (auth, validation) | Performance implications
 
-### Step 3: Assess Complexity
+### Step 3: Generate Draft Description
 
-```bash
-git diff origin/{base}...HEAD --shortstat  # Lines changed
-git diff origin/{base}...HEAD --name-only | wc -l  # Files modified
-```
-
-**Guidance:** Lines >500 → Suggest split | Files >10 → Add navigation guide | Multiple unrelated concerns → Recommend separate PRs
-
-### Step 4: Generate Draft Description
-
-**Structure (8-15 lines, complex PRs up to 20):**
+**Structure (6-12 lines maximum):**
 
 **Opening (1-2 sentences):** "This PR [enables/adds/fixes/updates]..." | State what changed and value delivered
 
-**Context (2-4 sentences):** Explain problem/"before this" state | Help reviewers understand WHY | Relevant background for implementation decisions
+**Context (1-3 sentences):** Explain problem/"before this" state | Help reviewers understand WHY | Keep brief - reviewers skim descriptions
 
-**Implementation (3-5 bullets, plain `-`):** Include concrete names: functions, classes, fields, files | Focus on HOW solution implemented | One line per bullet, specific/technical | Highlight key decisions
+**Implementation (2-4 bullets, plain `-`):** Focus on WHAT changed and WHY, not HOW it works internally | Include concrete names when relevant (functions, classes, fields) | One line per bullet | Prioritize the most significant changes only
 
-**Review-friendly (when applicable):** Breaking Changes | Testing Instructions | Security Notes | Performance Impact
+**Review-friendly (only when non-obvious):** Breaking Changes | Security Notes | Performance Impact | Testing Instructions (only if setup is non-trivial)
 
-**Issue refs (if found):**
+**Issue refs (REQUIRED if PR addresses an issue):**
+Always place at the very end of description, preceded by blank line. Use GitHub keywords to auto-close issues:
 ```
-Fixes #123
+Resolves #123
+```
+OR if related but doesn't fully resolve:
+```
 Relates to #456
 ```
 
-**Tone/style:** Professional but conversational | Focus on "why" and "how" | Use specific technical terms | Avoid marketing language | Plain prose (no bold/headers in body) | Plain bullets (`-`)
+**Tone/style:** Professional but conversational | Focus on "what" and "why", not "how" | Use specific technical terms | Avoid marketing language | Plain prose (no bold/headers in body) | Plain bullets (`-`)
 
-### Step 5: Present Draft & STOP
+**Brevity principle:** Every word must earn its place - reviewers skim descriptions | Omit details visible in the diff | Skip obvious implementation details (e.g., "converted methods to async" unless async is the key change) | No complexity metrics or line counts
+
+### Step 4: Present Draft & STOP
 
 Present draft to user and **STOP**. Wait for explicit approval.
 
 When presenting:
 - Indicate draft/regular PR mode
-- Show complexity if lines >300 or files >7
 - Ask to proceed or revise
 
 ## Stage 2: Create Pull Request
@@ -138,7 +135,7 @@ EOF
 
 **Accuracy:** Inspect actual commits via git | Review code changes via diff | Don't rely solely on commit messages | Verify issue refs exist
 
-**Structure:** Follow 3-section format (opening, context, implementation) | 8-15 lines (up to 20 for complex) | Proper issue ref formatting | Add review sections when applicable
+**Structure:** Follow 3-section format (opening, context, implementation) | 6-12 lines maximum | Proper issue ref formatting | Add review sections only when non-obvious
 
 **Branch Management:** Verify branch pushed before PR | Use `git push -u origin HEAD` if needed | Confirm base branch correct | Block PRs with PLAN files
 
