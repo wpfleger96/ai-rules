@@ -1,6 +1,22 @@
 # CHANGELOG
 
 
+## v0.18.0 (2026-01-08)
+
+### Chores
+
+- Clean up vestigial code
+  ([`b86a53f`](https://github.com/wpfleger96/ai-rules/commit/b86a53fa15685224d94491c1f1ccb3cc05fd09c8))
+
+- Docs
+  ([`41ff2bb`](https://github.com/wpfleger96/ai-rules/commit/41ff2bba0e5256160fe4e08fbc48e00d39afb8f0))
+
+### Features
+
+- Add claude code plugin support
+  ([`2e18fa4`](https://github.com/wpfleger96/ai-rules/commit/2e18fa408f3fabcbcee5f664639017e383c3ac47))
+
+
 ## v0.17.0 (2025-12-20)
 
 ### Features
