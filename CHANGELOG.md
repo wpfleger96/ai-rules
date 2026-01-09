@@ -1,6 +1,19 @@
 # CHANGELOG
 
 
+## v0.18.4 (2026-01-09)
+
+### Bug Fixes
+
+- Cc perm
+  ([`9ea6eff`](https://github.com/wpfleger96/ai-rules/commit/9ea6eff12e45b6abbabb5e88d70b67a77e679bbf))
+
+### Chores
+
+- Docs
+  ([`0d6b540`](https://github.com/wpfleger96/ai-rules/commit/0d6b540817c8b8303f5a1ac71df12f72014630e5))
+
+
 ## v0.18.3 (2026-01-09)
 
 ### Bug Fixes
