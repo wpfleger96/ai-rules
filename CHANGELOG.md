@@ -1,6 +1,14 @@
 # CHANGELOG
 
 
+## v0.18.3 (2026-01-09)
+
+### Bug Fixes
+
+- Auto enable plugins
+  ([`f4dafb7`](https://github.com/wpfleger96/ai-rules/commit/f4dafb74cd02464ef96bbeb669d6c790514668b8))
+
+
 ## v0.18.2 (2026-01-09)
 
 ### Bug Fixes
