@@ -7,6 +7,8 @@ mcp_overrides: {}
 plugins:
   - name: feature-dev
     marketplace: claude-plugins-official
+  - name: plugin-dev
+    marketplace: claude-plugins-official
   - name: python-expert
     marketplace: cc-marketplace
 marketplaces:
