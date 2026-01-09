@@ -1,6 +1,14 @@
 # CHANGELOG
 
 
+## v0.18.2 (2026-01-09)
+
+### Bug Fixes
+
+- Plugin
+  ([`c695c3d`](https://github.com/wpfleger96/ai-rules/commit/c695c3dc0d4334284a2403077de2aee11bae3e93))
+
+
 ## v0.18.1 (2026-01-08)
 
 ### Bug Fixes
