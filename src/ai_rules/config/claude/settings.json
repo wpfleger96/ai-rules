@@ -74,6 +74,7 @@
       "Bash(lsof:*)",
       "Bash(mkdir:*)",
       "Bash(npm:*)",
+      "Bash(pdftotext:*)",
       "Bash(readlink:*)",
       "Bash(rg:*)",
       "Bash(ruby:*)",
