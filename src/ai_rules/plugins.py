@@ -54,6 +54,7 @@ class PluginManager:
     KNOWN_MARKETPLACES_PATH = (
         Path.home() / ".claude" / "plugins" / "known_marketplaces.json"
     )
+    SETTINGS_PATH = Path.home() / ".claude" / "settings.json"
     CLI_TIMEOUT = 30
 
     def is_cli_available(self) -> bool:
@@ -157,6 +158,34 @@ class PluginManager:
         except Exception as e:
             return (OperationResult.ERROR, f"Error installing {plugin_spec}: {e}")
 
+    def enable_plugin(self, plugin_key: str) -> tuple[OperationResult, str]:
+        """Enable a plugin in settings.json."""
+        try:
+            settings = {}
+            if self.SETTINGS_PATH.exists():
+                with open(self.SETTINGS_PATH) as f:
+                    settings = json.load(f)
+
+            if "enabledPlugins" not in settings:
+                settings["enabledPlugins"] = {}
+
+            if settings["enabledPlugins"].get(plugin_key) is True:
+                return (
+                    OperationResult.ALREADY_INSTALLED,
+                    f"{plugin_key} already enabled",
+                )
+
+            settings["enabledPlugins"][plugin_key] = True
+
+            with open(self.SETTINGS_PATH, "w") as f:
+                json.dump(settings, f, indent=2)
+            with open(self.SETTINGS_PATH, "a") as f:
+                f.write("\n")
+
+            return (OperationResult.SUCCESS, f"Enabled {plugin_key}")
+        except Exception as e:
+            return (OperationResult.ERROR, str(e))
+
     def get_status(
         self,
         desired_plugins: list[PluginConfig],
@@ -249,15 +278,34 @@ class PluginManager:
         if dry_run:
             return (OperationResult.DRY_RUN, "Dry run completed", warnings)
 
-        if installed_count == 0 and len(desired_plugins) > 0:
+        enabled_count = 0
+        for plugin in desired_plugins:
+            plugin_key = plugin.key
+            result, msg = self.enable_plugin(plugin_key)
+            if result == OperationResult.SUCCESS:
+                enabled_count += 1
+            elif result == OperationResult.ERROR:
+                warnings.append(f"Failed to enable {plugin_key}: {msg}")
+
+        if installed_count == 0 and enabled_count == 0 and len(desired_plugins) > 0:
             return (
                 OperationResult.ALREADY_INSTALLED,
-                "All plugins already installed",
+                "All plugins already installed and enabled",
                 warnings,
             )
 
+        parts = []
+        if installed_count > 0:
+            parts.append(f"Installed {installed_count} plugin(s)")
+        if enabled_count > 0:
+            parts.append(f"enabled {enabled_count} plugin(s)")
+
+        message = (
+            ", ".join(parts) if parts else "All plugins already installed and enabled"
+        )
+
         return (
             OperationResult.SUCCESS,
-            f"Installed {installed_count} plugin(s)",
+            message,
             warnings,
         )
