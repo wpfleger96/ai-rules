@@ -1,6 +1,17 @@
 # CHANGELOG
 
 
+## v0.19.0 (2026-01-09)
+
+### Features
+
+- /prompt-critique slash command
+  ([`7c9435d`](https://github.com/wpfleger96/ai-rules/commit/7c9435dfe12888efbdacdf650138f9748225349c))
+
+- /refresh-plan slash command
+  ([`64da261`](https://github.com/wpfleger96/ai-rules/commit/64da261fe1b842ae891ff97c87b968e5af7e4f87))
+
+
 ## v0.18.5 (2026-01-09)
 
 ### Bug Fixes
