@@ -65,6 +65,7 @@
       "Bash(git rm:*)",
       "Bash(git show:*)",
       "Bash(git tag:*)",
+      "Bash(git worktree:*)",
       "Bash(go test:*)",
       "Bash(grep:*)",
       "Bash(head:*)",
