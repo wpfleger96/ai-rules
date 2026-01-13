@@ -1349,7 +1349,6 @@ def status(agents: str | None) -> None:
                         console.print(
                             f"    {key:<20} [dim]Installed (not in config)[/dim]"
                         )
-                        all_correct = False
 
         console.print()
 
