@@ -1,6 +1,14 @@
 # CHANGELOG
 
 
+## v0.19.2 (2026-01-13)
+
+### Bug Fixes
+
+- Dont prompt for reinstall when unmanaged plugins/skills detected
+  ([`146da20`](https://github.com/wpfleger96/ai-rules/commit/146da206c92c19f33a85b66fad9e46b485ae4d33))
+
+
 ## v0.19.1 (2026-01-12)
 
 ### Bug Fixes
