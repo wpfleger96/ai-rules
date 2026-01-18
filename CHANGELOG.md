@@ -1,6 +1,17 @@
 # CHANGELOG
 
 
+## v0.19.5 (2026-01-18)
+
+### Bug Fixes
+
+- Cleanup unused tools
+  ([`06a1880`](https://github.com/wpfleger96/ai-rules/commit/06a1880bffa819b5814784b286f1609505ed943f))
+
+- Show unified diffs instead of just file path diffs
+  ([`2202516`](https://github.com/wpfleger96/ai-rules/commit/2202516e92d4d5af95416c9d82033817cef3f1ee))
+
+
 ## v0.19.4 (2026-01-18)
 
 ### Bug Fixes
