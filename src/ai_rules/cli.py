@@ -9,36 +9,18 @@ from importlib.metadata import PackageNotFoundError
 from importlib.metadata import version as get_version
 from importlib.resources import files as resource_files
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import click
 
+if TYPE_CHECKING:
+    from click.shell_completion import CompletionItem
+
+    from ai_rules.agents.base import Agent
+    from ai_rules.config import Config
+    from ai_rules.profiles import Profile
+
 logger = logging.getLogger(__name__)
-
-from click.shell_completion import CompletionItem
-from rich.console import Console
-from rich.prompt import Confirm
-from rich.table import Table
-
-from ai_rules.agents.base import Agent
-from ai_rules.agents.claude import ClaudeAgent
-from ai_rules.agents.goose import GooseAgent
-from ai_rules.agents.shared import SharedAgent
-from ai_rules.config import (
-    AGENT_CONFIG_METADATA,
-    Config,
-    parse_setting_path,
-    validate_override_path,
-)
-from ai_rules.profiles import Profile
-from ai_rules.symlinks import (
-    SymlinkResult,
-    check_symlink,
-    create_symlink,
-    remove_symlink,
-)
-
-console = Console()
 
 try:
     __version__ = get_version("ai-agent-rules")
@@ -50,7 +32,7 @@ _NON_INTERACTIVE_FLAGS = frozenset({"--dry-run", "--help", "-h"})
 GIT_SUBPROCESS_TIMEOUT = 5
 
 
-def _get_plugin_status(config: Config) -> tuple[Any, Any] | None:
+def _get_plugin_status(config: "Config") -> tuple[Any, Any] | None:
     """Get plugin manager and status if CLI is available and plugins configured.
 
     Returns:
@@ -109,7 +91,7 @@ def get_git_repo_root() -> Path:
     )
 
 
-def get_agents(config_dir: Path, config: Config) -> list[Agent]:
+def get_agents(config_dir: Path, config: "Config") -> list["Agent"]:
     """Get all agent instances.
 
     Args:
@@ -119,6 +101,10 @@ def get_agents(config_dir: Path, config: Config) -> list[Agent]:
     Returns:
         List of all available agent instances
     """
+    from ai_rules.agents.claude import ClaudeAgent
+    from ai_rules.agents.goose import GooseAgent
+    from ai_rules.agents.shared import SharedAgent
+
     return [
         ClaudeAgent(config_dir, config),
         GooseAgent(config_dir, config),
@@ -128,8 +114,12 @@ def get_agents(config_dir: Path, config: Config) -> list[Agent]:
 
 def complete_agents(
     ctx: click.Context, param: click.Parameter, incomplete: str
-) -> list[CompletionItem]:
+) -> list["CompletionItem"]:
     """Dynamically discover and complete agent names for --agents option."""
+    from click.shell_completion import CompletionItem
+
+    from ai_rules.config import Config
+
     config_dir = get_config_dir()
     config = Config.load()
     agents = get_agents(config_dir, config)
@@ -140,8 +130,10 @@ def complete_agents(
 
 def complete_profiles(
     ctx: click.Context, param: click.Parameter, incomplete: str
-) -> list[CompletionItem]:
+) -> list["CompletionItem"]:
     """Dynamically complete profile names for --profile option."""
+    from click.shell_completion import CompletionItem
+
     from ai_rules.profiles import ProfileLoader
 
     loader = ProfileLoader()
@@ -209,7 +201,9 @@ def detect_old_config_symlinks() -> list[tuple[Path, Path]]:
     return broken_symlinks
 
 
-def select_agents(all_agents: list[Agent], filter_string: str | None) -> list[Agent]:
+def select_agents(
+    all_agents: list["Agent"], filter_string: str | None
+) -> list["Agent"]:
     """Select agents based on filter string.
 
     Args:
@@ -222,6 +216,10 @@ def select_agents(all_agents: list[Agent], filter_string: str | None) -> list[Ag
     Raises:
         SystemExit: If no agents match the filter
     """
+    from rich.console import Console
+
+    console = Console()
+
     if not filter_string:
         return all_agents
 
@@ -258,6 +256,9 @@ def format_summary(
         excluded: Number of symlinks excluded by config
         errors: Number of errors encountered
     """
+    from rich.console import Console
+
+    console = Console()
     console.print()
     if dry_run:
         console.print(
@@ -277,14 +278,17 @@ def format_summary(
         console.print(f"  [red]{errors} error(s)[/red]")
 
 
-def _display_pending_symlink_changes(agents: list[Agent]) -> bool:
+def _display_pending_symlink_changes(agents: list["Agent"]) -> bool:
     """Display what symlink changes will be made.
 
     Returns:
         True if changes were found and displayed, False otherwise
     """
+    from rich.console import Console
+
     from ai_rules.symlinks import check_symlink
 
+    console = Console()
     found_changes = False
 
     for agent in agents:
@@ -313,12 +317,16 @@ def _display_pending_symlink_changes(agents: list[Agent]) -> bool:
     return found_changes
 
 
-def _display_pending_plugin_changes(config: Config) -> bool:
+def _display_pending_plugin_changes(config: "Config") -> bool:
     """Display what plugin changes will be made.
 
     Returns:
         True if changes were found and displayed, False otherwise
     """
+    from rich.console import Console
+
+    console = Console()
+
     result = _get_plugin_status(config)
     if result is None:
         return False
@@ -351,12 +359,17 @@ def _display_pending_plugin_changes(config: Config) -> bool:
     return found_changes
 
 
-def check_first_run(agents: list[Agent], force: bool) -> bool:
+def check_first_run(agents: list["Agent"], force: bool) -> bool:
     """Check if this is the first run and prompt user if needed.
 
     Returns:
         True if should continue, False if should abort
     """
+    from rich.console import Console
+    from rich.prompt import Confirm
+
+    console = Console()
+
     existing_files = []
 
     for agent in agents:
@@ -439,11 +452,16 @@ def _check_pending_updates() -> None:
     Shows interactive prompt in normal TTY contexts, non-interactive message
     for --help, --dry-run, or non-TTY contexts.
     """
+    from rich.console import Console
+    from rich.prompt import Confirm
+
     from ai_rules.bootstrap import (
         clear_all_pending_updates,
         get_tool_by_id,
         load_all_pending_updates,
     )
+
+    console = Console()
 
     try:
         pending = load_all_pending_updates()
@@ -489,6 +507,10 @@ def version_callback(ctx: click.Context, param: click.Parameter, value: bool) ->
         param: Click parameter
         value: Whether --version flag was provided
     """
+    from rich.console import Console
+
+    console = Console()
+
     if not value or ctx.resilient_parsing:
         return
 
@@ -555,7 +577,7 @@ def main() -> None:
 
 
 def cleanup_deprecated_symlinks(
-    selected_agents: list[Agent], config_dir: Path, force: bool, dry_run: bool
+    selected_agents: list["Agent"], config_dir: Path, force: bool, dry_run: bool
 ) -> int:
     """Remove deprecated symlinks that point to our config files.
 
@@ -568,6 +590,11 @@ def cleanup_deprecated_symlinks(
     Returns:
         Count of removed symlinks
     """
+    from rich.console import Console
+
+    from ai_rules.symlinks import remove_symlink
+
+    console = Console()
     removed_count = 0
     agents_md = config_dir / "AGENTS.md"
 
@@ -607,12 +634,17 @@ def cleanup_deprecated_symlinks(
 
 
 def install_user_symlinks(
-    selected_agents: list[Agent], force: bool, dry_run: bool
+    selected_agents: list["Agent"], force: bool, dry_run: bool
 ) -> dict[str, int]:
     """Install user-level symlinks for all selected agents.
 
     Returns dict with keys: created, updated, skipped, excluded, errors
     """
+    from rich.console import Console
+
+    from ai_rules.symlinks import SymlinkResult, create_symlink
+
+    console = Console()
     console.print("[bold cyan]User-Level Configuration[/bold cyan]")
 
     if selected_agents:
@@ -690,11 +722,16 @@ def setup(
     Example:
         uvx ai-agent-rules setup
     """
+    from rich.console import Console
+    from rich.prompt import Confirm
+
     from ai_rules.bootstrap import (
         ensure_statusline_installed,
         get_tool_config_dir,
         install_tool,
     )
+
+    console = Console()
     from ai_rules.bootstrap.updater import (
         check_tool_updates,
         get_tool_by_id,
@@ -939,7 +976,13 @@ def install(
     config_dir_override: str | None = None,
 ) -> None:
     """Install AI agent configs via symlinks."""
+    from rich.console import Console
+    from rich.prompt import Confirm
+
     from ai_rules.bootstrap import ensure_statusline_installed
+    from ai_rules.config import Config
+
+    console = Console()
 
     statusline_result, statusline_message = ensure_statusline_installed(dry_run=dry_run)
     if statusline_result == "installed":
@@ -1060,6 +1103,8 @@ def install(
             )
 
     user_results = install_user_symlinks(selected_agents, force, dry_run)
+
+    from ai_rules.agents.claude import ClaudeAgent
 
     claude_agent = next((a for a in selected_agents if a.agent_id == "claude"), None)
     if claude_agent and isinstance(claude_agent, ClaudeAgent):
@@ -1203,6 +1248,10 @@ def _display_symlink_status(
     Returns:
         True if status is correct, False otherwise
     """
+    from rich.console import Console
+
+    console = Console()
+
     target_str = str(target)
     if source.is_dir():
         target_str = target_str.rstrip("/") + "/"
@@ -1236,7 +1285,14 @@ def _display_symlink_status(
 )
 def status(agents: str | None) -> None:
     """Check status of AI agent symlinks."""
+    from rich.console import Console
+
+    from ai_rules.agents.claude import ClaudeAgent
+    from ai_rules.config import AGENT_CONFIG_METADATA, Config
     from ai_rules.state import get_active_profile
+    from ai_rules.symlinks import check_symlink
+
+    console = Console()
 
     config_dir = get_config_dir()
     config = Config.load()
@@ -1461,6 +1517,15 @@ def status(agents: str | None) -> None:
 )
 def uninstall(force: bool, agents: str | None) -> None:
     """Remove AI agent symlinks."""
+    from rich.console import Console
+    from rich.prompt import Confirm
+
+    from ai_rules.agents.claude import ClaudeAgent
+    from ai_rules.config import Config
+    from ai_rules.symlinks import remove_symlink
+
+    console = Console()
+
     config_dir = get_config_dir()
     config = Config.load()
     all_agents = get_agents(config_dir, config)
@@ -1512,6 +1577,14 @@ def uninstall(force: bool, agents: str | None) -> None:
 @main.command("list-agents")
 def list_agents_cmd() -> None:
     """List available AI agents."""
+    from rich.console import Console
+    from rich.table import Table
+
+    from ai_rules.config import Config
+    from ai_rules.symlinks import check_symlink
+
+    console = Console()
+
     config_dir = get_config_dir()
     config = Config.load()
     agents = get_agents(config_dir, config)
@@ -1564,11 +1637,16 @@ def upgrade(check: bool, force: bool, skip_install: bool, only: str | None) -> N
         ai-rules upgrade --check            # Only check for updates
         ai-rules upgrade --only=statusline  # Only upgrade statusline tool
     """
+    from rich.console import Console
+    from rich.prompt import Confirm
+
     from ai_rules.bootstrap import (
         UPDATABLE_TOOLS,
         check_tool_updates,
         perform_tool_upgrade,
     )
+
+    console = Console()
 
     tools = [t for t in UPDATABLE_TOOLS if only is None or t.tool_id == only]
     tools = [t for t in tools if t.is_installed()]
@@ -1722,6 +1800,7 @@ def info() -> None:
     Displays how each tool was installed (PyPI or GitHub)
     along with current versions and update availability.
     """
+    from rich.console import Console
     from rich.table import Table
 
     from ai_rules.bootstrap import (
@@ -1729,6 +1808,8 @@ def info() -> None:
         check_tool_updates,
         get_tool_source,
     )
+
+    console = Console()
 
     table = Table(title="AI Rules Installation Info", show_header=True)
     table.add_column("Tool", style="cyan")
@@ -1776,6 +1857,12 @@ def info() -> None:
 )
 def validate(agents: str | None) -> None:
     """Validate configuration and source files."""
+    from rich.console import Console
+
+    from ai_rules.config import Config
+
+    console = Console()
+
     config_dir = get_config_dir()
     config = Config.load()
     all_agents = get_agents(config_dir, config)
@@ -1837,6 +1924,13 @@ def validate(agents: str | None) -> None:
 )
 def diff(agents: str | None) -> None:
     """Show differences between repo configs and installed symlinks."""
+    from rich.console import Console
+
+    from ai_rules.config import Config
+    from ai_rules.symlinks import check_symlink
+
+    console = Console()
+
     config_dir = get_config_dir()
     config = Config.load()
     all_agents = get_agents(config_dir, config)
@@ -1920,6 +2014,12 @@ def exclude_add(pattern: str) -> None:
 
     PATTERN can be an exact path or glob pattern (e.g., ~/.claude/*.json)
     """
+    from rich.console import Console
+
+    from ai_rules.config import Config
+
+    console = Console()
+
     data = Config.load_user_config()
 
     if "exclude_symlinks" not in data:
@@ -1941,6 +2041,12 @@ def exclude_add(pattern: str) -> None:
 @click.argument("pattern")
 def exclude_remove(pattern: str) -> None:
     """Remove an exclusion pattern from user config."""
+    from rich.console import Console
+
+    from ai_rules.config import Config
+
+    console = Console()
+
     user_config_path = Path.home() / ".ai-rules-config.yaml"
 
     if not user_config_path.exists():
@@ -1963,6 +2069,12 @@ def exclude_remove(pattern: str) -> None:
 @exclude.command("list")
 def exclude_list() -> None:
     """List all exclusion patterns."""
+    from rich.console import Console
+
+    from ai_rules.config import Config
+
+    console = Console()
+
     config = Config.load()
 
     if not config.exclude_symlinks:
@@ -2001,6 +2113,16 @@ def override_set(key: str, value: str) -> None:
     - Validates full path against base settings structure
     - Provides helpful suggestions when paths are invalid
     """
+    from rich.console import Console
+
+    from ai_rules.config import (
+        Config,
+        parse_setting_path,
+        validate_override_path,
+    )
+
+    console = Console()
+
     user_config_path = Path.home() / ".ai-rules-config.yaml"
     config_dir = get_config_dir()
 
@@ -2109,6 +2231,12 @@ def override_unset(key: str) -> None:
     KEY should be in format 'agent.setting' (e.g., 'claude.model')
     Supports nested keys like 'agent.nested.key'
     """
+    from rich.console import Console
+
+    from ai_rules.config import Config
+
+    console = Console()
+
     user_config_path = Path.home() / ".ai-rules-config.yaml"
 
     if not user_config_path.exists():
@@ -2172,6 +2300,12 @@ def override_unset(key: str) -> None:
 @override.command("list")
 def override_list() -> None:
     """List all settings overrides."""
+    from rich.console import Console
+
+    from ai_rules.config import Config
+
+    console = Console()
+
     user_data = Config.load_user_config()
     user_overrides = user_data.get("settings_overrides", {})
 
@@ -2201,6 +2335,12 @@ def config() -> None:
 @click.option("--agent", help="Show config for specific agent only")
 def config_show(merged: bool, agent: str | None) -> None:
     """Show current configuration."""
+    from rich.console import Console
+
+    from ai_rules.config import Config
+
+    console = Console()
+
     config_dir = get_config_dir()
     cfg = Config.load()
     user_config_path = Path.home() / ".ai-rules-config.yaml"
@@ -2283,6 +2423,10 @@ def config_show(merged: bool, agent: str | None) -> None:
 @config.command("edit")
 def config_edit() -> None:
     """Edit user configuration file in $EDITOR."""
+    from rich.console import Console
+
+    console = Console()
+
     import os
     import subprocess
 
@@ -2322,6 +2466,10 @@ def _collect_exclusion_patterns() -> list[str]:
     Returns:
         List of exclusion patterns
     """
+    from rich.console import Console
+
+    console = Console()
+
     console.print("\n[bold]Step 1: Exclusion Patterns[/bold]")
     console.print("Do you want to exclude any files from being managed?\n")
 
@@ -2363,6 +2511,10 @@ def _collect_settings_overrides() -> dict[str, dict[str, Any]]:
     Returns:
         Dictionary of agent settings overrides
     """
+    from rich.console import Console
+
+    console = Console()
+
     import json
 
     console.print("\n[bold]Step 2: Settings Overrides[/bold]")
@@ -2436,6 +2588,10 @@ def _display_configuration_summary(config_data: dict[str, Any]) -> None:
     Args:
         config_data: Configuration dictionary to display
     """
+    from rich.console import Console
+
+    console = Console()
+
     console.print("\n[bold cyan]Configuration Summary:[/bold cyan]")
     console.print("=" * 50)
 
@@ -2459,6 +2615,13 @@ def _display_configuration_summary(config_data: dict[str, Any]) -> None:
 @config.command("init")
 def config_init() -> None:
     """Interactive configuration wizard."""
+    from rich.console import Console
+    from rich.prompt import Confirm
+
+    from ai_rules.config import Config
+
+    console = Console()
+
     user_config_path = Path.home() / ".ai-rules-config.yaml"
 
     console.print("[bold cyan]Welcome to ai-rules configuration wizard![/bold cyan]\n")
@@ -2506,9 +2669,12 @@ def profile() -> None:
 @profile.command("list")
 def profile_list() -> None:
     """List available profiles."""
+    from rich.console import Console
     from rich.table import Table
 
     from ai_rules.profiles import ProfileLoader
+
+    console = Console()
 
     loader = ProfileLoader()
     profiles = loader.list_profiles()
@@ -2537,11 +2703,15 @@ def profile_list() -> None:
 )
 def profile_show(name: str, resolved: bool) -> None:
     """Show profile details."""
+    from rich.console import Console
+
     from ai_rules.profiles import (
         CircularInheritanceError,
         ProfileLoader,
         ProfileNotFoundError,
     )
+
+    console = Console()
 
     loader = ProfileLoader()
 
@@ -2589,7 +2759,11 @@ def profile_show(name: str, resolved: bool) -> None:
 @profile.command("current")
 def profile_current() -> None:
     """Show currently active profile."""
+    from rich.console import Console
+
     from ai_rules.state import get_active_profile
+
+    console = Console()
 
     active = get_active_profile()
     if active:
@@ -2599,7 +2773,7 @@ def profile_current() -> None:
 
 
 def _detect_profile_override_conflicts(
-    profile: Profile, user_config: dict[str, Any]
+    profile: "Profile", user_config: dict[str, Any]
 ) -> list[tuple[str, str, Any]]:
     """Detect conflicts between profile settings and user overrides.
 
@@ -2634,6 +2808,12 @@ def _handle_profile_conflicts(
         profile_name: Name of profile being installed
         user_config: User config dict to potentially modify
     """
+    from rich.console import Console
+
+    from ai_rules.config import Config
+
+    console = Console()
+
     if not conflicts:
         return
 
@@ -2662,7 +2842,12 @@ def _handle_profile_conflicts(
 @click.pass_context
 def profile_switch(ctx: click.Context, name: str) -> None:
     """Switch to a different profile."""
+    from rich.console import Console
+
+    from ai_rules.config import Config
     from ai_rules.profiles import ProfileLoader, ProfileNotFoundError
+
+    console = Console()
 
     loader = ProfileLoader()
     try:
@@ -2703,7 +2888,11 @@ _SUPPORTED_SHELLS = list(get_supported_shells())
 @completions.command(name="bash")
 def completions_bash() -> None:
     """Output bash completion script for manual installation."""
+    from rich.console import Console
+
     from ai_rules.completions import generate_completion_script
+
+    console = Console()
 
     try:
         script = generate_completion_script("bash")
@@ -2720,7 +2909,11 @@ def completions_bash() -> None:
 @completions.command(name="zsh")
 def completions_zsh() -> None:
     """Output zsh completion script for manual installation."""
+    from rich.console import Console
+
     from ai_rules.completions import generate_completion_script
+
+    console = Console()
 
     try:
         script = generate_completion_script("zsh")
@@ -2740,7 +2933,11 @@ def completions_zsh() -> None:
 )
 def completions_install(shell: str | None) -> None:
     """Install shell completion to config file."""
+    from rich.console import Console
+
     from ai_rules.completions import detect_shell, install_completion
+
+    console = Console()
 
     if shell is None:
         shell = detect_shell()
@@ -2768,11 +2965,15 @@ def completions_install(shell: str | None) -> None:
 )
 def completions_uninstall(shell: str | None) -> None:
     """Remove shell completion from config file."""
+    from rich.console import Console
+
     from ai_rules.completions import (
         detect_shell,
         find_config_file,
         uninstall_completion,
     )
+
+    console = Console()
 
     if shell is None:
         shell = detect_shell()
@@ -2799,12 +3000,17 @@ def completions_uninstall(shell: str | None) -> None:
 @completions.command(name="status")
 def completions_status() -> None:
     """Show shell completion installation status."""
+    from rich.console import Console
+    from rich.table import Table
+
     from ai_rules.completions import (
         detect_shell,
         find_config_file,
         get_supported_shells,
         is_completion_installed,
     )
+
+    console = Console()
 
     detected_shell = detect_shell()
     console.print("[bold cyan]Shell Completions Status[/bold cyan]\n")
@@ -2813,8 +3019,6 @@ def completions_status() -> None:
         console.print(f"Detected shell: [cyan]{detected_shell}[/cyan]\n")
     else:
         console.print("[yellow]No supported shell detected[/yellow]\n")
-
-    from rich.table import Table
 
     table = Table(show_header=True)
     table.add_column("Shell")
