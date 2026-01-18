@@ -1,6 +1,14 @@
 # CHANGELOG
 
 
+## v0.19.4 (2026-01-18)
+
+### Bug Fixes
+
+- Lazyify imports for completion performance
+  ([`4df5109`](https://github.com/wpfleger96/ai-rules/commit/4df5109516e7668b619fc6b22627b767704ad89a))
+
+
 ## v0.19.3 (2026-01-18)
 
 ### Bug Fixes
