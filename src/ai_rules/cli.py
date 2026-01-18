@@ -1250,6 +1250,8 @@ def _display_symlink_status(
     """
     from rich.console import Console
 
+    from ai_rules.symlinks import get_content_diff
+
     console = Console()
 
     target_str = str(target)
@@ -1268,6 +1270,15 @@ def _display_symlink_status(
         return False
     elif status_code == "wrong_target":
         console.print(f"  [yellow]⚠[/yellow] {target_display} [dim]({message})[/dim]")
+
+        try:
+            actual = target.expanduser().resolve()
+            diff_output = get_content_diff(actual, source)
+            if diff_output:
+                console.print(diff_output)
+        except (OSError, RuntimeError):
+            pass
+
         return False
     elif status_code == "not_symlink":
         console.print(

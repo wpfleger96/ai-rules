@@ -205,3 +205,91 @@ def remove_symlink(target_path: Path, force: bool = False) -> tuple[bool, str]:
             f"Error removing symlink: {e}\n"
             "  [dim]Tip: Check that the file exists and is accessible.[/dim]",
         )
+
+
+def get_content_diff(actual_path: Path, expected_path: Path) -> str | None:
+    """Get a unified diff between two files.
+
+    Args:
+        actual_path: The actual file (where symlink currently points)
+        expected_path: The expected file (where symlink should point)
+
+    Returns:
+        Formatted diff string with Rich markup, or None if identical/error
+    """
+    import difflib
+
+    if actual_path.is_dir() and expected_path.is_dir():
+        diffs = []
+        actual_files = {
+            p.relative_to(actual_path): p for p in actual_path.rglob("*") if p.is_file()
+        }
+        expected_files = {
+            p.relative_to(expected_path): p
+            for p in expected_path.rglob("*")
+            if p.is_file()
+        }
+
+        all_files = set(actual_files.keys()) | set(expected_files.keys())
+        for rel_file in sorted(all_files):
+            actual_file = actual_files.get(rel_file)
+            expected_file = expected_files.get(rel_file)
+
+            if not actual_file:
+                diffs.append(f"[red]    - {rel_file} (only in expected)[/red]")
+            elif not expected_file:
+                diffs.append(f"[green]    + {rel_file} (only in actual)[/green]")
+            else:
+                file_diff = get_content_diff(actual_file, expected_file)
+                if file_diff:
+                    diffs.append(f"    [dim]{rel_file}:[/dim]")
+                    for line in file_diff.split("\n"):
+                        diffs.append(f"  {line}")
+
+        return "\n".join(diffs) if diffs else None
+
+    try:
+        with open(actual_path, "rb") as f:
+            actual_bytes = f.read(8192)
+            if b"\0" in actual_bytes:
+                return "    [dim]Binary files differ[/dim]"
+
+        with open(expected_path, "rb") as f:
+            expected_bytes = f.read(8192)
+            if b"\0" in expected_bytes:
+                return "    [dim]Binary files differ[/dim]"
+    except OSError:
+        return None
+
+    try:
+        with open(actual_path, encoding="utf-8") as f:
+            actual_lines = f.readlines()
+        with open(expected_path, encoding="utf-8") as f:
+            expected_lines = f.readlines()
+    except (OSError, UnicodeDecodeError):
+        return None
+
+    diff = difflib.unified_diff(
+        actual_lines,
+        expected_lines,
+        fromfile=str(actual_path),
+        tofile=str(expected_path),
+        lineterm="",
+    )
+
+    diff_lines = []
+    for line in diff:
+        line = line.rstrip("\n")
+        if line.startswith("---") or line.startswith("+++") or line.startswith("@@"):
+            diff_lines.append(f"[dim]    {line}[/dim]")
+        elif line.startswith("+"):
+            diff_lines.append(f"[green]    {line}[/green]")
+        elif line.startswith("-"):
+            diff_lines.append(f"[red]    {line}[/red]")
+        else:
+            diff_lines.append(f"[dim]    {line}[/dim]")
+
+    if not diff_lines:
+        return None
+
+    return "\n".join(diff_lines)
