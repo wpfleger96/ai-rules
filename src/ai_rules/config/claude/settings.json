@@ -76,6 +76,8 @@
       "Bash(mkdir:*)",
       "Bash(npm:*)",
       "Bash(pdftotext:*)",
+      "Bash(python:*)",
+      "Bash(python3:*)",
       "Bash(readlink:*)",
       "Bash(rg:*)",
       "Bash(ruby:*)",
