@@ -115,12 +115,27 @@ def test_calls_hash_password():
 ## Style & Formatting
 
 ### Code Comments
-**Rule:** Only WHY comments, never WHAT comments.
+**Rule:** Only WHY comments explaining non-obvious rationale. NEVER WHAT comments restating code.
 
 ```python
-# ❌ Prohibited: counter += 1  # Increment counter
-# ✅ Required: delay = 2 ** retry_count  # Exponential backoff for Stripe rate limits
+# ❌ PROHIBITED - Restates what code already says
+managed_plugins = self.load_managed_plugins()  # Load managed plugins
+orphaned = (installed - desired) & managed  # Get orphaned plugins
+for plugin in orphaned:  # Loop through orphaned plugins
+    managed.discard(plugin)  # Remove from managed set
+
+# ✅ CORRECT - Self-documenting code needs no comments
+managed_plugins = self.load_managed_plugins()
+orphaned = (installed_keys - desired_keys) & managed_plugins
+for plugin in orphaned:
+    managed_plugins.discard(plugin)
+
+# ✅ REQUIRED - Explains WHY (non-obvious context)
+delay = 2 ** retry_count  # Exponential backoff for Stripe rate limits
+managed.discard(plugin)  # Prevent re-pruning user-installed plugins
 ```
+
+**Ask:** Can a developer understand this by reading the code? If yes, no comment. If no, explain WHY.
 
 ### Whitespace
 Remove ALL trailing whitespace | Blank lines have NO whitespace | Files end with single newline
