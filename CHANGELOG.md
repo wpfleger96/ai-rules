@@ -1,6 +1,20 @@
 # CHANGELOG
 
 
+## v0.19.6 (2026-01-19)
+
+### Bug Fixes
+
+- Cc perm
+  ([`3fbef62`](https://github.com/wpfleger96/ai-rules/commit/3fbef62dcbbc7af2cb376a794407895e6a3dce2a))
+
+- Cleanup orphaned plugins that we uninstalled
+  ([`104b480`](https://github.com/wpfleger96/ai-rules/commit/104b48036d4d5b377ae003aa45295cd9edd85beb))
+
+- Llms love dumb comments
+  ([`32e059d`](https://github.com/wpfleger96/ai-rules/commit/32e059d3e9bd85cff204a560e64ba91f3bd24723))
+
+
 ## v0.19.5 (2026-01-18)
 
 ### Bug Fixes
