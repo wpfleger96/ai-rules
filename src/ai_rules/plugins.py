@@ -54,6 +54,7 @@ class PluginManager:
     KNOWN_MARKETPLACES_PATH = (
         Path.home() / ".claude" / "plugins" / "known_marketplaces.json"
     )
+    MANAGED_PLUGINS_PATH = Path.home() / ".claude" / "plugins" / "ai-rules-managed.json"
     SETTINGS_PATH = Path.home() / ".claude" / "settings.json"
     CLI_TIMEOUT = 30
 
@@ -92,6 +93,31 @@ class PluginManager:
                 return list(data.keys())
         except (OSError, json.JSONDecodeError):
             return []
+
+    def load_managed_plugins(self) -> set[str]:
+        """Load set of plugin keys that ai-rules has managed."""
+        if not self.MANAGED_PLUGINS_PATH.exists():
+            return set()
+
+        try:
+            with open(self.MANAGED_PLUGINS_PATH) as f:
+                data = json.load(f)
+                return set(data.get("plugins", []))
+        except (OSError, json.JSONDecodeError):
+            return set()
+
+    def save_managed_plugins(self, plugins: set[str]) -> None:
+        """Save the set of managed plugin keys."""
+        try:
+            self.MANAGED_PLUGINS_PATH.parent.mkdir(parents=True, exist_ok=True)
+
+            data = {"plugins": sorted(list(plugins))}
+            with open(self.MANAGED_PLUGINS_PATH, "w") as f:
+                json.dump(data, f, indent=2)
+            with open(self.MANAGED_PLUGINS_PATH, "a") as f:
+                f.write("\n")
+        except Exception:
+            pass
 
     def add_marketplace(
         self, source: str, dry_run: bool = False
@@ -186,6 +212,53 @@ class PluginManager:
         except Exception as e:
             return (OperationResult.ERROR, str(e))
 
+    def uninstall_plugin(
+        self, plugin_key: str, clean_cache: bool = True
+    ) -> tuple[OperationResult, str]:
+        """Uninstall a plugin by removing it from installed_plugins.json and settings."""
+        import shutil
+
+        try:
+            installed_data = self.load_installed_plugins()
+            plugins = installed_data.get("plugins", {})
+
+            if plugin_key not in plugins:
+                return (OperationResult.NOT_FOUND, f"{plugin_key} not found")
+
+            cache_path = None
+            if clean_cache and plugins[plugin_key]:
+                install_info = plugins[plugin_key][0]
+                cache_path = Path(install_info.get("installPath", ""))
+
+            del plugins[plugin_key]
+
+            with open(self.INSTALLED_PLUGINS_PATH, "w") as f:
+                json.dump(installed_data, f, indent=2)
+            with open(self.INSTALLED_PLUGINS_PATH, "a") as f:
+                f.write("\n")
+
+            if self.SETTINGS_PATH.exists():
+                with open(self.SETTINGS_PATH) as f:
+                    settings = json.load(f)
+
+                if (
+                    "enabledPlugins" in settings
+                    and plugin_key in settings["enabledPlugins"]
+                ):
+                    del settings["enabledPlugins"][plugin_key]
+
+                    with open(self.SETTINGS_PATH, "w") as f:
+                        json.dump(settings, f, indent=2)
+                    with open(self.SETTINGS_PATH, "a") as f:
+                        f.write("\n")
+
+            if clean_cache and cache_path and cache_path.exists():
+                shutil.rmtree(cache_path)
+
+            return (OperationResult.SUCCESS, f"Uninstalled {plugin_key}")
+        except Exception as e:
+            return (OperationResult.ERROR, f"Error uninstalling {plugin_key}: {e}")
+
     def get_status(
         self,
         desired_plugins: list[PluginConfig],
@@ -258,8 +331,19 @@ class PluginManager:
         installed_keys = set(installed_plugins.keys())
         desired_keys = {p.key for p in desired_plugins}
 
-        for extra in installed_keys - desired_keys:
-            warnings.append(f"Plugin '{extra}' is installed but not in profile config")
+        managed_plugins = self.load_managed_plugins()
+
+        orphaned = (installed_keys - desired_keys) & managed_plugins
+        uninstalled_count = 0
+        for extra in orphaned:
+            if dry_run:
+                warnings.append(f"Would uninstall '{extra}' (not in profile config)")
+            else:
+                result, msg = self.uninstall_plugin(extra, clean_cache=True)
+                if result == OperationResult.SUCCESS:
+                    uninstalled_count += 1
+                elif result == OperationResult.ERROR:
+                    warnings.append(f"Failed to uninstall {extra}: {msg}")
 
         installed_count = 0
         for plugin in desired_plugins:
@@ -278,6 +362,11 @@ class PluginManager:
         if dry_run:
             return (OperationResult.DRY_RUN, "Dry run completed", warnings)
 
+        for extra in orphaned:
+            managed_plugins.discard(extra)
+        managed_plugins.update(desired_keys)
+        self.save_managed_plugins(managed_plugins)
+
         enabled_count = 0
         for plugin in desired_plugins:
             plugin_key = plugin.key
@@ -287,7 +376,12 @@ class PluginManager:
             elif result == OperationResult.ERROR:
                 warnings.append(f"Failed to enable {plugin_key}: {msg}")
 
-        if installed_count == 0 and enabled_count == 0 and len(desired_plugins) > 0:
+        if (
+            installed_count == 0
+            and enabled_count == 0
+            and uninstalled_count == 0
+            and len(desired_plugins) > 0
+        ):
             return (
                 OperationResult.ALREADY_INSTALLED,
                 "All plugins already installed and enabled",
@@ -299,6 +393,8 @@ class PluginManager:
             parts.append(f"Installed {installed_count} plugin(s)")
         if enabled_count > 0:
             parts.append(f"enabled {enabled_count} plugin(s)")
+        if uninstalled_count > 0:
+            parts.append(f"uninstalled {uninstalled_count} plugin(s)")
 
         message = (
             ", ".join(parts) if parts else "All plugins already installed and enabled"

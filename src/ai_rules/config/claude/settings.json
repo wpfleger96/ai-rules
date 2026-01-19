@@ -133,5 +133,8 @@
     "type": "command",
     "command": "claude-statusline"
   },
+  "enabledPlugins": {
+    "plugin-dev@claude-plugins-official": true
+  },
   "alwaysThinkingEnabled": true
 }
