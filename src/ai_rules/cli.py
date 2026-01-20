@@ -558,11 +558,13 @@ def version_callback(ctx: click.Context, param: click.Parameter, value: bool) ->
 )
 def main() -> None:
     """AI Rules - Manage user-level AI agent configurations."""
+    import sys
     import threading
 
     from ai_rules.bootstrap import load_auto_update_config, should_check_now
 
-    _check_pending_updates()
+    if "upgrade" not in sys.argv:
+        _check_pending_updates()
 
     try:
         import os
@@ -1812,6 +1814,13 @@ def upgrade(check: bool, force: bool, skip_install: bool, only: str | None) -> N
             console.print("[dim]Run 'ai-rules install --rebuild-cache' manually[/dim]")
 
         console.print("[dim]Restart your terminal if the command doesn't work[/dim]")
+
+    try:
+        from ai_rules.bootstrap import clear_all_pending_updates
+
+        clear_all_pending_updates()
+    except Exception:
+        pass
 
 
 @main.command()
