@@ -1784,6 +1784,7 @@ def upgrade(check: bool, force: bool, skip_install: bool, only: str | None) -> N
                     "ai-rules",
                     "install",
                     "--rebuild-cache",
+                    "--force",
                     "--profile",
                     current_profile,
                 ],
