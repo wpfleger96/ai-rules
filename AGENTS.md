@@ -29,9 +29,9 @@ uv run ai-rules setup --github  # Install from GitHub instead of PyPI
 
 # Key CLI commands
 uv run ai-rules install        # Install symlinks
-uv run ai-rules status         # Check symlink status
+uv run ai-rules status         # Check symlink status (shows diffs)
 uv run ai-rules info           # Show installation method and version info
-uv run ai-rules upgrade        # Upgrade to latest version
+uv run ai-rules upgrade        # Upgrade to latest (shows changelogs)
 uv run ai-rules validate       # Validate config files
 uv run ai-rules diff           # Show diffs between repo and installed
 
@@ -108,6 +108,9 @@ All AI tools inherit from `Agent` (`agents/base.py`). To add a new tool:
 - Cache-based override merging for settings.json files (Claude, Goose)
   - **Critical**: Preserves Claude-managed fields (`enabledPlugins`) during cache rebuild
 - **Plugin management**: Declarative plugin installs from profiles (`plugins`, `marketplaces` keys)
+  - Auto-uninstalls orphaned plugins (previously managed by ai-rules, removed from config)
+  - Tracks managed plugins in `~/.claude/plugins/ai-rules-managed.json`
+  - Warns about manually-installed plugins not in config (doesn't auto-remove)
 - Agent-specific hints (CLAUDE.md, .goosehints) use `@~/AGENTS.md` to reference main file (token-saving)
 
 ## Testing
@@ -164,21 +167,17 @@ uv run pytest -m state          # State management tests only
    - Defined in `CLAUDE_MANAGED_FIELDS` constant (config.py)
    - Don't include in base settings or overrides - will be preserved automatically
 
+8. **Upgrade shows changelogs** - `upgrade` command fetches CHANGELOG.md from GitHub:
+   - Displays version notes between current and latest
+   - Fetches from `https://raw.githubusercontent.com/{repo}/main/CHANGELOG.md`
+   - Fails silently on network errors (still proceeds with upgrade)
+   - Auto-forces install (no double prompt)
+
 ## Slash Commands & Skills
 
-**Slash commands** (config/claude/commands/):
-- `/test-cleanup` - Audit and optimize test suite
-- `/comment-cleanup` - Remove unnecessary comments
-- `/continue-crash` - Resume after crash
-- `/pr-creator` - Create PRs with comprehensive descriptions
-- `/dev-docs` - Create/update PLAN.md
-- `/update-docs` - Update docs from commits
-- `/annotate-changelog` - Annotate changelog entries
-- `/agents-md` - Create/update AGENTS.md
+**Slash commands:** Explore `config/claude/commands/*.md` for available commands.
 
-**Skills** (config/claude/skills/):
-- `doc-writer` - Expert guidance for technical documentation
-- `prompt-engineer` - Prompt crafting and LLM optimization
+**Skills:** Explore `config/claude/skills/*/SKILL.md` for available skills.
 
 ## Key Files by Task
 

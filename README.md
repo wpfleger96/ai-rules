@@ -68,9 +68,11 @@ Use `uv run ai-rules <command>` to test local changes. The global `ai-rules` com
 Check for and install updates:
 
 ```bash
-ai-rules upgrade              # Check and install updates
+ai-rules upgrade              # Check and install updates (shows changelogs)
 ai-rules upgrade --check      # Only check for updates
 ```
+
+The `upgrade` command automatically displays changelogs for new versions and installs without additional prompts.
 
 Auto-update checks run weekly by default. Configure in `~/.ai-rules/update_config.yaml`:
 
@@ -97,7 +99,7 @@ ai-rules install --dry-run          # Preview changes
 ai-rules install --force            # Skip confirmations
 ai-rules install --rebuild-cache    # Rebuild merged settings cache
 
-ai-rules status                     # Check symlink status + optional tools + active profile (✓✗⚠○)
+ai-rules status                     # Check symlink status + optional tools + active profile (✓✗⚠○), shows diffs
 ai-rules diff                       # Show config differences
 ai-rules validate                   # Verify source files exist
 ai-rules install                    # Re-sync after adding files
@@ -287,14 +289,15 @@ marketplaces:
 When you run `ai-rules install`:
 1. Adds missing marketplaces via `claude plugin marketplace add`
 2. Installs missing plugins via `claude plugin install <name>@<marketplace>`
-3. Warns about extra plugins (doesn't auto-uninstall)
+3. Auto-uninstalls orphaned plugins that were previously managed by ai-rules but removed from config
+4. Warns about manually-installed plugins not in config (doesn't auto-uninstall them)
 
 Check plugin status:
 ```bash
 ai-rules status  # Shows Plugins section with installed/pending/extra
 ```
 
-Plugins are tracked in `~/.claude/plugins/installed_plugins.json` and synced across machines via your git-tracked profile configuration.
+Plugins are tracked in `~/.claude/plugins/installed_plugins.json` and synced across machines via your git-tracked profile configuration. ai-rules tracks which plugins it manages in `~/.claude/plugins/ai-rules-managed.json` to avoid removing manually-installed plugins.
 
 ## Structure
 
