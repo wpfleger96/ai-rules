@@ -52,6 +52,7 @@ class UpdateInfo:
     current_version: str
     latest_version: str
     source: str
+    changelog_entries: list[tuple[str, str]] | None = None
 
 
 @dataclass
@@ -73,8 +74,74 @@ class ToolSpec:
         return None
 
 
+def fetch_changelog_entries(
+    repo: str,
+    current_version: str,
+    latest_version: str,
+    timeout: int = 10,
+) -> list[tuple[str, str]]:
+    """Fetch changelog entries for versions between current and latest.
+
+    Args:
+        repo: GitHub repository in format "owner/repo"
+        current_version: Currently installed version
+        latest_version: Latest available version
+        timeout: Request timeout in seconds (default: 10)
+
+    Returns:
+        List of (version, notes) tuples for each version in the range.
+        Returns empty list on any error (private repo, network failure, etc).
+    """
+    try:
+        url = f"https://raw.githubusercontent.com/{repo}/main/CHANGELOG.md"
+
+        req = urllib.request.Request(url)
+        req.add_header("User-Agent", f"ai-rules/{current_version}")
+
+        with urllib.request.urlopen(req, timeout=timeout) as response:
+            changelog_content = response.read().decode()
+
+        entries: list[tuple[str, str]] = []
+        current_entry_version: str | None = None
+        current_entry_lines: list[str] = []
+
+        for line in changelog_content.split("\n"):
+            version_match = re.match(r"^##\s+v?(\d+\.\d+\.\d+)", line)
+            if version_match:
+                if current_entry_version and current_entry_lines:
+                    version_obj = current_entry_version
+                    if is_newer(version_obj, current_version) and (
+                        version_obj == latest_version
+                        or not is_newer(version_obj, latest_version)
+                    ):
+                        entries.append(
+                            (current_entry_version, "\n".join(current_entry_lines))
+                        )
+
+                current_entry_version = version_match.group(1)
+                current_entry_lines = []
+            elif current_entry_version and line.strip():
+                current_entry_lines.append(line)
+
+        if current_entry_version and current_entry_lines:
+            if is_newer(current_entry_version, current_version) and (
+                current_entry_version == latest_version
+                or not is_newer(current_entry_version, latest_version)
+            ):
+                entries.append((current_entry_version, "\n".join(current_entry_lines)))
+
+        return entries
+
+    except Exception as e:
+        logger.debug(f"Changelog fetch failed: {e}")
+        return []
+
+
 def check_index_updates(
-    package_name: str, current_version: str, timeout: int = 30
+    package_name: str,
+    current_version: str,
+    timeout: int = 30,
+    github_repo: str | None = None,
 ) -> UpdateInfo:
     """Check configured package index for newer version.
 
@@ -85,6 +152,7 @@ def check_index_updates(
         package_name: Package name to check
         current_version: Currently installed version
         timeout: Request timeout in seconds (default: 30)
+        github_repo: Optional GitHub repo for fetching changelog (e.g., "owner/repo")
 
     Returns:
         UpdateInfo with update status
@@ -133,11 +201,19 @@ def check_index_updates(
         if match:
             latest_version = match.group(1)
             has_update = is_newer(latest_version, current_version)
+
+            changelog_entries = None
+            if has_update and github_repo:
+                changelog_entries = fetch_changelog_entries(
+                    github_repo, current_version, latest_version, timeout
+                )
+
             return UpdateInfo(
                 has_update=has_update,
                 current_version=current_version,
                 latest_version=latest_version,
                 source="index",
+                changelog_entries=changelog_entries,
             )
 
         return UpdateInfo(
@@ -200,11 +276,18 @@ def check_github_updates(
 
         has_update = is_newer(latest_version, current_version)
 
+        changelog_entries = None
+        if has_update:
+            changelog_entries = fetch_changelog_entries(
+                repo, current_version, latest_version, timeout
+            )
+
         return UpdateInfo(
             has_update=has_update,
             current_version=current_version,
             latest_version=latest_version,
             source="github",
+            changelog_entries=changelog_entries,
         )
 
     except (urllib.error.URLError, json.JSONDecodeError, KeyError, IndexError) as e:
@@ -346,7 +429,9 @@ def check_tool_updates(tool: ToolSpec, timeout: int = 30) -> UpdateInfo | None:
     if source == ToolSource.GITHUB and tool.github_repo:
         return check_github_updates(tool.github_repo, current, timeout)
     else:
-        return check_index_updates(tool.package_name, current, timeout)
+        return check_index_updates(
+            tool.package_name, current, timeout, tool.github_repo
+        )
 
 
 def get_tool_by_id(tool_id: str) -> ToolSpec | None:
