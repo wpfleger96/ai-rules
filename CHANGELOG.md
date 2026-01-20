@@ -1,6 +1,27 @@
 # CHANGELOG
 
 
+## v0.19.7 (2026-01-20)
+
+### Bug Fixes
+
+- Auto force install during upgrade, don't double prompt user
+  ([`eea1d26`](https://github.com/wpfleger96/ai-rules/commit/eea1d2681bcb6f03e28cc6c6f868dd1b42003399))
+
+- Don't run pending update check when already running upgrade command
+  ([`e368c9c`](https://github.com/wpfleger96/ai-rules/commit/e368c9cd0737a05d72f920f5f3be50d688b19086))
+
+otherwise this would cause confusing double-prompting
+
+- Show changelog(s) when upgrading
+  ([`2b69973`](https://github.com/wpfleger96/ai-rules/commit/2b6997365ae167ee9cd2cbf3b5071a2eefaf066e))
+
+### Chores
+
+- Docs
+  ([`6f496f4`](https://github.com/wpfleger96/ai-rules/commit/6f496f49864f8b8de36c0e259d6e30b4bd626a9a))
+
+
 ## v0.19.6 (2026-01-19)
 
 ### Bug Fixes
