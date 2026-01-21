@@ -87,6 +87,12 @@ Explore repository across all key areas. Use findings to populate AGENTS.md sect
 **8. Key Files by Task**
 - Map tasks to files: Add CLI command → which files? | Add API endpoint → which files? | Add component → which files? | Change config → which files?
 
+**9. Error Handling Patterns**
+- Exception types vs Result/Either patterns
+- API error response format (check existing endpoints)
+- Logging conventions (structured? what fields?)
+- Where errors are caught vs propagated
+
 ## Phase 3: Write AGENTS.md
 
 **Structure (under 100 lines total):**
@@ -121,7 +127,7 @@ Explore repository across all key areas. Use findings to populate AGENTS.md sect
 
 ## Key Patterns
 
-[Conventions, abstractions, architectural patterns - brief with code examples if helpful]
+[Each pattern MUST include ✅/❌ code examples showing correct vs incorrect usage]
 
 ## Testing
 
@@ -155,9 +161,10 @@ Explore repository across all key areas. Use findings to populate AGENTS.md sect
 ```markdown
 ## Boundaries
 
-**Always:** Run tests before commit | Use existing components from src/components/
-**Ask first:** Adding dependencies | Schema changes
-**Never:** Commit secrets | Delete tests without replacement
+**✅ Always:** Run tests before commit | Use existing components from src/components/
+**⚠️ Ask first:** Adding dependencies | Schema changes
+**🚫 Never (breaks things):**
+- Commit secrets → CI will reject, requires history rewrite
 ```
 
 ## Phase 4: File Operations
