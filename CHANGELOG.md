@@ -1,6 +1,17 @@
 # CHANGELOG
 
 
+## v0.19.8 (2026-01-21)
+
+### Bug Fixes
+
+- Improved skills and added test-writer skill
+  ([`d2720f9`](https://github.com/wpfleger96/ai-rules/commit/d2720f9e0f9915c13a5b48d5e1f8a7f8805ef2ea))
+
+- Tweak agents-md slash command prompts
+  ([`c9414c1`](https://github.com/wpfleger96/ai-rules/commit/c9414c1134b991935ce622ba306eb8885fa14a4c))
+
+
 ## v0.19.7 (2026-01-20)
 
 ### Bug Fixes
