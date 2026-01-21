@@ -1,6 +1,21 @@
 # CHANGELOG
 
 
+## v0.20.0 (2026-01-21)
+
+### Bug Fixes
+
+- Cc perm
+  ([`9747329`](https://github.com/wpfleger96/ai-rules/commit/97473292a4465c0b21fe37d8d47b2eec903c6eeb))
+
+### Features
+
+- Add full skills support for claude code and goose
+  ([`ae91931`](https://github.com/wpfleger96/ai-rules/commit/ae91931e18606f7849fefc64d07937999680bb24))
+
+also disabling skill router hook temporarily
+
+
 ## v0.19.9 (2026-01-21)
 
 ### Bug Fixes
