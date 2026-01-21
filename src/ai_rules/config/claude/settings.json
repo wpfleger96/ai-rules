@@ -9,6 +9,7 @@
   "permissions": {
     "allow": [
       "Bash(awk:*)",
+      "Bash(bundle:*)",
       "Bash(cargo build:*)",
       "Bash(cargo check:*)",
       "Bash(cargo clean:*)",
