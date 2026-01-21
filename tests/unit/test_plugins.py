@@ -53,7 +53,7 @@ class TestPluginManager:
                 assert len(status.pending) == 0
 
     def test_get_status_shows_extra_plugins(self):
-        """Status shows plugins installed but not in config."""
+        """Status shows unmanaged plugins."""
         manager = PluginManager()
         with patch.object(
             manager,

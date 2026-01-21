@@ -1422,9 +1422,7 @@ def status(agents: str | None) -> None:
                             all_correct = False
 
                     for key in sorted(plugin_status.extra):
-                        console.print(
-                            f"    {key:<20} [dim]Unmanaged[/dim]"
-                        )
+                        console.print(f"    {key:<20} [dim]Unmanaged[/dim]")
 
             extension_status = agent.get_extension_status()
 

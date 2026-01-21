@@ -38,9 +38,12 @@ AGENT_CONFIG_METADATA = {
     },
 }
 
-# Fields in settings.json that Claude Code manages directly.
-# These should be preserved when rebuilding the settings cache.
-CLAUDE_MANAGED_FIELDS = ["enabledPlugins", "hooks"]
+# Fields preserved during settings rebuild. These are managed by Claude Code
+# or the user directly, so ai-rules shouldn't overwrite them from source config.
+PRESERVED_FIELDS = ["enabledPlugins", "hooks"]
+
+# Path to file tracking ai-rules contributions to PRESERVED_FIELDS
+MANAGED_FIELDS_PATH = Path.home() / ".claude" / "ai-rules-managed-fields.json"
 
 
 def parse_setting_path(path: str) -> list[str | int]:
@@ -244,6 +247,147 @@ def validate_override_path(
         error_msg += f" Did you mean one of: {', '.join(suggestions[:5])}?"
 
     return (False, error_msg, "", suggestions)
+
+
+class ManagedFieldsTracker:
+    """Track ai-rules contributions to PRESERVED_FIELDS.
+
+    Prevents stale entries when ai-rules removes something from source config
+    while preserving user-added entries.
+    """
+
+    def __init__(self, path: Path = MANAGED_FIELDS_PATH):
+        self.path = path
+        self._data: dict[str, Any] = {}
+
+    def load(self) -> dict[str, Any]:
+        """Load tracked ai-rules contributions."""
+        if not self.path.exists():
+            return {"version": 1}
+
+        try:
+            with open(self.path) as f:
+                self._data = json.load(f)
+                return self._data
+        except (OSError, json.JSONDecodeError):
+            return {"version": 1}
+
+    def save(self, contributions: dict[str, Any] | None = None) -> None:
+        """Save ai-rules contributions."""
+        if contributions is not None:
+            self._data = contributions
+
+        try:
+            self.path.parent.mkdir(parents=True, exist_ok=True)
+            with open(self.path, "w") as f:
+                json.dump(self._data, f, indent=2)
+            with open(self.path, "a") as f:
+                f.write("\n")
+        except Exception:
+            pass
+
+    def get_field_contributions(self, field: str) -> Any:
+        """Get ai-rules contributions for a specific field."""
+        if not self._data:
+            self.load()
+        return self._data.get(field)
+
+    def set_field_contributions(self, field: str, value: Any) -> None:
+        """Update ai-rules contributions for a specific field."""
+        if not self._data:
+            self.load()
+        if value is None:
+            self._data.pop(field, None)
+        else:
+            self._data[field] = value
+
+    def cleanup_stale_entries(
+        self,
+        existing_settings: dict,
+        source_settings: dict,
+    ) -> dict:
+        """Remove stale ai-rules contributions from existing settings.
+
+        For each PRESERVED_FIELD:
+        1. Get what ai-rules previously contributed (from tracking file)
+        2. Get what ai-rules currently contributes (from source settings)
+        3. Find entries in existing that match stale ai-rules contributions
+        4. Remove those stale entries, keep everything else
+
+        Returns cleaned existing_settings.
+        """
+        self.load()
+
+        cleaned = copy.deepcopy(existing_settings)
+
+        for field in PRESERVED_FIELDS:
+            tracked = self.get_field_contributions(field)
+            if not tracked:
+                continue
+
+            source = source_settings.get(field)
+            existing = cleaned.get(field)
+
+            if field == "hooks":
+                cleaned[field] = self._cleanup_hooks(
+                    existing or {}, tracked, source or {}
+                )
+                if not cleaned[field]:
+                    cleaned.pop(field, None)
+
+        return cleaned
+
+    def _cleanup_hooks(
+        self,
+        existing_hooks: dict,
+        tracked_hooks: dict,
+        source_hooks: dict,
+    ) -> dict:
+        """Remove stale ai-rules hook contributions.
+
+        For each event type (UserPromptSubmit, PreCompact, etc.):
+        1. Get tracked commands ai-rules added
+        2. Get current commands in source config
+        3. For each tracked command not in source, remove from existing
+        4. Keep all user-added hooks
+        """
+        cleaned = copy.deepcopy(existing_hooks)
+
+        for event_type, tracked_entries in tracked_hooks.items():
+            tracked_commands = self._extract_commands(tracked_entries)
+            source_commands = self._extract_commands(source_hooks.get(event_type, []))
+
+            stale_commands = tracked_commands - source_commands
+
+            if event_type in cleaned and stale_commands:
+                cleaned[event_type] = [
+                    entry
+                    for entry in cleaned[event_type]
+                    if not self._entry_matches_commands(entry, stale_commands)
+                ]
+                if not cleaned[event_type]:
+                    del cleaned[event_type]
+
+        return cleaned
+
+    def _extract_commands(self, entries: list) -> set[str]:
+        """Extract command strings from hook entries."""
+        commands = set()
+        for entry in entries:
+            if isinstance(entry, dict) and "hooks" in entry:
+                for hook in entry["hooks"]:
+                    if isinstance(hook, dict) and "command" in hook:
+                        commands.add(hook["command"])
+        return commands
+
+    def _entry_matches_commands(self, entry: dict, commands: set[str]) -> bool:
+        """Check if a hook entry contains any of the given commands."""
+        if not isinstance(entry, dict) or "hooks" not in entry:
+            return False
+        for hook in entry["hooks"]:
+            if isinstance(hook, dict) and hook.get("command") in commands:
+                return True
+        return False
 
 
 class Config:
@@ -550,7 +694,7 @@ class Config:
 
         cached_copy = copy.deepcopy(cached_settings)
         expected_copy = copy.deepcopy(expected_settings)
-        for field in CLAUDE_MANAGED_FIELDS:
+        for field in PRESERVED_FIELDS:
             cached_copy.pop(field, None)
             expected_copy.pop(field, None)
 
@@ -654,11 +798,23 @@ class Config:
 
             if config_format == "json" and cache_path.exists():
                 try:
+                    tracker = ManagedFieldsTracker()
+
                     with open(cache_path) as f:
                         existing = json.load(f)
-                    for field in CLAUDE_MANAGED_FIELDS:
+
+                    existing = tracker.cleanup_stale_entries(existing, base_settings)
+
+                    for field in PRESERVED_FIELDS:
                         if field in existing:
                             merged[field] = existing[field]
+
+                    for field in PRESERVED_FIELDS:
+                        if field in base_settings:
+                            tracker.set_field_contributions(field, base_settings[field])
+                        else:
+                            tracker.set_field_contributions(field, None)
+                    tracker.save()
                 except (OSError, json.JSONDecodeError):
                     pass
 
