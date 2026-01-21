@@ -2,9 +2,14 @@
 
 from functools import cached_property
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 from ai_rules.agents.base import Agent
 from ai_rules.mcp import MCPManager, MCPStatus, OperationResult
+
+if TYPE_CHECKING:
+    from ai_rules.claude_extensions import ClaudeExtensionStatus
+    from ai_rules.skills import SkillStatus
 
 
 class ClaudeAgent(Agent):
@@ -131,3 +136,29 @@ class ClaudeAgent(Agent):
         """
         manager = MCPManager()
         return manager.get_status(self.config_dir, self.config)
+
+    def get_extension_status(self) -> "ClaudeExtensionStatus":
+        """Get status of Claude extensions (agents, commands, hooks).
+
+        Returns:
+            ClaudeExtensionStatus object with categorized extensions
+        """
+        from ai_rules.claude_extensions import ClaudeExtensionManager
+
+        manager = ClaudeExtensionManager(self.config_dir)
+        return manager.get_status()
+
+    def get_skill_status(self) -> "SkillStatus":
+        """Get status of Claude skills.
+
+        Returns:
+            SkillStatus object with categorized skills
+        """
+        from ai_rules.skills import SkillManager
+
+        manager = SkillManager(
+            config_dir=self.config_dir,
+            agent_id="claude",
+            user_skills_dir=Path("~/.claude/skills"),
+        )
+        return manager.get_status()

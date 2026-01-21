@@ -1,0 +1,185 @@
+"""Claude Code extensions (agents, commands, hooks) status management."""
+
+from dataclasses import dataclass, field
+from pathlib import Path
+
+
+@dataclass
+class ExtensionItem:
+    """Status of a single Claude extension (agent, command, skill, or hook)."""
+
+    name: str
+    target_path: Path
+    actual_source: Path | None
+    expected_source: Path | None
+    is_symlink: bool
+    is_managed: bool
+    is_synced: bool
+    is_broken: bool
+
+
+@dataclass
+class ExtensionTypeStatus:
+    """Status of one extension type (agents, commands, skills, or hooks)."""
+
+    managed_synced: dict[str, ExtensionItem] = field(default_factory=dict)
+    managed_pending: dict[str, ExtensionItem] = field(default_factory=dict)
+    managed_wrong_target: dict[str, ExtensionItem] = field(default_factory=dict)
+    unmanaged: dict[str, ExtensionItem] = field(default_factory=dict)
+
+
+@dataclass
+class ClaudeExtensionStatus:
+    """Complete status of Claude Code extensions (agents, commands, hooks only)."""
+
+    agents: ExtensionTypeStatus = field(default_factory=ExtensionTypeStatus)
+    commands: ExtensionTypeStatus = field(default_factory=ExtensionTypeStatus)
+    hooks: ExtensionTypeStatus = field(default_factory=ExtensionTypeStatus)
+
+
+class ClaudeExtensionManager:
+    """Manages Claude Code extensions (agents, commands, skills, hooks)."""
+
+    USER_DIRS = {
+        "agents": Path("~/.claude/agents"),
+        "commands": Path("~/.claude/commands"),
+        "hooks": Path("~/.claude/hooks"),
+    }
+
+    PATTERNS = {
+        "agents": "*.md",
+        "commands": "*.md",
+        "hooks": "*.py",
+    }
+
+    def __init__(self, config_dir: Path):
+        self.config_dir = config_dir
+
+    def _is_managed_target(self, symlink_target: Path) -> bool:
+        """Check if a symlink target points to ai-rules managed location."""
+        target_str = str(symlink_target.resolve())
+        return (
+            "ai_rules/config/claude/" in target_str
+            or "ai-rules/src/ai_rules/config/claude/" in target_str
+        )
+
+    def _get_managed_extensions(self, ext_type: str) -> dict[str, Path]:
+        """Get all managed extensions of a type from config_dir."""
+        source_dir = self.config_dir / "claude" / ext_type
+        if not source_dir.exists():
+            return {}
+
+        result = {}
+        pattern = self.PATTERNS[ext_type]
+        for item in sorted(source_dir.glob(pattern)):
+            result[item.stem] = item
+        return result
+
+    def _scan_installed_extensions(
+        self, ext_type: str
+    ) -> dict[str, tuple[Path, Path | None, bool]]:
+        """Scan user directory for installed extensions.
+
+        Returns:
+            dict mapping name -> (target_path, symlink_source_or_none, is_broken)
+        """
+        user_dir = self.USER_DIRS[ext_type].expanduser()
+        if not user_dir.exists():
+            return {}
+
+        result = {}
+        pattern = self.PATTERNS[ext_type]
+        for item in sorted(user_dir.glob(pattern)):
+            name = item.stem
+
+            if item.is_symlink():
+                try:
+                    source = item.resolve()
+                    is_broken = not source.exists()
+                except (OSError, RuntimeError):
+                    source = None
+                    is_broken = True
+                result[name] = (item, source, is_broken)
+            else:
+                result[name] = (item, None, False)
+
+        return result
+
+    def get_status(self) -> ClaudeExtensionStatus:
+        """Get comprehensive status of Claude extensions (agents, commands, hooks)."""
+        status = ClaudeExtensionStatus()
+
+        for ext_type in ["agents", "commands", "hooks"]:
+            type_status = getattr(status, ext_type)
+            managed_sources = self._get_managed_extensions(ext_type)
+            installed = self._scan_installed_extensions(ext_type)
+
+            for name, expected_source in managed_sources.items():
+                if name in installed:
+                    target_path, actual_source, is_broken = installed[name]
+
+                    if is_broken:
+                        type_status.managed_wrong_target[name] = ExtensionItem(
+                            name=name,
+                            target_path=target_path,
+                            actual_source=None,
+                            expected_source=expected_source,
+                            is_symlink=True,
+                            is_managed=True,
+                            is_synced=False,
+                            is_broken=True,
+                        )
+                    elif actual_source and actual_source == expected_source.resolve():
+                        type_status.managed_synced[name] = ExtensionItem(
+                            name=name,
+                            target_path=target_path,
+                            actual_source=actual_source,
+                            expected_source=expected_source,
+                            is_symlink=True,
+                            is_managed=True,
+                            is_synced=True,
+                            is_broken=False,
+                        )
+                    else:
+                        type_status.managed_wrong_target[name] = ExtensionItem(
+                            name=name,
+                            target_path=target_path,
+                            actual_source=actual_source,
+                            expected_source=expected_source,
+                            is_symlink=actual_source is not None,
+                            is_managed=True,
+                            is_synced=False,
+                            is_broken=False,
+                        )
+                else:
+                    if ext_type == "hooks":
+                        filename = f"{name}.py"
+                    else:
+                        filename = f"{name}.md"
+
+                    user_path = self.USER_DIRS[ext_type].expanduser() / filename
+                    type_status.managed_pending[name] = ExtensionItem(
+                        name=name,
+                        target_path=user_path,
+                        actual_source=None,
+                        expected_source=expected_source,
+                        is_symlink=False,
+                        is_managed=True,
+                        is_synced=False,
+                        is_broken=False,
+                    )
+
+            for name, (target_path, actual_source, is_broken) in installed.items():
+                if name not in managed_sources:
+                    type_status.unmanaged[name] = ExtensionItem(
+                        name=name,
+                        target_path=target_path,
+                        actual_source=actual_source,
+                        expected_source=None,
+                        is_symlink=actual_source is not None,
+                        is_managed=False,
+                        is_synced=False,
+                        is_broken=is_broken,
+                    )
+
+        return status

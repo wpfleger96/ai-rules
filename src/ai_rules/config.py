@@ -40,7 +40,7 @@ AGENT_CONFIG_METADATA = {
 
 # Fields in settings.json that Claude Code manages directly.
 # These should be preserved when rebuilding the settings cache.
-CLAUDE_MANAGED_FIELDS = ["enabledPlugins"]
+CLAUDE_MANAGED_FIELDS = ["enabledPlugins", "hooks"]
 
 
 def parse_setting_path(path: str) -> list[str | int]:

@@ -3,8 +3,12 @@
 from abc import ABC, abstractmethod
 from functools import cached_property
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 from ai_rules.config import Config
+
+if TYPE_CHECKING:
+    from ai_rules.skills import SkillStatus
 
 
 class Agent(ABC):
@@ -66,3 +70,11 @@ class Agent(ABC):
             These will be removed during install if they point to our config files.
         """
         return []
+
+    def get_skill_status(self) -> "SkillStatus | None":
+        """Get status of agent skills.
+
+        Returns:
+            SkillStatus object, or None if agent doesn't support skills
+        """
+        return None

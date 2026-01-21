@@ -121,18 +121,6 @@
     "defaultMode": "plan"
   },
   "model": "sonnet",
-  "hooks": {
-    "UserPromptSubmit": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "uv run ~/.claude/hooks/skillRouter.py"
-          }
-        ]
-      }
-    ]
-  },
   "statusLine": {
     "type": "command",
     "command": "claude-statusline"

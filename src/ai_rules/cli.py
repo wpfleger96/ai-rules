@@ -1332,6 +1332,13 @@ def status(agents: str | None) -> None:
         ]
 
         for target, source in filtered_symlinks:
+            target_str = str(target)
+            if any(
+                ext in target_str
+                for ext in ["/agents/", "/commands/", "/skills/", "/hooks/"]
+            ):
+                continue
+
             status_code, message = check_symlink(target, source)
             is_correct = _display_symlink_status(status_code, target, source, message)
             if not is_correct:
@@ -1418,6 +1425,85 @@ def status(agents: str | None) -> None:
                         console.print(
                             f"    {key:<20} [dim]Installed (not in config)[/dim]"
                         )
+
+            extension_status = agent.get_extension_status()
+
+            for ext_type, type_name in [
+                ("agents", "Agents"),
+                ("commands", "Commands"),
+                ("hooks", "Hooks"),
+            ]:
+                type_status = getattr(extension_status, ext_type)
+                if any(
+                    [
+                        type_status.managed_synced,
+                        type_status.managed_pending,
+                        type_status.managed_wrong_target,
+                        type_status.unmanaged,
+                    ]
+                ):
+                    console.print(f"  [bold]{type_name}:[/bold]")
+
+                    for name in sorted(type_status.managed_synced.keys()):
+                        console.print(
+                            f"    {name:<20} [green]Synced[/green] [dim](managed)[/dim]"
+                        )
+
+                    for name, item in sorted(type_status.managed_wrong_target.items()):
+                        if item.is_broken:
+                            console.print(
+                                f"    {name:<20} [red]Broken symlink[/red] [dim](managed)[/dim]"
+                            )
+                        else:
+                            console.print(
+                                f"    {name:<20} [yellow]Wrong target[/yellow] [dim](managed)[/dim]"
+                            )
+                        all_correct = False
+
+                    for name in sorted(type_status.managed_pending.keys()):
+                        console.print(
+                            f"    {name:<20} [yellow]Not installed[/yellow] [dim](managed)[/dim]"
+                        )
+                        all_correct = False
+
+                    for name in sorted(type_status.unmanaged.keys()):
+                        console.print(f"    {name:<20} [dim]Unmanaged[/dim]")
+
+        skill_status = agent.get_skill_status()
+        if skill_status and any(
+            [
+                skill_status.managed_synced,
+                skill_status.managed_pending,
+                skill_status.managed_wrong_target,
+                skill_status.unmanaged,
+            ]
+        ):
+            console.print("  [bold]Skills:[/bold]")
+
+            for name in sorted(skill_status.managed_synced.keys()):
+                console.print(
+                    f"    {name:<20} [green]Synced[/green] [dim](managed)[/dim]"
+                )
+
+            for name, item in sorted(skill_status.managed_wrong_target.items()):
+                if item.is_broken:
+                    console.print(
+                        f"    {name:<20} [red]Broken symlink[/red] [dim](managed)[/dim]"
+                    )
+                else:
+                    console.print(
+                        f"    {name:<20} [yellow]Wrong target[/yellow] [dim](managed)[/dim]"
+                    )
+                all_correct = False
+
+            for name in sorted(skill_status.managed_pending.keys()):
+                console.print(
+                    f"    {name:<20} [yellow]Not installed[/yellow] [dim](managed)[/dim]"
+                )
+                all_correct = False
+
+            for name in sorted(skill_status.unmanaged.keys()):
+                console.print(f"    {name:<20} [dim]Unmanaged[/dim]")
 
         console.print()
 
