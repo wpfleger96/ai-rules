@@ -354,7 +354,7 @@ def _display_pending_plugin_changes(config: "Config") -> bool:
         if not found_changes:
             console.print("\n[bold]Plugins[/bold]")
         for name in sorted(plugin_status.extra):
-            console.print(f"  [dim]○[/dim] {name} (installed but not in config)")
+            console.print(f"  [dim]○[/dim] {name} (Unmanaged)")
 
     return found_changes
 
@@ -1423,7 +1423,7 @@ def status(agents: str | None) -> None:
 
                     for key in sorted(plugin_status.extra):
                         console.print(
-                            f"    {key:<20} [dim]Installed (not in config)[/dim]"
+                            f"    {key:<20} [dim]Unmanaged[/dim]"
                         )
 
             extension_status = agent.get_extension_status()
