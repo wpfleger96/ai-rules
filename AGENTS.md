@@ -59,29 +59,34 @@ uv run ai-rules profile switch <name>  # Switch to different profile
 ```
 src/ai_rules/
 ├── cli.py              # Click CLI commands (main, install, status, upgrade, etc.)
-├── config.py           # Config loading, path parsing, merging, Claude-managed fields
+├── config.py           # Config loading, path parsing, merging, preserved fields
 ├── profiles.py         # Profile loading and inheritance resolution
 ├── state.py            # State management (active profile tracking)
 ├── utils.py            # Deep merge and utility functions
 ├── symlinks.py         # Symlink operations with backups
 ├── plugins.py          # Claude Code plugin management via marketplace
 ├── mcp.py              # MCP server management
+├── skills.py           # Shared skills management for Claude Code & Goose
+├── claude_extensions.py # Claude extensions (agents, commands, hooks) status
 ├── completions.py      # Shell completion management
 ├── agents/
 │   ├── base.py         # Abstract Agent base class
-│   ├── claude.py       # ClaudeAgent
-│   ├── goose.py        # GooseAgent
-│   └── shared.py       # SharedAgent
+│   ├── claude.py       # ClaudeAgent (settings, MCPs, extensions)
+│   ├── goose.py        # GooseAgent (config, hints)
+│   └── shared.py       # SharedAgent (AGENTS.md, shared skills)
 ├── bootstrap/          # Auto-update and GitHub install utilities
 │   ├── installer.py    # Tool installation (PyPI and GitHub)
 │   ├── updater.py      # Update checking
 │   └── version.py      # Version parsing
 └── config/             # Source configs (bundled in package)
-    ├── claude/         # Claude Code configs (settings, agents, commands, skills)
+    ├── claude/         # Claude Code configs (settings, agents, commands, hooks)
     │   ├── commands/   # Slash commands (.md files)
-    │   ├── skills/     # Skills (subdirs with SKILL.md)
-    │   └── hooks/      # UserPromptSubmit hook (skillRouter.py)
+    │   └── hooks/      # Hooks (skillRouter.py, subagentStop.py)
     ├── goose/          # Goose configs (.goosehints, config.yaml)
+    ├── skills/         # **SHARED** skills (symlinked to both Claude & Goose)
+    │   ├── doc-writer/
+    │   ├── prompt-engineer/
+    │   └── test-writer/
     └── profiles/       # Built-in profiles (default.yaml, work.yaml)
 tests/
 ├── unit/               # No filesystem side effects
@@ -162,10 +167,12 @@ uv run pytest -m state          # State management tests only
    - Update checks use GitHub API tags
    - Useful for pre-release features before PyPI publish
 
-7. **Claude-managed fields in settings.json** - `enabledPlugins` is managed by Claude Code:
-   - ai-rules preserves this field during cache rebuilds
-   - Defined in `CLAUDE_MANAGED_FIELDS` constant (config.py)
-   - Don't include in base settings or overrides - will be preserved automatically
+7. **Preserved fields in settings.json** - `enabledPlugins`, `hooks` managed by Claude Code or user:
+   - ai-rules preserves these fields during cache rebuilds
+   - Defined in `PRESERVED_FIELDS` constant (config.py, formerly `CLAUDE_MANAGED_FIELDS`)
+   - Tracking file: `~/.claude/ai-rules-managed-fields.json` (tracks ai-rules contributions)
+   - Cleanup: When ai-rules removes a hook from source, it's removed from user settings
+   - User hooks preserved (e.g., custom UserPromptSubmit hooks won't be removed)
 
 8. **Upgrade shows changelogs** - `upgrade` command fetches CHANGELOG.md from GitHub:
    - Displays version notes between current and latest
@@ -177,7 +184,10 @@ uv run pytest -m state          # State management tests only
 
 **Slash commands:** Explore `config/claude/commands/*.md` for available commands.
 
-**Skills:** Explore `config/claude/skills/*/SKILL.md` for available skills.
+**Skills:** Explore `config/skills/*/SKILL.md` for available skills.
+- **SHARED between Claude Code and Goose** - symlinked to both `~/.claude/skills/` and `~/.config/goose/skills/`
+- Managed by SharedAgent (displays under "Shared:" in status)
+- To add a skill: Create subdir in `config/skills/` with `SKILL.md`
 
 ## Key Files by Task
 
@@ -185,14 +195,16 @@ uv run pytest -m state          # State management tests only
 |------|-------|
 | Add CLI command | `cli.py` (main function, command decorators) |
 | Add slash command | Create `.md` in `config/claude/commands/` |
-| Add skill | Create subdir in `config/claude/skills/` with `SKILL.md` |
+| Add skill | Create subdir in `config/skills/` with `SKILL.md` (shared) |
 | Config loading | `config.py` (Config class, load_config) |
 | Profile management | `profiles.py`, `state.py`, `cli.py::profile()` |
 | State management | `state.py` (ProfileState class) |
 | Symlink behavior | `symlinks.py` (create_symlink, remove_symlink) |
 | Shell completions | `completions.py`, `cli.py::completions()` |
 | New agent | `agents/base.py`, `agents/<new>.py`, `cli.py::get_agents()` |
-| Plugin management | `plugins.py`, `config.py` (CLAUDE_MANAGED_FIELDS) |
+| Plugin management | `plugins.py`, `config.py` (PRESERVED_FIELDS) |
 | MCP management | `mcp.py`, `agents/claude.py` |
+| Skills management | `skills.py` (SkillManager), `agents/shared.py` |
+| Preserved fields tracking | `config.py` (ManagedFieldsTracker, PRESERVED_FIELDS) |
 | Auto-update/upgrade | `bootstrap/updater.py`, `bootstrap/installer.py` |
 | GitHub install support | `bootstrap/installer.py` (GITHUB_REPO_URL) |

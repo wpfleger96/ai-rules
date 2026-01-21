@@ -20,7 +20,7 @@ Consolidates config files for AI coding agents (Claude Code, Goose) into a singl
 - Exclude specific files (e.g., company-managed)
 - Per-agent customizations
 
-**Supported:** Claude Code (settings, agents, commands, plugins), Goose (hints, config), Shared (AGENTS.md)
+**Supported:** Claude Code (settings, agents, commands, plugins), Goose (hints, config), Shared (AGENTS.md, skills)
 
 ## Installation
 
@@ -303,15 +303,16 @@ Plugins are tracked in `~/.claude/plugins/installed_plugins.json` and synced acr
 
 ```
 config/
-├── AGENTS.md              # User-level rules → ~/AGENTS.md, ~/.CLAUDE.md, ~/.config/goose/.goosehints
+├── AGENTS.md              # User-level rules → ~/AGENTS.md
 ├── claude/
 │   ├── settings.json      # → ~/.claude/settings.json
 │   ├── agents/*.md        # → ~/.claude/agents/*.md (dynamic)
 │   ├── commands/*.md      # → ~/.claude/commands/*.md (dynamic)
-│   ├── hooks/*.py         # → ~/.claude/hooks/*.py (dynamic)
-│   └── skills/*/SKILL.md  # → ~/.claude/skills/*/SKILL.md (dynamic)
-└── goose/
-    └── config.yaml        # → ~/.config/goose/config.yaml
+│   └── hooks/*.py         # → ~/.claude/hooks/*.py (dynamic)
+├── goose/
+│   └── config.yaml        # → ~/.config/goose/config.yaml
+└── skills/                # Shared between Claude & Goose
+    └── */SKILL.md         # → ~/.claude/skills/* + ~/.config/goose/skills/*
 ```
 
 ## Optional Tools
@@ -334,8 +335,8 @@ If a tool fails to install, ai-rules continues normally (fail-open behavior).
 1. Create `config/claude/agents/my-agent.md` or `config/claude/commands/my-cmd.md`
 2. Run `ai-rules install`
 
-**Add Claude skill with auto-activation:**
-1. Create `config/claude/skills/my-skill/SKILL.md` with frontmatter:
+**Add shared skill (Claude Code + Goose):**
+1. Create `config/skills/my-skill/SKILL.md` with frontmatter:
 ```yaml
 ---
 name: my-skill
@@ -346,7 +347,8 @@ metadata:
 ---
 ```
 2. Run `ai-rules install`
-3. Skill auto-suggests when user prompt matches keywords/patterns
+3. Skill symlinked to both `~/.claude/skills/` and `~/.config/goose/skills/`
+4. Auto-suggests when user prompt matches keywords/patterns
 
 **Add Claude hook:**
 1. Create `config/claude/hooks/my-hook.py`
