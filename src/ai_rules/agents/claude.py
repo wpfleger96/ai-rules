@@ -9,7 +9,6 @@ from ai_rules.mcp import MCPManager, MCPStatus, OperationResult
 
 if TYPE_CHECKING:
     from ai_rules.claude_extensions import ClaudeExtensionStatus
-    from ai_rules.skills import SkillStatus
 
 
 class ClaudeAgent(Agent):
@@ -70,17 +69,6 @@ class ClaudeAgent(Agent):
                         command_file,
                     )
                 )
-
-        skills_dir = self.config_dir / "claude" / "skills"
-        if skills_dir.exists():
-            for skill_folder in sorted(skills_dir.glob("*")):
-                if skill_folder.is_dir():
-                    result.append(
-                        (
-                            Path(f"~/.claude/skills/{skill_folder.name}"),
-                            skill_folder,
-                        )
-                    )
 
         hooks_dir = self.config_dir / "claude" / "hooks"
         if hooks_dir.exists():
@@ -146,19 +134,4 @@ class ClaudeAgent(Agent):
         from ai_rules.claude_extensions import ClaudeExtensionManager
 
         manager = ClaudeExtensionManager(self.config_dir)
-        return manager.get_status()
-
-    def get_skill_status(self) -> "SkillStatus":
-        """Get status of Claude skills.
-
-        Returns:
-            SkillStatus object with categorized skills
-        """
-        from ai_rules.skills import SkillManager
-
-        manager = SkillManager(
-            config_dir=self.config_dir,
-            agent_id="claude",
-            user_skills_dir=Path("~/.claude/skills"),
-        )
         return manager.get_status()

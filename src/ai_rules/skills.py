@@ -43,17 +43,29 @@ class SkillStatus:
 class SkillManager:
     """Manages skills for any AI agent."""
 
-    def __init__(self, config_dir: Path, agent_id: str, user_skills_dir: Path):
+    def __init__(
+        self,
+        config_dir: Path,
+        agent_id: str,
+        user_skills_dir: Path | None = None,
+        user_skills_dirs: list[Path] | None = None,
+    ):
         """Initialize skill manager.
 
         Args:
             config_dir: ai-rules config directory
-            agent_id: Agent identifier (e.g., 'claude', 'goose')
+            agent_id: Agent identifier (e.g., 'claude', 'goose', '' for shared)
             user_skills_dir: Where skills are installed (e.g., ~/.claude/skills/)
+            user_skills_dirs: Multiple directories for shared skills
         """
         self.config_dir = config_dir
         self.agent_id = agent_id
-        self.user_skills_dir = user_skills_dir.expanduser()
+        if user_skills_dirs:
+            self.user_skills_dirs = [p.expanduser() for p in user_skills_dirs]
+        elif user_skills_dir:
+            self.user_skills_dirs = [user_skills_dir.expanduser()]
+        else:
+            self.user_skills_dirs = []
 
     @staticmethod
     def parse_skill_md(skill_dir: Path) -> SkillMetadata | None:
@@ -89,7 +101,11 @@ class SkillManager:
 
     def _get_managed_skills(self) -> dict[str, Path]:
         """Get all managed skills from config_dir."""
-        source_dir = self.config_dir / self.agent_id / "skills"
+        if self.agent_id:
+            source_dir = self.config_dir / self.agent_id / "skills"
+        else:
+            source_dir = self.config_dir / "skills"
+
         if not source_dir.exists():
             return {}
 
@@ -99,32 +115,38 @@ class SkillManager:
                 result[item.name] = item
         return result
 
-    def _scan_installed_skills(self) -> dict[str, tuple[Path, Path | None, bool]]:
-        """Scan user directory for installed skills.
+    def _scan_installed_skills(self) -> dict[str, list[tuple[Path, Path | None, bool]]]:
+        """Scan user directories for installed skills.
 
         Returns:
-            dict mapping name -> (target_path, symlink_source_or_none, is_broken)
+            dict mapping name -> list of (target_path, symlink_source_or_none, is_broken) per directory
         """
-        if not self.user_skills_dir.exists():
-            return {}
+        result: dict[str, list[tuple[Path, Path | None, bool]]] = {}
 
-        result = {}
-        for item in sorted(self.user_skills_dir.glob("*")):
-            if not item.is_dir() and not item.is_symlink():
+        for user_dir in self.user_skills_dirs:
+            if not user_dir.exists():
                 continue
 
-            name = item.name
+            for item in sorted(user_dir.glob("*")):
+                if not item.is_dir() and not item.is_symlink():
+                    continue
 
-            if item.is_symlink():
-                try:
-                    source = item.resolve()
-                    is_broken = not source.exists()
-                except (OSError, RuntimeError):
-                    source = None
-                    is_broken = True
-                result[name] = (item, source, is_broken)
-            else:
-                result[name] = (item, None, False)
+                name = item.name
+
+                if item.is_symlink():
+                    try:
+                        source = item.resolve()
+                        is_broken = not source.exists()
+                    except (OSError, RuntimeError):
+                        source = None
+                        is_broken = True
+                    entry = (item, source, is_broken)
+                else:
+                    entry = (item, None, False)
+
+                if name not in result:
+                    result[name] = []
+                result[name].append(entry)
 
         return result
 
@@ -138,21 +160,26 @@ class SkillManager:
             metadata = self.parse_skill_md(expected_source)
 
             if name in installed:
-                target_path, actual_source, is_broken = installed[name]
+                installations = installed[name]
+                expected_count = len(self.user_skills_dirs)
+                actual_count = len(installations)
 
-                if is_broken:
-                    status.managed_wrong_target[name] = SkillItem(
-                        name=name,
-                        target_path=target_path,
-                        actual_source=None,
-                        expected_source=expected_source,
-                        is_symlink=True,
-                        is_managed=True,
-                        is_synced=False,
-                        is_broken=True,
-                        metadata=metadata,
-                    )
-                elif actual_source and actual_source == expected_source.resolve():
+                synced_count = sum(
+                    1
+                    for _, actual_source, is_broken in installations
+                    if not is_broken
+                    and actual_source
+                    and actual_source == expected_source.resolve()
+                )
+
+                has_issues = any(
+                    is_broken
+                    or (actual_source and actual_source != expected_source.resolve())
+                    for _, actual_source, is_broken in installations
+                )
+
+                if synced_count == expected_count and not has_issues:
+                    target_path, actual_source, _ = installations[0]
                     status.managed_synced[name] = SkillItem(
                         name=name,
                         target_path=target_path,
@@ -164,7 +191,8 @@ class SkillManager:
                         is_broken=False,
                         metadata=metadata,
                     )
-                else:
+                elif has_issues or actual_count < expected_count:
+                    target_path, actual_source, is_broken = installations[0]
                     status.managed_wrong_target[name] = SkillItem(
                         name=name,
                         target_path=target_path,
@@ -173,11 +201,15 @@ class SkillManager:
                         is_symlink=actual_source is not None,
                         is_managed=True,
                         is_synced=False,
-                        is_broken=False,
+                        is_broken=any(ib for _, _, ib in installations),
                         metadata=metadata,
                     )
             else:
-                user_path = self.user_skills_dir / name
+                user_path = (
+                    self.user_skills_dirs[0] / name
+                    if self.user_skills_dirs
+                    else Path(f"~/.skills/{name}")
+                )
                 status.managed_pending[name] = SkillItem(
                     name=name,
                     target_path=user_path,
@@ -190,8 +222,9 @@ class SkillManager:
                     metadata=metadata,
                 )
 
-        for name, (target_path, actual_source, is_broken) in installed.items():
+        for name, installations in installed.items():
             if name not in managed_sources:
+                target_path, actual_source, is_broken = installations[0]
                 metadata = None
                 if target_path.is_dir():
                     metadata = self.parse_skill_md(target_path)

@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING
 from ai_rules.agents.base import Agent
 
 if TYPE_CHECKING:
-    from ai_rules.skills import SkillStatus
+    pass
 
 
 class GooseAgent(Agent):
@@ -48,30 +48,4 @@ class GooseAgent(Agent):
             )
             result.append((Path("~/.config/goose/config.yaml"), target_file))
 
-        skills_dir = self.config_dir / "goose" / "skills"
-        if skills_dir.exists():
-            for skill_folder in sorted(skills_dir.glob("*")):
-                if skill_folder.is_dir():
-                    result.append(
-                        (
-                            Path(f"~/.config/goose/skills/{skill_folder.name}"),
-                            skill_folder,
-                        )
-                    )
-
         return result
-
-    def get_skill_status(self) -> "SkillStatus":
-        """Get status of Goose skills.
-
-        Returns:
-            SkillStatus object with categorized skills
-        """
-        from ai_rules.skills import SkillManager
-
-        manager = SkillManager(
-            config_dir=self.config_dir,
-            agent_id="goose",
-            user_skills_dir=Path("~/.config/goose/skills"),
-        )
-        return manager.get_status()

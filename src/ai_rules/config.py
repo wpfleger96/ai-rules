@@ -22,6 +22,7 @@ if TYPE_CHECKING:
 __all__ = [
     "Config",
     "AGENT_CONFIG_METADATA",
+    "AGENT_SKILLS_DIRS",
     "parse_setting_path",
     "navigate_path",
     "validate_override_path",
@@ -36,6 +37,11 @@ AGENT_CONFIG_METADATA = {
         "config_file": "config.yaml",
         "format": "yaml",
     },
+}
+
+AGENT_SKILLS_DIRS = {
+    "claude": Path("~/.claude/skills"),
+    "goose": Path("~/.config/goose/skills"),
 }
 
 # Fields preserved during settings rebuild. These are managed by Claude Code
