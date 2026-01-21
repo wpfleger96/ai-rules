@@ -9,6 +9,7 @@
   "permissions": {
     "allow": [
       "Bash(awk:*)",
+      "Bash(beads:*)",
       "Bash(bundle:*)",
       "Bash(cargo build:*)",
       "Bash(cargo check:*)",
@@ -78,6 +79,7 @@
       "Bash(mkdir:*)",
       "Bash(npm:*)",
       "Bash(pdftotext:*)",
+      "Bash(perles:*)",
       "Bash(python:*)",
       "Bash(python3:*)",
       "Bash(readlink:*)",
