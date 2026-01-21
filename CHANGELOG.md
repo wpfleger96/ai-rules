@@ -1,6 +1,24 @@
 # CHANGELOG
 
 
+## v0.20.1 (2026-01-21)
+
+### Bug Fixes
+
+- Claude code and goose agents should share skills since it's a common standard
+  ([`e492a54`](https://github.com/wpfleger96/ai-rules/commit/e492a54975411f3b0c2155c6be573124e8cbe0a5))
+
+this was the intention in ae91931 but didn't fully get finished
+
+- Don't overwrite hooks manually setup by the user
+  ([`072b22c`](https://github.com/wpfleger96/ai-rules/commit/072b22c050e422a305eb828733663b96ee649bf0))
+
+or any other configs either, intelligently merge and note local overrides as unmanaged
+
+- Standardize output
+  ([`b16d53e`](https://github.com/wpfleger96/ai-rules/commit/b16d53ee7b1a44ed2e74c0b987c9b6b687022484))
+
+
 ## v0.20.0 (2026-01-21)
 
 ### Bug Fixes
