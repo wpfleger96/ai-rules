@@ -1381,6 +1381,20 @@ def status(agents: str | None) -> None:
                         f"    {name:<20} {status_text} [dim](managed{override_text})[/dim]"
                     )
                     if not synced:
+                        from ai_rules.mcp import MCPManager
+
+                        mgr = MCPManager()
+                        expected = mgr.load_managed_mcps(config_dir, config).get(
+                            name, {}
+                        )
+                        installed = mcp_status.managed_mcps.get(name, {})
+                        diff = mgr.format_diff(name, expected, installed)
+                        if diff:
+                            for line in diff.split("\n"):
+                                if line.startswith("MCP"):
+                                    continue
+                                if line.strip():
+                                    console.print(f"      [dim]{line}[/dim]")
                         all_correct = False
                 for name in sorted(mcp_status.pending_mcps.keys()):
                     has_override = mcp_status.has_overrides.get(name, False)
@@ -1388,6 +1402,13 @@ def status(agents: str | None) -> None:
                     console.print(
                         f"    {name:<20} [yellow]Not installed[/yellow] [dim](managed{override_text})[/dim]"
                     )
+                    from ai_rules.mcp import MCPManager
+
+                    mgr = MCPManager()
+                    expected = mcp_status.pending_mcps.get(name, {})
+                    pending_output = mgr.format_pending(name, expected)
+                    if pending_output:
+                        console.print(pending_output)
                     all_correct = False
                 for name in sorted(mcp_status.stale_mcps.keys()):
                     console.print(
@@ -1456,6 +1477,14 @@ def status(agents: str | None) -> None:
                             console.print(
                                 f"    {name:<20} [yellow]Wrong target[/yellow] [dim](managed)[/dim]"
                             )
+                            if item.actual_source and item.expected_source:
+                                from ai_rules.symlinks import get_content_diff
+
+                                diff_output = get_content_diff(
+                                    item.actual_source, item.expected_source
+                                )
+                                if diff_output:
+                                    console.print(diff_output)
                         all_correct = False
 
                     for name in sorted(type_status.managed_pending.keys()):
@@ -1492,6 +1521,14 @@ def status(agents: str | None) -> None:
                     console.print(
                         f"    {name:<20} [yellow]Wrong target[/yellow] [dim](managed)[/dim]"
                     )
+                    if item.actual_source and item.expected_source:
+                        from ai_rules.symlinks import get_content_diff
+
+                        diff_output = get_content_diff(
+                            item.actual_source, item.expected_source
+                        )
+                        if diff_output:
+                            console.print(diff_output)
                 all_correct = False
 
             for name in sorted(skill_status.managed_pending.keys()):

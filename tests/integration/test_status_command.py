@@ -340,3 +340,40 @@ class TestStatusCacheValidation:
         assert "Cached (current)" in result.output
         assert "Expected (merged)" in result.output
         assert "model" in result.output
+
+    def test_status_shows_diff_when_cache_missing(
+        self, test_repo, mock_home, runner, monkeypatch
+    ):
+        """Test status displays diff when cache doesn't exist."""
+        import ai_rules.cli
+
+        from ai_rules.agents.claude import ClaudeAgent
+        from ai_rules.agents.goose import GooseAgent
+        from ai_rules.agents.shared import SharedAgent
+        from ai_rules.config import Config
+        from ai_rules.symlinks import create_symlink
+
+        monkeypatch.setattr(ai_rules.cli, "get_config_dir", lambda: test_repo)
+
+        user_config_path = mock_home / ".ai-rules-config.yaml"
+        user_config = {
+            "version": 1,
+            "settings_overrides": {"claude": {"model": "claude-sonnet-4"}},
+        }
+        with open(user_config_path, "w") as f:
+            yaml.dump(user_config, f)
+
+        config = Config.load()
+        claude = ClaudeAgent(test_repo, config)
+        goose = GooseAgent(test_repo, config)
+        shared = SharedAgent(test_repo, config)
+        for agent in [claude, goose, shared]:
+            for target, source in agent.symlinks:
+                target_path = Path(str(target).replace("~", str(mock_home)))
+                create_symlink(target_path, source, force=False, dry_run=False)
+
+        result = runner.invoke(main, ["status"], catch_exceptions=False)
+        assert result.exit_code == 1
+        assert "Cached settings are stale" in result.output
+        assert "Base (current)" in result.output
+        assert "Expected (with overrides)" in result.output

@@ -44,11 +44,8 @@ AGENT_SKILLS_DIRS = {
     "goose": Path("~/.config/goose/skills"),
 }
 
-# Fields preserved during settings rebuild. These are managed by Claude Code
-# or the user directly, so ai-rules shouldn't overwrite them from source config.
 PRESERVED_FIELDS = ["enabledPlugins", "hooks"]
 
-# Path to file tracking ai-rules contributions to PRESERVED_FIELDS
 MANAGED_FIELDS_PATH = Path.home() / ".claude" / "ai-rules-managed-fields.json"
 
 
@@ -647,22 +644,18 @@ class Config:
         return False
 
     def get_cache_diff(self, agent: str, base_settings_path: Path) -> str | None:
-        """Get a unified diff between cached and expected merged settings.
+        """Get unified diff between current state and expected merged settings.
 
         Args:
             agent: Agent name (e.g., 'claude', 'goose')
             base_settings_path: Path to base settings in repo
 
         Returns:
-            Formatted diff string with Rich markup, or None if no diff/cache doesn't exist
+            Formatted diff string with Rich markup, or None if no diff
         """
         import difflib
 
         if agent not in self.settings_overrides:
-            return None
-
-        cache_path = self.get_merged_settings_path(agent)
-        if not cache_path or not cache_path.exists():
             return None
 
         agent_config = AGENT_CONFIG_METADATA.get(agent)
@@ -670,17 +663,6 @@ class Config:
             return None
 
         config_format = agent_config["format"]
-
-        try:
-            with open(cache_path) as f:
-                if config_format == "json":
-                    cached_settings = json.load(f)
-                elif config_format == "yaml":
-                    cached_settings = yaml.safe_load(f) or {}
-                else:
-                    return None
-        except (json.JSONDecodeError, yaml.YAMLError, OSError):
-            return None
 
         if not base_settings_path.exists():
             base_settings = {}
@@ -696,23 +678,44 @@ class Config:
             except (json.JSONDecodeError, yaml.YAMLError, OSError):
                 return None
 
+        cache_path = self.get_merged_settings_path(agent)
+        cache_exists = cache_path and cache_path.exists()
+
+        if cache_exists:
+            try:
+                with open(cache_path) as f:
+                    if config_format == "json":
+                        current_settings = json.load(f)
+                    elif config_format == "yaml":
+                        current_settings = yaml.safe_load(f) or {}
+                    else:
+                        return None
+            except (json.JSONDecodeError, yaml.YAMLError, OSError):
+                return None
+            from_label = "Cached (current)"
+            to_label = "Expected (merged)"
+        else:
+            current_settings = base_settings
+            from_label = "Base (current)"
+            to_label = "Expected (with overrides)"
+
         expected_settings = self.merge_settings(agent, base_settings)
 
-        cached_copy = copy.deepcopy(cached_settings)
+        current_copy = copy.deepcopy(current_settings)
         expected_copy = copy.deepcopy(expected_settings)
         for field in PRESERVED_FIELDS:
-            cached_copy.pop(field, None)
+            current_copy.pop(field, None)
             expected_copy.pop(field, None)
 
-        if cached_copy == expected_copy:
+        if current_copy == expected_copy:
             return None
 
         if config_format == "json":
-            cached_text = json.dumps(cached_copy, indent=2)
+            current_text = json.dumps(current_copy, indent=2)
             expected_text = json.dumps(expected_copy, indent=2)
         elif config_format == "yaml":
-            cached_text = yaml.dump(
-                cached_copy, default_flow_style=False, sort_keys=False
+            current_text = yaml.dump(
+                current_copy, default_flow_style=False, sort_keys=False
             )
             expected_text = yaml.dump(
                 expected_copy, default_flow_style=False, sort_keys=False
@@ -720,14 +723,14 @@ class Config:
         else:
             return None
 
-        cached_lines = cached_text.splitlines(keepends=True)
+        current_lines = current_text.splitlines(keepends=True)
         expected_lines = expected_text.splitlines(keepends=True)
 
         diff = difflib.unified_diff(
-            cached_lines,
+            current_lines,
             expected_lines,
-            fromfile="Cached (current)",
-            tofile="Expected (merged)",
+            fromfile=from_label,
+            tofile=to_label,
             lineterm="",
         )
 

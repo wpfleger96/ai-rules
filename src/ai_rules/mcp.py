@@ -191,6 +191,24 @@ class MCPManager:
 
         return f"MCP '{name}' has been modified locally:\n" + "".join(diff)
 
+    def format_pending(self, name: str, expected: dict[str, Any]) -> str:
+        """Format expected MCP config for pending installation.
+
+        Args:
+            name: MCP name
+            expected: Expected config
+
+        Returns:
+            Formatted JSON string with Rich markup
+        """
+        display_config = {k: v for k, v in expected.items() if k != MANAGED_BY_KEY}
+        config_json = json.dumps(display_config, indent=2)
+
+        lines = ["[dim]    Will be installed with:[/dim]"]
+        for line in config_json.splitlines():
+            lines.append(f"[green]    {line}[/green]")
+        return "\n".join(lines)
+
     def install_mcps(
         self,
         config_dir: Path,

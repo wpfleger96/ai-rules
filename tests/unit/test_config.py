@@ -190,7 +190,6 @@ settings_overrides:
     @pytest.mark.parametrize(
         "overrides,base,expected",
         [
-            # With overrides - values should be merged
             (
                 {"claude": {"model": "claude-sonnet-4-5-20250929", "theme": "dark"}},
                 {"model": "claude-opus-4-20250514", "theme": "light", "other": "value"},
@@ -200,7 +199,6 @@ settings_overrides:
                     "other": "value",
                 },
             ),
-            # Without overrides - should return base unchanged
             (
                 {},
                 {"model": "claude-opus-4-20250514"},
@@ -300,6 +298,18 @@ settings_overrides:
         time.sleep(0.02)
 
         assert config.is_cache_stale("claude", base_path) is True
+
+    def test_get_cache_diff_when_cache_missing(self, cache_setup):
+        """Test that diff shows base vs expected when cache doesn't exist."""
+        config = cache_setup["config"]
+        base_path = cache_setup["base_settings_path"]
+
+        diff = config.get_cache_diff("claude", base_path)
+
+        assert diff is not None
+        assert "Base (current)" in diff
+        assert "Expected (with overrides)" in diff
+        assert "model" in diff
 
     def test_build_merged_settings_rebuild_behavior(self, cache_setup):
         """Test that cache rebuild is skipped when fresh but happens when forced."""
