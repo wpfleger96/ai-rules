@@ -116,7 +116,7 @@ def create_symlink(
         return (
             SymlinkResult.ERROR,
             f"File already exists: {e}\n"
-            "  [dim]Tip: Use --force to replace existing files.[/dim]",
+            "  [dim]Tip: Use -y to replace existing files.[/dim]",
         )
     except (OSError, ValueError) as e:
         try:

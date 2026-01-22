@@ -1876,7 +1876,7 @@ def upgrade(
                     "ai-rules",
                     "install",
                     "--rebuild-cache",
-                    "--force",
+                    "-y",
                     "--profile",
                     current_profile,
                 ],

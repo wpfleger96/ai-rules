@@ -238,7 +238,7 @@ class MCPManager:
         if conflicts and not force:
             return (
                 OperationResult.ERROR,
-                "Conflicts detected (use --force to override)",
+                "Conflicts detected (use -y to override)",
                 conflicts,
             )
 
