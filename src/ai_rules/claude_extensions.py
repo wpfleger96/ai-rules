@@ -2,6 +2,7 @@
 
 from dataclasses import dataclass, field
 from pathlib import Path
+from typing import Any
 
 
 @dataclass
@@ -104,6 +105,67 @@ class ClaudeExtensionManager:
                 result[name] = (item, None, False)
 
         return result
+
+    def _get_configured_hooks(self, settings: dict[str, Any]) -> set[str]:
+        """Get set of hook filenames that have configurations in settings.
+
+        Scans settings['hooks'] for any command that references a file in ~/.claude/hooks/.
+
+        Args:
+            settings: Merged settings dict containing hooks configuration
+
+        Returns:
+            Set of hook filenames (e.g., {'subagentStop.py', 'skillRouter.py'})
+        """
+        import re
+
+        configured = set()
+        hooks_config = settings.get("hooks", {})
+
+        for event_handlers in hooks_config.values():
+            for handler in event_handlers:
+                for hook in handler.get("hooks", []):
+                    if hook.get("type") == "command":
+                        command = hook.get("command", "")
+                        if (
+                            "~/.claude/hooks/" in command
+                            or "/.claude/hooks/" in command
+                        ):
+                            match = re.search(
+                                r"[~/.]*/\.claude/hooks/(\w+\.py)", command
+                            )
+                            if match:
+                                configured.add(match.group(1))
+
+        return configured
+
+    def get_orphaned_hooks(self, settings: dict[str, Any]) -> dict[str, Path]:
+        """Get hooks that are installed but have no configuration.
+
+        Args:
+            settings: Merged settings dict to check for hook configurations
+
+        Returns:
+            dict mapping hook name -> installed path for orphaned hooks
+        """
+        user_hooks_dir = Path("~/.claude/hooks").expanduser()
+        if not user_hooks_dir.exists():
+            return {}
+
+        configured_hooks = self._get_configured_hooks(settings)
+        orphaned = {}
+
+        for hook_file in user_hooks_dir.glob("*.py"):
+            if hook_file.name not in configured_hooks:
+                if hook_file.is_symlink():
+                    try:
+                        target = hook_file.resolve()
+                        if self._is_managed_target(target):
+                            orphaned[hook_file.stem] = hook_file
+                    except (OSError, RuntimeError):
+                        pass
+
+        return orphaned
 
     def get_status(self) -> ClaudeExtensionStatus:
         """Get comprehensive status of Claude extensions (agents, commands, hooks)."""

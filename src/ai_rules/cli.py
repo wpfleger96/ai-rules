@@ -1180,6 +1180,49 @@ def install(
                     "[dim]○[/dim] Skipped plugin sync (claude CLI not available)"
                 )
 
+        from ai_rules.claude_extensions import ClaudeExtensionManager
+        from ai_rules.config import AGENT_CONFIG_METADATA
+
+        agent_config = AGENT_CONFIG_METADATA.get(claude_agent.agent_id)
+        if agent_config:
+            base_settings_path = (
+                config_dir / claude_agent.agent_id / agent_config["config_file"]
+            )
+            if base_settings_path.exists():
+                import json
+
+                try:
+                    with open(base_settings_path) as f:
+                        base_settings = json.load(f)
+                    merged_settings = config.merge_settings(
+                        claude_agent.agent_id, base_settings
+                    )
+
+                    ext_manager = ClaudeExtensionManager(config_dir)
+                    orphaned_hooks = ext_manager.get_orphaned_hooks(merged_settings)
+
+                    if orphaned_hooks:
+                        console.print(
+                            "\n[bold yellow]Orphaned hooks detected:[/bold yellow]"
+                        )
+                        for name, path in sorted(orphaned_hooks.items()):
+                            console.print(f"  {name} -> {path}")
+
+                        if not dry_run:
+                            if yes or Confirm.ask("Remove orphaned hook symlinks?"):
+                                for _name, path in orphaned_hooks.items():
+                                    try:
+                                        path.unlink()
+                                        console.print(
+                                            f"  [green]✓[/green] Removed {path}"
+                                        )
+                                    except OSError as e:
+                                        console.print(
+                                            f"  [yellow]⚠[/yellow] Could not remove {path}: {e}"
+                                        )
+                except (json.JSONDecodeError, OSError):
+                    pass
+
     total_created = user_results["created"]
     total_updated = user_results["updated"]
     total_skipped = user_results["skipped"]
@@ -1447,18 +1490,48 @@ def status(agents: str | None) -> None:
 
             extension_status = agent.get_extension_status()
 
+            merged_settings_for_hooks = {}
+            if isinstance(agent, ClaudeAgent):
+                agent_config = AGENT_CONFIG_METADATA.get(agent.agent_id)
+                if agent_config:
+                    base_settings_path = (
+                        config_dir / agent.agent_id / agent_config["config_file"]
+                    )
+                    if base_settings_path.exists():
+                        import json
+
+                        try:
+                            with open(base_settings_path) as f:
+                                base_settings = json.load(f)
+                            merged_settings_for_hooks = config.merge_settings(
+                                agent.agent_id, base_settings
+                            )
+                        except (json.JSONDecodeError, OSError):
+                            pass
+
             for ext_type, type_name in [
                 ("agents", "Agents"),
                 ("commands", "Commands"),
                 ("hooks", "Hooks"),
             ]:
                 type_status = getattr(extension_status, ext_type)
+
+                orphaned_hooks = {}
+                if ext_type == "hooks" and merged_settings_for_hooks:
+                    from ai_rules.claude_extensions import ClaudeExtensionManager
+
+                    ext_manager = ClaudeExtensionManager(config_dir)
+                    orphaned_hooks = ext_manager.get_orphaned_hooks(
+                        merged_settings_for_hooks
+                    )
+
                 if any(
                     [
                         type_status.managed_synced,
                         type_status.managed_pending,
                         type_status.managed_wrong_target,
                         type_status.unmanaged,
+                        orphaned_hooks,
                     ]
                 ):
                     console.print(f"  [bold]{type_name}:[/bold]")
@@ -1495,6 +1568,12 @@ def status(agents: str | None) -> None:
 
                     for name in sorted(type_status.unmanaged.keys()):
                         console.print(f"    {name:<20} [dim]Unmanaged[/dim]")
+
+                    for name in sorted(orphaned_hooks.keys()):
+                        console.print(
+                            f"    {name:<20} [yellow]No configuration[/yellow] [dim](orphaned)[/dim]"
+                        )
+                        all_correct = False
 
         skill_status = agent.get_skill_status()
         if skill_status and any(

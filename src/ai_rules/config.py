@@ -306,9 +306,9 @@ class ManagedFieldsTracker:
 
     def cleanup_stale_entries(
         self,
-        existing_settings: dict,
-        source_settings: dict,
-    ) -> dict:
+        existing_settings: dict[str, Any],
+        source_settings: dict[str, Any],
+    ) -> dict[str, Any]:
         """Remove stale ai-rules contributions from existing settings.
 
         For each PRESERVED_FIELD:
@@ -342,10 +342,10 @@ class ManagedFieldsTracker:
 
     def _cleanup_hooks(
         self,
-        existing_hooks: dict,
-        tracked_hooks: dict,
-        source_hooks: dict,
-    ) -> dict:
+        existing_hooks: dict[str, Any],
+        tracked_hooks: dict[str, Any],
+        source_hooks: dict[str, Any],
+    ) -> dict[str, Any]:
         """Remove stale ai-rules hook contributions.
 
         For each event type (UserPromptSubmit, PreCompact, etc.):
@@ -373,7 +373,7 @@ class ManagedFieldsTracker:
 
         return cleaned
 
-    def _extract_commands(self, entries: list) -> set[str]:
+    def _extract_commands(self, entries: list[Any]) -> set[str]:
         """Extract command strings from hook entries."""
         commands = set()
         for entry in entries:
@@ -383,7 +383,9 @@ class ManagedFieldsTracker:
                         commands.add(hook["command"])
         return commands
 
-    def _entry_matches_commands(self, entry: dict, commands: set[str]) -> bool:
+    def _entry_matches_commands(
+        self, entry: dict[str, Any], commands: set[str]
+    ) -> bool:
         """Check if a hook entry contains any of the given commands."""
         if not isinstance(entry, dict) or "hooks" not in entry:
             return False
@@ -682,6 +684,7 @@ class Config:
         cache_exists = cache_path and cache_path.exists()
 
         if cache_exists:
+            assert cache_path is not None  # For type checker
             try:
                 with open(cache_path) as f:
                     if config_format == "json":

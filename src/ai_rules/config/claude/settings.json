@@ -104,9 +104,9 @@
       "Bash(wc:*)",
       "Read(*)",
       "Search(*)",
-      "Skill(prompt-engineer)",
-      "Skill(doc-writer)",
-      "Skill(test-writer)",
+      "Skill(prompt-engineer:*)",
+      "Skill(doc-writer:*)",
+      "Skill(test-writer:*)",
       "WebFetch",
       "WebSearch"
     ],
