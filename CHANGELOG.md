@@ -1,6 +1,17 @@
 # CHANGELOG
 
 
+## v0.20.6 (2026-01-22)
+
+### Bug Fixes
+
+- Cleanup orphaned hooks
+  ([`8ebee1b`](https://github.com/wpfleger96/ai-rules/commit/8ebee1bda9aafffa791c584f980e804399886313))
+
+- Cleanup vestigial post-merge hook code
+  ([`064a766`](https://github.com/wpfleger96/ai-rules/commit/064a7661377a5ff3facbdafb2025ee71b757f2a9))
+
+
 ## v0.20.5 (2026-01-22)
 
 ### Bug Fixes
