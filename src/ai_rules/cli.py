@@ -1228,29 +1228,6 @@ def install(
     total_skipped = user_results["skipped"]
     total_excluded = user_results["excluded"]
     total_errors = user_results["errors"]
-    if not dry_run:
-        try:
-            git_repo_root = get_git_repo_root()
-            hooks_dir = git_repo_root / ".hooks"
-            post_merge_hook = hooks_dir / "post-merge"
-            git_dir = git_repo_root / ".git"
-
-            if post_merge_hook.exists() and git_dir.is_dir():
-                import subprocess
-
-                try:
-                    subprocess.run(
-                        ["git", "config", "core.hooksPath", ".hooks"],
-                        cwd=git_repo_root,
-                        check=True,
-                        capture_output=True,
-                        timeout=GIT_SUBPROCESS_TIMEOUT,
-                    )
-                    console.print("\n[dim]✓ Configured git hooks[/dim]")
-                except subprocess.CalledProcessError:
-                    pass
-        except RuntimeError:
-            pass
 
     if not skip_completions:
         from ai_rules.completions import detect_shell, install_completion
@@ -1620,49 +1597,6 @@ def status(agents: str | None) -> None:
                 console.print(f"    {name:<20} [dim]Unmanaged[/dim]")
 
         console.print()
-
-    console.print("[bold cyan]Git Hooks Configuration[/bold cyan]\n")
-    try:
-        git_repo_root = get_git_repo_root()
-        hooks_dir = git_repo_root / ".hooks"
-        post_merge_hook = hooks_dir / "post-merge"
-
-        if post_merge_hook.exists() and (git_repo_root / ".git").is_dir():
-            import subprocess
-
-            try:
-                result = subprocess.run(
-                    ["git", "config", "--get", "core.hooksPath"],
-                    cwd=git_repo_root,
-                    capture_output=True,
-                    text=True,
-                    check=False,
-                )
-                configured_path = result.stdout.strip()
-                if configured_path == ".hooks":
-                    console.print("  [green]✓[/green] Post-merge hook configured")
-                else:
-                    console.print(
-                        "  [red]✗[/red] Post-merge hook not configured\n"
-                        "    [dim]Run 'uv run ai-rules install' to enable automatic reminders[/dim]"
-                    )
-                    all_correct = False
-            except Exception:
-                console.print(
-                    "  [red]✗[/red] Post-merge hook not configured\n"
-                    "    [dim]Run 'uv run ai-rules install' to enable automatic reminders[/dim]"
-                )
-                all_correct = False
-        else:
-            console.print(
-                "  [dim]○[/dim] Post-merge hook not available in this repository"
-            )
-    except RuntimeError:
-        console.print(
-            "  [dim]○[/dim] Not in a git repository - git hooks not applicable"
-        )
-
-    console.print()
 
     console.print("[bold cyan]Optional Tools[/bold cyan]\n")
     from ai_rules.bootstrap import is_command_available
