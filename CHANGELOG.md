@@ -1,6 +1,19 @@
 # CHANGELOG
 
 
+## v0.20.2 (2026-01-22)
+
+### Bug Fixes
+
+- Standardize --yes vs --force flags
+  ([`a6f55d8`](https://github.com/wpfleger96/ai-rules/commit/a6f55d8a2338838ddf903f305eb3e18bc7b630af))
+
+### Chores
+
+- Docs
+  ([`8b10c99`](https://github.com/wpfleger96/ai-rules/commit/8b10c99c3baa0f65e73b8384fbb71c616d66e3e1))
+
+
 ## v0.20.1 (2026-01-21)
 
 ### Bug Fixes
