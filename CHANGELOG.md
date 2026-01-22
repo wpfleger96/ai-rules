@@ -1,6 +1,14 @@
 # CHANGELOG
 
 
+## v0.20.3 (2026-01-22)
+
+### Bug Fixes
+
+- Forgot to cleanup a few
+  ([`7eca265`](https://github.com/wpfleger96/ai-rules/commit/7eca265e3854e8a7c60cff8a53b663466d5501d5))
+
+
 ## v0.20.2 (2026-01-22)
 
 ### Bug Fixes
