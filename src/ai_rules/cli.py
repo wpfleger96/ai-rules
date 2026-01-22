@@ -697,7 +697,7 @@ def install_user_symlinks(
 
 @main.command()
 @click.option("--github", is_flag=True, help="Install from GitHub instead of PyPI")
-@click.option("--force", is_flag=True, help="Skip confirmation prompts")
+@click.option("-y", "--yes", is_flag=True, help="Auto-confirm without prompting")
 @click.option("--dry-run", is_flag=True, help="Show what would be done")
 @click.option("--skip-symlinks", is_flag=True, help="Skip symlink installation step")
 @click.option("--skip-completions", is_flag=True, help="Skip shell completion setup")
@@ -711,7 +711,7 @@ def install_user_symlinks(
 def setup(
     ctx: click.Context,
     github: bool,
-    force: bool,
+    yes: bool,
     dry_run: bool,
     skip_symlinks: bool,
     skip_completions: bool,
@@ -780,7 +780,7 @@ def setup(
                 )
                 tool_install_success = True
             else:
-                if not force and not Confirm.ask(
+                if not yes and not Confirm.ask(
                     f"Switch ai-rules to {source_name} install?", default=True
                 ):
                     console.print("[yellow]Skipped source switch[/yellow]")
@@ -814,7 +814,7 @@ def setup(
                         )
                         tool_install_success = True
                     else:
-                        if not force and not Confirm.ask(
+                        if not yes and not Confirm.ask(
                             f"Upgrade ai-rules {update_info.current_version} → {update_info.latest_version}?",
                             default=True,
                         ):
@@ -837,7 +837,7 @@ def setup(
                 pass
 
     if not tool_install_success:
-        if not force and not dry_run:
+        if not yes and not dry_run:
             if not Confirm.ask("Install ai-rules permanently?", default=True):
                 console.print(
                     "\n[yellow]Skipped.[/yellow] You can still run via: uvx ai-rules <command>"
@@ -846,7 +846,7 @@ def setup(
 
         try:
             success, message = install_tool(
-                "ai-agent-rules", from_github=github, force=force, dry_run=dry_run
+                "ai-agent-rules", from_github=github, force=yes, dry_run=dry_run
             )
 
             if dry_run:
@@ -890,7 +890,7 @@ def setup(
 
         ctx.invoke(
             install,
-            force=force,
+            yes=yes,
             dry_run=dry_run,
             rebuild_cache=False,
             agents=None,
@@ -916,7 +916,7 @@ def setup(
             if config_path and is_completion_installed(config_path):
                 console.print(f"[green]✓[/green] {shell} completion already installed")
             elif (
-                force
+                yes
                 or dry_run
                 or Confirm.ask(f"Install {shell} tab completion?", default=True)
             ):
@@ -939,7 +939,7 @@ def setup(
 
 
 @main.command()
-@click.option("--force", is_flag=True, help="Skip all confirmations")
+@click.option("-y", "--yes", is_flag=True, help="Auto-confirm without prompting")
 @click.option("--dry-run", is_flag=True, help="Preview changes without applying")
 @click.option(
     "--rebuild-cache",
@@ -969,7 +969,7 @@ def setup(
     help="Override config directory (internal use)",
 )
 def install(
-    force: bool,
+    yes: bool,
     dry_run: bool,
     rebuild_cache: bool,
     agents: str | None,
@@ -1011,7 +1011,7 @@ def install(
     if profile is None:
         profile = get_active_profile() or "default"
 
-    if profile and not force:
+    if profile and not yes:
         try:
             loader = ProfileLoader()
             profile_obj = loader.load_profile(profile)
@@ -1078,7 +1078,7 @@ def install(
             console.print("\n[green]✓ Migration complete[/green]")
             console.print("[dim]New symlinks will be created below...[/dim]\n")
 
-    if not dry_run and not force:
+    if not dry_run and not yes:
         has_changes = _display_pending_symlink_changes(selected_agents)
         has_plugin_changes = _display_pending_plugin_changes(config)
 
@@ -1088,10 +1088,10 @@ def install(
                 console.print("[yellow]Installation cancelled[/yellow]")
                 sys.exit(0)
         elif not has_changes and not has_plugin_changes:
-            if not check_first_run(selected_agents, force):
+            if not check_first_run(selected_agents, yes):
                 console.print("[yellow]Installation cancelled[/yellow]")
                 sys.exit(0)
-    elif not dry_run and force:
+    elif not dry_run and yes:
         pass
 
     if dry_run:
@@ -1104,7 +1104,7 @@ def install(
                 f"[dim]✓ Cleaned up orphaned cache for: {', '.join(orphaned)}[/dim]"
             )
 
-    user_results = install_user_symlinks(selected_agents, force, dry_run)
+    user_results = install_user_symlinks(selected_agents, yes, dry_run)
 
     from ai_rules.agents.claude import ClaudeAgent
 
@@ -1113,10 +1113,10 @@ def install(
         from ai_rules.mcp import MCPManager, OperationResult
 
         result, message, conflicts = claude_agent.install_mcps(
-            force=force, dry_run=dry_run
+            force=yes, dry_run=dry_run
         )
 
-        if conflicts and not force:
+        if conflicts and not yes:
             console.print("\n[bold yellow]MCP Conflicts Detected:[/bold yellow]")
             mgr = MCPManager()
             expected_mcps = mgr.load_managed_mcps(config_dir, config)
@@ -1606,13 +1606,13 @@ def status(agents: str | None) -> None:
 
 
 @main.command()
-@click.option("--force", is_flag=True, help="Skip confirmations")
+@click.option("-y", "--yes", is_flag=True, help="Auto-confirm without prompting")
 @click.option(
     "--agents",
     help="Comma-separated list of agents to uninstall (default: all)",
     shell_complete=complete_agents,
 )
-def uninstall(force: bool, agents: str | None) -> None:
+def uninstall(yes: bool, agents: str | None) -> None:
     """Remove AI agent symlinks."""
     from rich.console import Console
     from rich.prompt import Confirm
@@ -1628,7 +1628,7 @@ def uninstall(force: bool, agents: str | None) -> None:
     all_agents = get_agents(config_dir, config)
     selected_agents = select_agents(all_agents, agents)
 
-    if not force:
+    if not yes:
         console.print("[yellow]Warning:[/yellow] This will remove symlinks for:\n")
         console.print("[bold]Agents:[/bold]")
         for agent in selected_agents:
@@ -1646,7 +1646,7 @@ def uninstall(force: bool, agents: str | None) -> None:
         console.print(f"\n[bold]{agent.name}[/bold]")
 
         for target, _ in agent.get_filtered_symlinks():
-            success, message = remove_symlink(target, force)
+            success, message = remove_symlink(target, yes)
 
             if success:
                 console.print(f"  [green]✓[/green] {target} removed")
@@ -1660,7 +1660,7 @@ def uninstall(force: bool, agents: str | None) -> None:
         if isinstance(agent, ClaudeAgent):
             from ai_rules.mcp import OperationResult
 
-            result, message = agent.uninstall_mcps(force=force, dry_run=False)
+            result, message = agent.uninstall_mcps(force=yes, dry_run=False)
             if result == OperationResult.REMOVED:
                 console.print(f"  [green]✓[/green] {message}")
             elif result == OperationResult.NOT_FOUND:
@@ -1717,6 +1717,9 @@ def list_agents_cmd() -> None:
 @click.option("--check", is_flag=True, help="Check for updates without installing")
 @click.option("--force", is_flag=True, help="Force reinstall even if up to date")
 @click.option(
+    "-y", "--yes", is_flag=True, help="Auto-confirm installation without prompting"
+)
+@click.option(
     "--skip-install",
     is_flag=True,
     help="Skip running 'install --rebuild-cache' after upgrade",
@@ -1726,12 +1729,15 @@ def list_agents_cmd() -> None:
     type=click.Choice(["ai-rules", "statusline"]),
     help="Only upgrade specific tool",
 )
-def upgrade(check: bool, force: bool, skip_install: bool, only: str | None) -> None:
+def upgrade(
+    check: bool, force: bool, yes: bool, skip_install: bool, only: str | None
+) -> None:
     """Upgrade ai-rules and related tools to the latest versions from PyPI.
 
     Examples:
         ai-rules upgrade                    # Check and install all updates
         ai-rules upgrade --check            # Only check for updates
+        ai-rules upgrade -y                 # Auto-confirm installation
         ai-rules upgrade --only=statusline  # Only upgrade statusline tool
     """
     from rich.console import Console
@@ -1812,7 +1818,7 @@ def upgrade(check: bool, force: bool, skip_install: bool, only: str | None) -> N
             console.print("\nRun [bold]ai-rules upgrade[/bold] to install")
         return
 
-    if not force:
+    if not force and not yes:
         if len(tool_updates) == 1:
             prompt = f"\nInstall {tool_updates[0][0].display_name} update?"
         else:
@@ -2980,7 +2986,7 @@ def profile_switch(ctx: click.Context, name: str) -> None:
         install,
         profile=name,
         rebuild_cache=True,
-        force=True,
+        yes=True,
         skip_completions=True,
         agents=None,
         dry_run=False,

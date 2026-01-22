@@ -96,7 +96,7 @@ ai-rules upgrade --check            # Check for updates without installing
 ai-rules install                    # Install all agent configs + optional tools
 ai-rules install --agents claude    # Install specific agents
 ai-rules install --dry-run          # Preview changes
-ai-rules install --force            # Skip confirmations
+ai-rules install -y                 # Auto-confirm without prompting
 ai-rules install --rebuild-cache    # Rebuild merged settings cache
 
 ai-rules status                     # Check symlink status + optional tools + active profile (✓✗⚠○), shows diffs
@@ -441,7 +441,7 @@ uv run pytest -m integration  # Integration tests only
 
 ## Troubleshooting
 
-**Wrong target:** `ai-rules status` then `ai-rules install --force`
+**Wrong target:** `ai-rules status` then `ai-rules install -y`
 
 **Restore backup:**
 ```bash
