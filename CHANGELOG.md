@@ -1,6 +1,14 @@
 # CHANGELOG
 
 
+## v0.20.5 (2026-01-22)
+
+### Bug Fixes
+
+- Show unified diffs for all config drift detection types
+  ([`98952cf`](https://github.com/wpfleger96/ai-rules/commit/98952cfeb4e75c38ee8af295a283d353b9697490))
+
+
 ## v0.20.4 (2026-01-22)
 
 ### Bug Fixes
