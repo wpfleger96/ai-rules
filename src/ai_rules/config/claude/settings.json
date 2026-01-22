@@ -38,6 +38,7 @@
       "Bash(file:*)",
       "Bash(find:*)",
       "Bash(gem:*)",
+      "Bash(gh api:*)",
       "Bash(gh issue list:*)",
       "Bash(gh issue view:*)",
       "Bash(gh pr checks:*)",
