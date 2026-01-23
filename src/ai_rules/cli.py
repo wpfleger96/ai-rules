@@ -1953,8 +1953,6 @@ def upgrade(
             console.print(f"[yellow]⚠[/yellow] Could not run install: {e}")
             console.print("[dim]Run 'ai-rules install --rebuild-cache' manually[/dim]")
 
-        console.print("[dim]Restart your terminal if the command doesn't work[/dim]")
-
     try:
         from ai_rules.bootstrap import clear_all_pending_updates
 
