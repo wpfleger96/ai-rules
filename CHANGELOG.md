@@ -1,6 +1,14 @@
 # CHANGELOG
 
 
+## v0.20.9 (2026-01-23)
+
+### Bug Fixes
+
+- Unnecessary output
+  ([`765f530`](https://github.com/wpfleger96/ai-rules/commit/765f5307f6ed407253a503eca8d3e827337bb72a))
+
+
 ## v0.20.8 (2026-01-23)
 
 ### Bug Fixes
