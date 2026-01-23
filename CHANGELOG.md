@@ -1,6 +1,14 @@
 # CHANGELOG
 
 
+## v0.20.7 (2026-01-23)
+
+### Bug Fixes
+
+- Goose config
+  ([`9c1717f`](https://github.com/wpfleger96/ai-rules/commit/9c1717fade8d6de2d3537b7c194b429e70be7feb))
+
+
 ## v0.20.6 (2026-01-22)
 
 ### Bug Fixes
