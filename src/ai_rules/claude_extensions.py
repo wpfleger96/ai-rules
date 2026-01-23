@@ -15,7 +15,7 @@ class ExtensionItem:
     expected_source: Path | None
     is_symlink: bool
     is_managed: bool
-    is_synced: bool
+    is_installed: bool
     is_broken: bool
 
 
@@ -23,7 +23,7 @@ class ExtensionItem:
 class ExtensionTypeStatus:
     """Status of one extension type (agents, commands, skills, or hooks)."""
 
-    managed_synced: dict[str, ExtensionItem] = field(default_factory=dict)
+    managed_installed: dict[str, ExtensionItem] = field(default_factory=dict)
     managed_pending: dict[str, ExtensionItem] = field(default_factory=dict)
     managed_wrong_target: dict[str, ExtensionItem] = field(default_factory=dict)
     unmanaged: dict[str, ExtensionItem] = field(default_factory=dict)
@@ -188,18 +188,18 @@ class ClaudeExtensionManager:
                             expected_source=expected_source,
                             is_symlink=True,
                             is_managed=True,
-                            is_synced=False,
+                            is_installed=False,
                             is_broken=True,
                         )
                     elif actual_source and actual_source == expected_source.resolve():
-                        type_status.managed_synced[name] = ExtensionItem(
+                        type_status.managed_installed[name] = ExtensionItem(
                             name=name,
                             target_path=target_path,
                             actual_source=actual_source,
                             expected_source=expected_source,
                             is_symlink=True,
                             is_managed=True,
-                            is_synced=True,
+                            is_installed=True,
                             is_broken=False,
                         )
                     else:
@@ -210,7 +210,7 @@ class ClaudeExtensionManager:
                             expected_source=expected_source,
                             is_symlink=actual_source is not None,
                             is_managed=True,
-                            is_synced=False,
+                            is_installed=False,
                             is_broken=False,
                         )
                 else:
@@ -227,7 +227,7 @@ class ClaudeExtensionManager:
                         expected_source=expected_source,
                         is_symlink=False,
                         is_managed=True,
-                        is_synced=False,
+                        is_installed=False,
                         is_broken=False,
                     )
 
@@ -240,7 +240,7 @@ class ClaudeExtensionManager:
                         expected_source=None,
                         is_symlink=actual_source is not None,
                         is_managed=False,
-                        is_synced=False,
+                        is_installed=False,
                         is_broken=is_broken,
                     )
 

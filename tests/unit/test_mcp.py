@@ -241,7 +241,7 @@ def test_status_sync_detection(manager, mock_home, test_repo):
     manager.install_mcps(test_repo, config, force=True)
 
     status = manager.get_status(test_repo, config)
-    assert status.synced["test-mcp"] is True
+    assert status.installed["test-mcp"] is True
 
     with open(manager.CLAUDE_JSON) as f:
         data = json.load(f)
@@ -250,7 +250,7 @@ def test_status_sync_detection(manager, mock_home, test_repo):
         json.dump(data, f)
 
     status = manager.get_status(test_repo, config)
-    assert status.synced["test-mcp"] is False
+    assert status.installed["test-mcp"] is False
 
 
 def test_status_override_detection(

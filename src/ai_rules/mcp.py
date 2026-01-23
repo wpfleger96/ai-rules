@@ -19,7 +19,7 @@ class OperationResult(Enum):
     CREATED = "created"
     UPDATED = "updated"
     REMOVED = "removed"
-    ALREADY_SYNCED = "already_synced"
+    ALREADY_INSTALLED = "already_installed"
     NOT_FOUND = "not_found"
     ERROR = "error"
 
@@ -30,7 +30,7 @@ class MCPStatus:
         self.unmanaged_mcps: dict[str, dict[str, Any]] = {}
         self.pending_mcps: dict[str, dict[str, Any]] = {}
         self.stale_mcps: dict[str, dict[str, Any]] = {}
-        self.synced: dict[str, bool] = {}
+        self.installed: dict[str, bool] = {}
         self.has_overrides: dict[str, bool] = {}
 
 
@@ -267,7 +267,11 @@ class MCPManager:
         if not managed_mcps and not removed_mcps:
             new_tracking = set(managed_mcps.keys())
             if tracked_mcps == new_tracking:
-                return (OperationResult.ALREADY_SYNCED, "MCPs are already synced", [])
+                return (
+                    OperationResult.ALREADY_INSTALLED,
+                    "MCPs are already installed",
+                    [],
+                )
 
         backup_path = self.create_backup() if (managed_mcps or removed_mcps) else None
 
@@ -369,7 +373,7 @@ class MCPManager:
                     installed_without_marker = {
                         k: v for k, v in mcp_config.items() if k != MANAGED_BY_KEY
                     }
-                    status.synced[name] = (
+                    status.installed[name] = (
                         expected_without_marker == installed_without_marker
                     )
                     status.has_overrides[name] = name in mcp_overrides

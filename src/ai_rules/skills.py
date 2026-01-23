@@ -25,7 +25,7 @@ class SkillItem:
     expected_source: Path | None
     is_symlink: bool
     is_managed: bool
-    is_synced: bool
+    is_installed: bool
     is_broken: bool
     metadata: SkillMetadata | None = None
 
@@ -34,7 +34,7 @@ class SkillItem:
 class SkillStatus:
     """Status of skills for an agent."""
 
-    managed_synced: dict[str, SkillItem] = field(default_factory=dict)
+    managed_installed: dict[str, SkillItem] = field(default_factory=dict)
     managed_pending: dict[str, SkillItem] = field(default_factory=dict)
     managed_wrong_target: dict[str, SkillItem] = field(default_factory=dict)
     unmanaged: dict[str, SkillItem] = field(default_factory=dict)
@@ -180,14 +180,14 @@ class SkillManager:
 
                 if synced_count == expected_count and not has_issues:
                     target_path, actual_source, _ = installations[0]
-                    status.managed_synced[name] = SkillItem(
+                    status.managed_installed[name] = SkillItem(
                         name=name,
                         target_path=target_path,
                         actual_source=actual_source,
                         expected_source=expected_source,
                         is_symlink=True,
                         is_managed=True,
-                        is_synced=True,
+                        is_installed=True,
                         is_broken=False,
                         metadata=metadata,
                     )
@@ -200,7 +200,7 @@ class SkillManager:
                         expected_source=expected_source,
                         is_symlink=actual_source is not None,
                         is_managed=True,
-                        is_synced=False,
+                        is_installed=False,
                         is_broken=any(ib for _, _, ib in installations),
                         metadata=metadata,
                     )
@@ -217,7 +217,7 @@ class SkillManager:
                     expected_source=expected_source,
                     is_symlink=False,
                     is_managed=True,
-                    is_synced=False,
+                    is_installed=False,
                     is_broken=False,
                     metadata=metadata,
                 )
@@ -236,7 +236,7 @@ class SkillManager:
                     expected_source=None,
                     is_symlink=actual_source is not None,
                     is_managed=False,
-                    is_synced=False,
+                    is_installed=False,
                     is_broken=is_broken,
                     metadata=metadata,
                 )

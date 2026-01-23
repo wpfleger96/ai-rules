@@ -1141,7 +1141,7 @@ def install(
                 console.print(f"[green]✓[/green] {message}")
         elif result == OperationResult.UPDATED:
             console.print(f"[green]✓[/green] {message}")
-        elif result == OperationResult.ALREADY_SYNCED:
+        elif result == OperationResult.ALREADY_INSTALLED:
             console.print(f"[dim]○[/dim] {message}")
         elif result != OperationResult.NOT_FOUND:
             console.print(f"[yellow]⚠[/yellow] {message}")
@@ -1389,26 +1389,26 @@ def status(agents: str | None) -> None:
             ):
                 console.print("  [bold]MCPs:[/bold]")
                 for name in sorted(mcp_status.managed_mcps.keys()):
-                    synced = mcp_status.synced.get(name, False)
+                    installed = mcp_status.installed.get(name, False)
                     has_override = mcp_status.has_overrides.get(name, False)
                     status_text = (
-                        "[green]Synced[/green]"
-                        if synced
+                        "[green]Installed[/green]"
+                        if installed
                         else "[yellow]Outdated[/yellow]"
                     )
                     override_text = ", override" if has_override else ""
                     console.print(
                         f"    {name:<20} {status_text} [dim](managed{override_text})[/dim]"
                     )
-                    if not synced:
+                    if not installed:
                         from ai_rules.mcp import MCPManager
 
                         mgr = MCPManager()
                         expected = mgr.load_managed_mcps(config_dir, config).get(
                             name, {}
                         )
-                        installed = mcp_status.managed_mcps.get(name, {})
-                        diff = mgr.format_diff(name, expected, installed)
+                        installed_config = mcp_status.managed_mcps.get(name, {})
+                        diff = mgr.format_diff(name, expected, installed_config)
                         if diff:
                             for line in diff.split("\n"):
                                 if line.startswith("MCP"):
@@ -1504,7 +1504,7 @@ def status(agents: str | None) -> None:
 
                 if any(
                     [
-                        type_status.managed_synced,
+                        type_status.managed_installed,
                         type_status.managed_pending,
                         type_status.managed_wrong_target,
                         type_status.unmanaged,
@@ -1513,9 +1513,9 @@ def status(agents: str | None) -> None:
                 ):
                     console.print(f"  [bold]{type_name}:[/bold]")
 
-                    for name in sorted(type_status.managed_synced.keys()):
+                    for name in sorted(type_status.managed_installed.keys()):
                         console.print(
-                            f"    {name:<20} [green]Synced[/green] [dim](managed)[/dim]"
+                            f"    {name:<20} [green]Installed[/green] [dim](managed)[/dim]"
                         )
 
                     for name, item in sorted(type_status.managed_wrong_target.items()):
@@ -1555,7 +1555,7 @@ def status(agents: str | None) -> None:
         skill_status = agent.get_skill_status()
         if skill_status and any(
             [
-                skill_status.managed_synced,
+                skill_status.managed_installed,
                 skill_status.managed_pending,
                 skill_status.managed_wrong_target,
                 skill_status.unmanaged,
@@ -1563,9 +1563,9 @@ def status(agents: str | None) -> None:
         ):
             console.print("  [bold]Skills:[/bold]")
 
-            for name in sorted(skill_status.managed_synced.keys()):
+            for name in sorted(skill_status.managed_installed.keys()):
                 console.print(
-                    f"    {name:<20} [green]Synced[/green] [dim](managed)[/dim]"
+                    f"    {name:<20} [green]Installed[/green] [dim](managed)[/dim]"
                 )
 
             for name, item in sorted(skill_status.managed_wrong_target.items()):
