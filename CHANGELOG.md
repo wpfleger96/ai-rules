@@ -1,6 +1,14 @@
 # CHANGELOG
 
 
+## v0.20.8 (2026-01-23)
+
+### Bug Fixes
+
+- Standardize wording
+  ([`4def6ae`](https://github.com/wpfleger96/ai-rules/commit/4def6ae022165cad20d7b8cd1b73aca7c04e2a53))
+
+
 ## v0.20.7 (2026-01-23)
 
 ### Bug Fixes
