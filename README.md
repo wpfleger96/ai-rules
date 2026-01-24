@@ -84,6 +84,8 @@ notify_only: false
 
 ## Usage
 
+> **Complete CLI Reference:** See [CLI Reference](docs/CLI_REFERENCE.md) for detailed command documentation.
+
 ### User-Level Configuration
 
 ```bash
