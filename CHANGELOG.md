@@ -1,6 +1,24 @@
 # CHANGELOG
 
 
+## v0.21.0 (2026-01-28)
+
+### Documentation
+
+- Add full automated CLI reference docs
+  ([`8f355a0`](https://github.com/wpfleger96/ai-rules/commit/8f355a08e72fc8c626aad48d45910de32e276fc3))
+
+### Features
+
+- Convert and consolidate CC slash commands into skills
+  ([`2a99382`](https://github.com/wpfleger96/ai-rules/commit/2a99382e8338954ab2837a1920a14b8a46c23126))
+
+### Refactoring
+
+- Convert and consolidate CC slash commands into skills to align with Anthropic change
+  ([`9995fa5`](https://github.com/wpfleger96/ai-rules/commit/9995fa5ff5cecf304a5ba866730a051788e2419f))
+
+
 ## v0.20.10 (2026-01-23)
 
 ### Bug Fixes
