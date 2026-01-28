@@ -102,6 +102,7 @@
       "Bash(uv:*)",
       "Bash(uvx:*)",
       "Bash(wc:*)",
+      "Bash(zcat:*)",
       "Read(*)",
       "Search(*)",
       "Skill(*)",

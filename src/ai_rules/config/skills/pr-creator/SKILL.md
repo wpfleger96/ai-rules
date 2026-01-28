@@ -1,5 +1,7 @@
 ---
+name: pr-creator
 description: Creates GitHub pull requests with comprehensive descriptions by analyzing git history and code changes
+disable-model-invocation: true
 allowed-tools: AskUserQuestion, Bash, Glob, Grep, Read, TodoWrite
 model: sonnet
 ---
@@ -17,7 +19,7 @@ model: sonnet
 
 **Usage:** `/pr-creator` - Create regular PR | `/pr-creator draft` - Create draft PR
 
-Expert software engineer creating high-quality PR descriptions that facilitate efficient code review. All feature changes are committed to local feature branch.
+Expert software engineer creating high-quality PR descriptions that facilitate efficient code review.
 
 ## Pre-flight Checks
 
@@ -54,29 +56,16 @@ gh issue list --limit 20  # Search for related open issues
 
 ### Step 3: Generate Draft Description
 
-**Structure (6-12 lines maximum):**
+Use structure from `references/templates.md`. Key principles:
 
-**Opening (1-2 sentences):** "This PR [enables/adds/fixes/updates]..." | State what changed and value delivered
+- **6-12 lines maximum**
+- Three sections: Opening (1-2 sentences), Context (1-3 sentences), Implementation (2-4 bullets)
+- Professional but conversational tone
+- Specific technical terms, no marketing language
+- Plain bullets (`-`), no bold/headers in body
+- Issue refs at end with proper keywords (Resolves #123)
 
-**Context (1-3 sentences):** Explain problem/"before this" state | Help reviewers understand WHY | Keep brief - reviewers skim descriptions
-
-**Implementation (2-4 bullets, plain `-`):** Focus on WHAT changed and WHY, not HOW it works internally | Include concrete names when relevant (functions, classes, fields) | One line per bullet | Prioritize the most significant changes only
-
-**Review-friendly (only when non-obvious):** Breaking Changes | Security Notes | Performance Impact | Testing Instructions (only if setup is non-trivial)
-
-**Issue refs (REQUIRED if PR addresses an issue):**
-Always place at the very end of description, preceded by blank line. Use GitHub keywords to auto-close issues:
-```
-Resolves #123
-```
-OR if related but doesn't fully resolve:
-```
-Relates to #456
-```
-
-**Tone/style:** Professional but conversational | Focus on "what" and "why", not "how" | Use specific technical terms | Avoid marketing language | Plain prose (no bold/headers in body) | Plain bullets (`-`)
-
-**Brevity principle:** Every word must earn its place - reviewers skim descriptions | Omit details visible in the diff | Skip obvious implementation details (e.g., "converted methods to async" unless async is the key change) | No complexity metrics or line counts
+See `references/templates.md` for detailed structure and examples.
 
 ### Step 4: Present Draft & STOP
 
@@ -97,7 +86,7 @@ When presenting:
 git log origin/{base}..HEAD --name-only --pretty=format: | grep -q "^PLAN" || git ls-files | grep -q "^PLAN"
 ```
 
-If found: **STOP** - PLAN files are dev docs (from /dev-docs) that shouldn't be in PRs. Provide remediation: Remove PLAN files and amend/rebase OR Create clean branch without PLAN files
+If found: **STOP** - PLAN files are dev docs that shouldn't be in PRs. Provide remediation: Remove PLAN files and amend/rebase OR Create clean branch without PLAN files
 
 **Ensure branch pushed:**
 ```bash
@@ -135,7 +124,7 @@ EOF
 
 **Accuracy:** Inspect actual commits via git | Review code changes via diff | Don't rely solely on commit messages | Verify issue refs exist
 
-**Structure:** Follow 3-section format (opening, context, implementation) | 6-12 lines maximum | Proper issue ref formatting | Add review sections only when non-obvious
+**Structure:** Follow 3-section format (opening, context, implementation) | 6-12 lines maximum | Proper issue ref formatting
 
 **Branch Management:** Verify branch pushed before PR | Use `git push -u origin HEAD` if needed | Confirm base branch correct | Block PRs with PLAN files
 

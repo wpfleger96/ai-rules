@@ -1,5 +1,8 @@
 ---
+name: continue-crash
 description: Continues after a session crash while working on a task
+disable-model-invocation: true
+allowed-tools: Bash, Glob, Grep, Read, TodoWrite
 model: inherit
 ---
 

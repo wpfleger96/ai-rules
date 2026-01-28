@@ -156,3 +156,36 @@ Plain text only unless explicitly requested.
 
 ## Planning
 When generating plans, omit time estimates. Focus on what needs doing, not when.
+
+---
+
+## Critical Constraints (End-of-Context Reinforcement)
+
+These rules are frequently ignored due to context window limitations. Placing them here leverages recency bias.
+
+### Code Comments - MANDATORY
+
+**NEVER add comments that:**
+1. Explain WHAT code does (the code already says that)
+2. Use "Step 1", "Step 2", "Step N" patterns (code reads sequentially)
+3. Narrate function flow (readers can follow the code)
+
+❌ PROHIBITED patterns:
+- `// Step 1: Set up the configuration`
+- `// Step 2: Process the request`
+- `plugins = load_plugins()  # Load plugins`
+- `for item in items:  # Loop through items`
+- `// Initialize the client`
+- `// Return the result`
+
+✅ ONLY write comments explaining WHY (non-obvious decisions):
+- `delay = 2 ** n  # Exponential backoff for Stripe rate limits`
+- `cache.clear()  # Prevent stale data after config reload`
+
+**Test:** Can a developer understand by reading the code? YES → No comment.
+
+### Test Quality - MANDATORY
+
+**NEVER write trivial tests.** Apply Test Value Framework:
+- **CRITICAL:** Business logic, security boundaries, data integrity
+- **SKIP:** Language features, framework code, implementation details

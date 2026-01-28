@@ -4,6 +4,8 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
+from ai_rules.utils import is_managed_target
+
 
 @dataclass
 class ExtensionItem:
@@ -56,14 +58,6 @@ class ClaudeExtensionManager:
     def __init__(self, config_dir: Path):
         self.config_dir = config_dir
 
-    def _is_managed_target(self, symlink_target: Path) -> bool:
-        """Check if a symlink target points to ai-rules managed location."""
-        target_str = str(symlink_target.resolve())
-        return (
-            "ai_rules/config/claude/" in target_str
-            or "ai-rules/src/ai_rules/config/claude/" in target_str
-        )
-
     def _get_managed_extensions(self, ext_type: str) -> dict[str, Path]:
         """Get all managed extensions of a type from config_dir."""
         source_dir = self.config_dir / "claude" / ext_type
@@ -106,6 +100,59 @@ class ClaudeExtensionManager:
 
         return result
 
+    def get_orphaned_symlinks(
+        self,
+        user_dir: Path,
+        pattern: str,
+        is_directory: bool = False,
+    ) -> dict[str, Path]:
+        """Get symlinks that point to ai-rules but source no longer exists.
+
+        Works for any symlink-based config type (commands, agents, skills, etc.)
+
+        Args:
+            user_dir: Directory containing user symlinks (e.g., ~/.claude/commands)
+            pattern: Glob pattern (e.g., "*.md", "*" for directories)
+            is_directory: True if expecting directory symlinks (skills)
+
+        Returns:
+            dict mapping name -> symlink path for orphaned items
+        """
+        user_dir = user_dir.expanduser()
+        if not user_dir.exists():
+            return {}
+
+        orphaned = {}
+        for item in user_dir.glob(pattern):
+            if not item.is_symlink():
+                continue
+
+            if is_directory and not item.is_dir():
+                continue
+            if not is_directory and item.is_dir():
+                continue
+
+            try:
+                target = item.resolve()
+                if is_managed_target(target, self.config_dir) and not target.exists():
+                    orphaned[item.stem if not is_directory else item.name] = item
+            except (OSError, RuntimeError):
+                try:
+                    raw_target = str(item.readlink())
+                    if "ai_rules/config" in raw_target or "ai-rules" in raw_target:
+                        orphaned[item.stem if not is_directory else item.name] = item
+                except (OSError, RuntimeError):
+                    pass
+
+        return orphaned
+
+    def get_all_orphaned(self) -> dict[str, dict[str, Path]]:
+        """Get all orphaned symlinks across all extension types."""
+        return {
+            "commands": self.get_orphaned_symlinks(Path("~/.claude/commands"), "*.md"),
+            "agents": self.get_orphaned_symlinks(Path("~/.claude/agents"), "*.md"),
+        }
+
     def _get_configured_hooks(self, settings: dict[str, Any]) -> set[str]:
         """Get set of hook filenames that have configurations in settings.
 
@@ -140,7 +187,7 @@ class ClaudeExtensionManager:
         return configured
 
     def get_orphaned_hooks(self, settings: dict[str, Any]) -> dict[str, Path]:
-        """Get hooks that are installed but have no configuration.
+        """Get hooks that are installed but have no configuration OR source missing.
 
         Args:
             settings: Merged settings dict to check for hook configurations
@@ -148,19 +195,16 @@ class ClaudeExtensionManager:
         Returns:
             dict mapping hook name -> installed path for orphaned hooks
         """
-        user_hooks_dir = Path("~/.claude/hooks").expanduser()
-        if not user_hooks_dir.exists():
-            return {}
+        orphaned = self.get_orphaned_symlinks(Path("~/.claude/hooks"), "*.py")
 
         configured_hooks = self._get_configured_hooks(settings)
-        orphaned = {}
-
-        for hook_file in user_hooks_dir.glob("*.py"):
-            if hook_file.name not in configured_hooks:
-                if hook_file.is_symlink():
+        user_hooks_dir = Path("~/.claude/hooks").expanduser()
+        if user_hooks_dir.exists():
+            for hook_file in user_hooks_dir.glob("*.py"):
+                if hook_file.is_symlink() and hook_file.name not in configured_hooks:
                     try:
                         target = hook_file.resolve()
-                        if self._is_managed_target(target):
+                        if is_managed_target(target, self.config_dir):
                             orphaned[hook_file.stem] = hook_file
                     except (OSError, RuntimeError):
                         pass

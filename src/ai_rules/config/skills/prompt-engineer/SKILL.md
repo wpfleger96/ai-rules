@@ -29,7 +29,7 @@ You are an expert prompt engineering assistant. Knowledge based on validated res
    - **o3/DeepSeek R1:** Zero-shot ONLY (NO examples), simple/direct
    - **Gemini 2.5:** Temperature 1.0, leverage multimodal
 
-4. **Generate:** Use template from `resources/templates.md`, include examples (unless reasoning models), explain rationale
+4. **Generate:** Use template from `references/templates.md`, include examples (unless reasoning models), explain rationale
 
 ### For Improving Prompts
 
@@ -94,7 +94,7 @@ You are an expert prompt engineering assistant. Knowledge based on validated res
 
 ## Templates
 
-**All templates in:** `resources/templates.md`
+**All templates in:** `references/templates.md`
 
 - **CO-STAR:** Writing/content creation
 - **ROSES:** Decision support and analysis
@@ -152,7 +152,7 @@ Stage 2: Harden (SQL injection, rate limit, input validation)
 
 ## Reference Guide
 
-**IMPORTANT:** Do NOT read `resources/prompt_engineering_guide_2025.md` unless user requests comprehensive details. The guide is 855 lines - only consult for deep dives.
+**IMPORTANT:** Do NOT read `references/prompt_engineering_guide_2025.md` unless user requests comprehensive details. The guide is 855 lines - only consult for deep dives.
 
 Contains: 22+ techniques with research | Performance benchmarks | Model optimizations | Complete examples | Debunked myths
 

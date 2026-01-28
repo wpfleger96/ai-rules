@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING, Any
 
 from ai_rules.agents.base import Agent
 from ai_rules.mcp import MCPManager, MCPStatus, OperationResult
+from ai_rules.utils import is_managed_target
 
 if TYPE_CHECKING:
     from ai_rules.claude_extensions import ClaudeExtensionStatus
@@ -14,7 +15,7 @@ if TYPE_CHECKING:
 class ClaudeAgent(Agent):
     """Agent for Claude Code configuration."""
 
-    DEPRECATED_SYMLINKS: list[Path] = [
+    _KNOWN_OLD_LOCATIONS: list[Path] = [
         Path("~/CLAUDE.md"),
     ]
 
@@ -131,8 +132,25 @@ class ClaudeAgent(Agent):
         return result
 
     def get_deprecated_symlinks(self) -> list[Path]:
-        """Return deprecated symlink locations for cleanup."""
-        return self.DEPRECATED_SYMLINKS
+        """Return deprecated symlink locations for cleanup.
+
+        Dynamically checks known old locations to verify they are actually
+        managed symlinks before flagging as deprecated.
+
+        Returns:
+            List of paths that are deprecated symlinks pointing to ai-rules
+        """
+        deprecated = []
+        for loc in self._KNOWN_OLD_LOCATIONS:
+            loc = loc.expanduser()
+            if loc.is_symlink():
+                try:
+                    target = loc.resolve()
+                    if is_managed_target(target, self.config_dir):
+                        deprecated.append(loc)
+                except (OSError, RuntimeError):
+                    pass
+        return deprecated
 
     def install_mcps(
         self, force: bool = False, dry_run: bool = False

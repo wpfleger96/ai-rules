@@ -1,9 +1,9 @@
 ---
 name: doc-writer
-description: "Provides expert guidance for writing compact, effective technical documentation. Use this skill when: (1) user mentions \"documentation\", \"docs\", \"document\", \"readme\", \"architecture\", or \"API docs\", (2) user requests to write, create, update, improve, or review any documentation, (3) user is documenting code, systems, features, or APIs, (4) user is creating README.md, ARCHITECTURE.md, CONTRIBUTING.md, or tutorial files, (5) user requests examples or how-to guides."
+description: "This skill should be used when the user asks to 'write docs', 'create documentation', 'update docs', 'improve documentation', 'review docs', 'document this code', 'add README', 'update README', 'write API docs', 'create architecture doc', 'how to document', 'what should I document', 'document the changes', 'update docs for this feature', or after implementing features to document new APIs, CLI commands, or behavior changes. Also triggers on mentions of README, ARCHITECTURE.md, CONTRIBUTING.md, API docs, examples, tutorials, user guides, or technical writing."
 metadata:
-  trigger-keywords: "documentation, docs, document, readme, architecture.md, contributing.md, api docs, technical writing, user guide, reference doc, tutorial, example"
-  trigger-patterns: "(write|create|update|improve|review).*doc, (document|explain).*(code|system|feature), (write|create).*(readme|guide|reference|tutorial)"
+  trigger-keywords: "documentation, docs, document, readme, architecture.md, contributing.md, api docs, technical writing, user guide, reference doc, tutorial, example, docstring, how to document, what to document, document changes, update docs"
+  trigger-patterns: "(write|create|update|improve|review|add).*doc, (document|explain).*(code|system|feature|change|api), (write|create|update|add).*(readme|guide|reference|tutorial|api.doc), after.*(implement|code|feature).*(doc|readme), (what|how).*(document|doc)"
 ---
 
 # Documentation Writing Skill
@@ -30,7 +30,7 @@ You are an expert technical documentation assistant that helps create high-quali
    - Common problems? → TROUBLESHOOTING.md (Problem → Cause → Solution with commands)
    - Contributors? → CONTRIBUTING.md
 
-2. **Choose Minimal Template** from `resources/templates.md`
+2. **Choose Minimal Template** from `references/templates.md`
 
 3. **Fill Essential Sections:** What (one sentence) | Why (problem solved) | How (minimal working example) | **Stop here unless more needed**
 
@@ -117,7 +117,7 @@ Check project's Makefile, package.json, or pyproject.toml for actual commands.
 
 ## Templates
 
-**All templates in:** `resources/templates.md`
+**All templates in:** `references/templates.md`
 
 Five core templates: README.md | ARCHITECTURE.md | TROUBLESHOOTING.md | API docs | Examples
 
@@ -188,6 +188,38 @@ def get_user(user_id: str, include_inactive: bool = False) -> User:
     """
 ```
 
+## Post-Implementation Checklist
+
+After implementing any code change, check if documentation needs updating:
+
+**CRITICAL (must document):**
+- [ ] New public API or CLI command → Update README + API docs
+- [ ] Breaking changes → Update README + add migration guide
+- [ ] Changed behavior for existing features → Update affected docs + examples
+- [ ] New required configuration → Document in README or config reference
+
+**IMPORTANT (should document):**
+- [ ] New optional configuration → Add to config reference
+- [ ] Behavior-changing bug fixes → Update relevant sections
+- [ ] Deprecated features → Mark clearly with replacement path
+
+**SKIP (no docs needed):**
+- [ ] Internal refactoring (no external impact)
+- [ ] Test changes
+- [ ] Trivial bug fixes (no behavior change)
+
+**When updating existing docs:**
+1. Analyze existing style first (tone, format, structure)
+2. Match the style exactly (formal vs casual, emoji vs plain, list format)
+3. Make minimal edits (insert/update, don't restructure)
+4. Preserve cross-references and links
+5. Update examples to match new behavior
+
+**Quick change detection:**
+- New `@app.route()`, `@click.command()` → CLI/API reference needed
+- Function signature changed → Breaking change docs
+- New YAML/JSON config keys → Config reference update
+
 ## Your Approach
 
 1. **Understand context:** New or updating? | Audience (users, contributors, operators)? | Minimum they need?
@@ -200,6 +232,8 @@ def get_user(user_id: str, include_inactive: bool = False) -> User:
 
 5. **Provide actionable output:** Complete, ready-to-use | Proper markdown | Working code examples | Explain non-obvious choices
 
-6. **Reference templates when helpful:** Point to relevant template in resources/ | Show how to adapt | Highlight what to cut vs keep
+6. **Reference templates when helpful:** Point to relevant template in references/ | Show how to adapt | Highlight what to cut vs keep
+
+7. **Post-implementation:** Check if docs need updating (use checklist above)
 
 Remember: The best documentation gives readers exactly what they need to succeed, nothing more. Respect their time, respect your own time maintaining it.

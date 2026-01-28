@@ -1,9 +1,9 @@
 ---
 name: test-writer
-description: "Provides expert guidance for writing effective tests. Use this skill when: (1) user mentions \"test\", \"testing\", \"unit test\", \"integration test\", or \"coverage\", (2) user requests to write, create, add, or improve tests, (3) user is implementing test cases, fixtures, or mocks, (4) user is working with pytest, unittest, jest, vitest, or other test frameworks, (5) user asks about TDD or test patterns."
+description: "This skill should be used when the user asks to 'write tests', 'add tests', 'create tests', 'update tests', 'improve tests', 'review tests', 'what should I test', 'how to test this', 'testing strategy', 'test approach', 'which tests to write', 'test coverage', 'verify the code', 'ensure test coverage', 'prevent regression', or after implementing features to add or update tests. Also triggers on mentions of pytest, jest, vitest, unittest, mocha, TDD, BDD, coverage, mocking, fixtures, test-driven development, or testing frameworks."
 metadata:
-  trigger-keywords: "test, testing, unit test, integration test, test coverage, pytest, unittest, jest, vitest, mock, fixture, test case, TDD, test driven, spec"
-  trigger-patterns: "(write|create|add|improve|review).*test, test.*(coverage|case|suite|file), (unit|integration|e2e).*test, add.*(spec|test).*for"
+  trigger-keywords: "test, testing, unit test, integration test, test coverage, pytest, unittest, jest, vitest, mocha, mock, fixture, test case, TDD, BDD, test driven, spec, regression test, test strategy, what to test, how to test"
+  trigger-patterns: "(write|create|add|improve|review|update).*test, test.*(coverage|case|suite|file|strategy), (unit|integration|e2e).*test, add.*(spec|test).*for, (what|which|how).*(test|coverage), after.*(implement|code|feature).*(test|coverage)"
 ---
 
 # Test Writing Skill
@@ -22,14 +22,44 @@ You are an expert test engineering assistant. You write tests that verify behavi
 
 ### For New Tests
 
-1. **Identify What to Test**
-   - Public API/interface → YES, always
-   - Business logic with branches → YES
-   - Error conditions at boundaries → YES
-   - Integration points → YES (integration tests)
-   - Private implementation details → NO
-   - Framework/library code → NO
-   - Trivial getters/setters → NO
+1. **Identify What to Test (Test Value Framework)**
+
+   Apply this 4-tier framework to determine test value:
+
+   **CRITICAL (must test):**
+   - Business logic with branches
+   - Security boundaries (auth, authz, input validation)
+   - Data integrity (transactions, constraints)
+   - User-facing functionality
+   - Integration with external systems
+   - Financial/regulatory logic
+
+   **VALUABLE (should test):**
+   - Error handling for external dependencies
+   - Edge cases with production impact history
+   - State transitions in complex workflows
+   - API contract validation
+   - Performance regression detection
+   - Cross-cutting concerns (logging, monitoring)
+
+   **QUESTIONABLE (evaluate carefully):**
+   - Simple getters/setters with no logic
+   - Framework functionality (already tested by framework)
+   - Tests with >80% mocking (testing mocks, not code)
+   - Overly coupled to implementation
+   - Duplicate coverage of same behavior
+
+   **TRIVIAL (skip):**
+   - Testing language features ("JS can add numbers")
+   - Testing third-party libraries ("axios makes HTTP")
+   - Always-pass tests (never fail regardless of implementation)
+   - Generated tests with no assertions
+   - Verifying constants/config values
+
+   **Quick decision guide:**
+   - Public API/interface → CRITICAL
+   - Private implementation details → SKIP
+   - Framework/library code → SKIP
 
 2. **Choose Test Type**
    - Unit test: Single function/class, mocked dependencies
@@ -170,6 +200,31 @@ Examples:
 - `test_cart_add_item_when_empty_creates_new_cart`
 - `test_payment_process_with_insufficient_funds_raises_exception`
 
+## Post-Implementation Checklist
+
+After implementing any code change, verify test coverage:
+
+**For new public APIs:**
+- [ ] Unit tests for happy path
+- [ ] Unit tests for error cases
+- [ ] Integration tests if API connects to external systems
+
+**For changed behavior:**
+- [ ] Update existing tests to match new behavior
+- [ ] Add tests for new edge cases introduced
+
+**For bug fixes:**
+- [ ] Add regression test that would have caught the bug
+- [ ] Verify the test fails before the fix, passes after
+
+**For refactoring:**
+- [ ] Existing tests should still pass (if not, tests were testing implementation, not behavior)
+- [ ] No new tests needed if behavior unchanged
+
+**Apply Test Value Framework:**
+- Skip tests for TRIVIAL changes (constants, simple getters)
+- Focus on CRITICAL and VALUABLE test coverage
+
 ## Your Approach
 
 1. **Understand context:** What's being tested? | Existing test patterns? | Test framework?
@@ -181,5 +236,7 @@ Examples:
 4. **Write focused tests:** One behavior per test | Clear Arrange-Act-Assert | Descriptive names
 
 5. **Provide working tests:** Complete, runnable code | Proper imports | Realistic test data
+
+6. **Post-implementation:** Check if tests need updating (use checklist above)
 
 Remember: Good tests give confidence to refactor. If tests break when you change implementation (not behavior), they're testing the wrong thing.

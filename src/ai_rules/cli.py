@@ -578,6 +578,119 @@ def main() -> None:
         pass
 
 
+def cleanup_orphaned_symlinks(
+    selected_agents: list["Agent"],
+    config_dir: Path,
+    config: "Config",
+    force: bool,
+    dry_run: bool,
+) -> int:
+    """Cleanup all orphaned symlinks across all config types.
+
+    Args:
+        selected_agents: List of agents to check
+        config_dir: Path to the config directory
+        config: Config object
+        force: Skip confirmation prompts
+        dry_run: Don't actually remove symlinks
+
+    Returns:
+        Count of removed symlinks
+    """
+    import json
+
+    from rich.console import Console
+    from rich.prompt import Confirm
+
+    from ai_rules.claude_extensions import ClaudeExtensionManager
+    from ai_rules.skills import SkillManager
+
+    console = Console()
+    removed = 0
+
+    ext_manager = ClaudeExtensionManager(config_dir)
+    all_orphaned = ext_manager.get_all_orphaned()
+
+    for ext_type, orphaned in all_orphaned.items():
+        if orphaned:
+            console.print(f"\n[bold yellow]Orphaned {ext_type}:[/bold yellow]")
+            for name, path in sorted(orphaned.items()):
+                console.print(f"  {name} -> {path}")
+
+            if not dry_run:
+                if force or Confirm.ask(f"Remove orphaned {ext_type} symlinks?"):
+                    for _name, path in orphaned.items():
+                        try:
+                            path.unlink()
+                            console.print(f"  [green]✓[/green] Removed {path}")
+                            removed += 1
+                        except OSError as e:
+                            console.print(
+                                f"  [yellow]⚠[/yellow] Could not remove {path}: {e}"
+                            )
+
+    claude_agent = next((a for a in selected_agents if a.agent_id == "claude"), None)
+    if claude_agent:
+        base_settings_path = config_dir / "claude" / "settings.json"
+        if base_settings_path.exists():
+            try:
+                with open(base_settings_path) as f:
+                    base_settings = json.load(f)
+                merged_settings = config.merge_settings("claude", base_settings)
+
+                orphaned_hooks = ext_manager.get_orphaned_hooks(merged_settings)
+                if orphaned_hooks:
+                    console.print("\n[bold yellow]Orphaned hooks:[/bold yellow]")
+                    for name, path in sorted(orphaned_hooks.items()):
+                        console.print(f"  {name} -> {path}")
+
+                    if not dry_run:
+                        if force or Confirm.ask("Remove orphaned hook symlinks?"):
+                            for _name, path in orphaned_hooks.items():
+                                try:
+                                    path.unlink()
+                                    console.print(f"  [green]✓[/green] Removed {path}")
+                                    removed += 1
+                                except OSError as e:
+                                    console.print(
+                                        f"  [yellow]⚠[/yellow] Could not remove {path}: {e}"
+                                    )
+            except (json.JSONDecodeError, OSError) as e:
+                console.print(f"[dim]Could not check for orphaned hooks: {e}[/dim]")
+
+    shared_agent = next((a for a in selected_agents if a.agent_id == ""), None)
+    if shared_agent:
+        from ai_rules.config import AGENT_SKILLS_DIRS
+
+        skill_manager = SkillManager(
+            config_dir=config_dir,
+            agent_id="",
+            user_skills_dirs=list(AGENT_SKILLS_DIRS.values()),
+        )
+        orphaned_skills = skill_manager.get_orphaned_skills()
+
+        if orphaned_skills:
+            console.print("\n[bold yellow]Orphaned skills:[/bold yellow]")
+            for name, paths in sorted(orphaned_skills.items()):
+                for path in paths:
+                    console.print(f"  {name} -> {path}")
+
+            if not dry_run:
+                if force or Confirm.ask("Remove orphaned skill symlinks?"):
+                    for _name, paths in orphaned_skills.items():
+                        for path in paths:
+                            try:
+                                path.unlink()
+                                console.print(f"  [green]✓[/green] Removed {path}")
+                                removed += 1
+                            except OSError as e:
+                                console.print(
+                                    f"  [yellow]⚠[/yellow] Could not remove {path}: {e}"
+                                )
+
+    return removed
+
+
 def cleanup_deprecated_symlinks(
     selected_agents: list["Agent"], config_dir: Path, force: bool, dry_run: bool
 ) -> int:
@@ -598,7 +711,6 @@ def cleanup_deprecated_symlinks(
 
     console = Console()
     removed_count = 0
-    agents_md = config_dir / "AGENTS.md"
 
     for agent in selected_agents:
         deprecated_paths = agent.get_deprecated_symlinks()
@@ -610,13 +722,6 @@ def cleanup_deprecated_symlinks(
                 continue
 
             if not target.is_symlink():
-                continue
-
-            try:
-                resolved = target.resolve()
-                if resolved != agents_md:
-                    continue
-            except (OSError, RuntimeError):
                 continue
 
             if dry_run:
@@ -1180,48 +1285,8 @@ def install(
                     "[dim]○[/dim] Skipped plugin sync (claude CLI not available)"
                 )
 
-        from ai_rules.claude_extensions import ClaudeExtensionManager
-        from ai_rules.config import AGENT_CONFIG_METADATA
-
-        agent_config = AGENT_CONFIG_METADATA.get(claude_agent.agent_id)
-        if agent_config:
-            base_settings_path = (
-                config_dir / claude_agent.agent_id / agent_config["config_file"]
-            )
-            if base_settings_path.exists():
-                import json
-
-                try:
-                    with open(base_settings_path) as f:
-                        base_settings = json.load(f)
-                    merged_settings = config.merge_settings(
-                        claude_agent.agent_id, base_settings
-                    )
-
-                    ext_manager = ClaudeExtensionManager(config_dir)
-                    orphaned_hooks = ext_manager.get_orphaned_hooks(merged_settings)
-
-                    if orphaned_hooks:
-                        console.print(
-                            "\n[bold yellow]Orphaned hooks detected:[/bold yellow]"
-                        )
-                        for name, path in sorted(orphaned_hooks.items()):
-                            console.print(f"  {name} -> {path}")
-
-                        if not dry_run:
-                            if yes or Confirm.ask("Remove orphaned hook symlinks?"):
-                                for _name, path in orphaned_hooks.items():
-                                    try:
-                                        path.unlink()
-                                        console.print(
-                                            f"  [green]✓[/green] Removed {path}"
-                                        )
-                                    except OSError as e:
-                                        console.print(
-                                            f"  [yellow]⚠[/yellow] Could not remove {path}: {e}"
-                                        )
-                except (json.JSONDecodeError, OSError):
-                    pass
+        if selected_agents:
+            cleanup_orphaned_symlinks(selected_agents, config_dir, config, yes, dry_run)
 
     total_created = user_results["created"]
     total_updated = user_results["updated"]
@@ -1486,6 +1551,11 @@ def status(agents: str | None) -> None:
                         except (json.JSONDecodeError, OSError):
                             pass
 
+            from ai_rules.claude_extensions import ClaudeExtensionManager
+
+            ext_manager = ClaudeExtensionManager(config_dir)
+            all_orphaned = ext_manager.get_all_orphaned()
+
             for ext_type, type_name in [
                 ("agents", "Agents"),
                 ("commands", "Commands"),
@@ -1544,7 +1614,10 @@ def status(agents: str | None) -> None:
                         all_correct = False
 
                     for name in sorted(type_status.unmanaged.keys()):
-                        console.print(f"    {name:<20} [dim]Unmanaged[/dim]")
+                        if ext_type in all_orphaned and name in all_orphaned[ext_type]:
+                            console.print(f"    {name:<20} [yellow]Orphaned[/yellow]")
+                        else:
+                            console.print(f"    {name:<20} [dim]Unmanaged[/dim]")
 
                     for name in sorted(orphaned_hooks.keys()):
                         console.print(
@@ -1553,6 +1626,23 @@ def status(agents: str | None) -> None:
                         all_correct = False
 
         skill_status = agent.get_skill_status()
+        orphaned_skills = {}
+        if skill_status:
+            from ai_rules.config import AGENT_SKILLS_DIRS
+            from ai_rules.skills import SkillManager
+
+            skill_manager = SkillManager(
+                config_dir=config_dir,
+                agent_id=agent.agent_id,
+                user_skills_dirs=(
+                    list(AGENT_SKILLS_DIRS.values()) if agent.agent_id == "" else None
+                ),
+            )
+            orphaned_skills_list = skill_manager.get_orphaned_skills()
+            for name, paths in orphaned_skills_list.items():
+                if paths:
+                    orphaned_skills[name] = paths[0]
+
         if skill_status and any(
             [
                 skill_status.managed_installed,
@@ -1594,7 +1684,10 @@ def status(agents: str | None) -> None:
                 all_correct = False
 
             for name in sorted(skill_status.unmanaged.keys()):
-                console.print(f"    {name:<20} [dim]Unmanaged[/dim]")
+                if name in orphaned_skills:
+                    console.print(f"    {name:<20} [yellow]Orphaned[/yellow]")
+                else:
+                    console.print(f"    {name:<20} [dim]Unmanaged[/dim]")
 
         console.print()
 
