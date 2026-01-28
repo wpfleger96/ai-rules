@@ -1,6 +1,19 @@
 # CHANGELOG
 
 
+## v0.21.1 (2026-01-28)
+
+### Bug Fixes
+
+- Migrate code-reviewer to skill too
+  ([`6b35f74`](https://github.com/wpfleger96/ai-rules/commit/6b35f74efaf5793af970e57188531eca9a2a5039))
+
+migrate to skill to align with the rest of the repo, aupport both local and PR review , and enhance
+  prompts using content from Google eng best practices blog: 1.
+  https://google.github.io/eng-practices/review/reviewer/standard.html 2.
+  https://google.github.io/eng-practices/review/reviewer/looking-for.html
+
+
 ## v0.21.0 (2026-01-28)
 
 ### Documentation
