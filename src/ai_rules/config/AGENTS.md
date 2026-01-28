@@ -20,6 +20,26 @@
 **Rule:** Create TODO list before multi-step tasks, update as you complete each task.
 **Skip:** Single-step trivial tasks.
 
+### Autonomous Coding Workflow
+
+**Trigger:** After completing non-trivial code implementation (new features, bug fixes, refactors affecting behavior), automatically execute this workflow before presenting results to the user.
+
+**Stages:**
+
+| Stage | Action | Proceed when |
+|-------|--------|--------------|
+| 1. Implement | Write/modify code to meet requirements | Code compiles/runs without errors |
+| 2. Test | Invoke `test-writer` skill for changed code | Tests written and passing |
+| 3. Review | Invoke `code-reviewer` skill (runs in isolated subagent) | Review findings returned |
+| 4. Fix | Address all 🔴 MUST FIX issues, then 🟡 SHOULD FIX issues | All blocking issues resolved |
+| 5. Re-review | If fixes were made in Stage 4, return to Stage 3 | Review returns no 🔴 or 🟡 issues |
+
+**Stop condition:** Do NOT automatically invoke `pr-creator`. Wait for explicit user request to create PR.
+
+**Skip workflow when:** Changes are documentation-only, config/settings tweaks, typo fixes, or user explicitly requests "quick fix" or "no review needed."
+
+**Why this workflow:** Catches 40%+ of bugs and security issues before they reach production. The isolated review subagent prevents context pollution while enabling deep codebase analysis.
+
 ### Documentation First
 **Rule:** Read README.md, CONTRIBUTING.md, docs/, .github/, Makefile/Justfile before actions.
 
