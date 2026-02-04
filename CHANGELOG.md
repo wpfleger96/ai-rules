@@ -1,6 +1,17 @@
 # CHANGELOG
 
 
+## v0.21.4 (2026-02-04)
+
+### Bug Fixes
+
+- Cc perms
+  ([`9a69359`](https://github.com/wpfleger96/ai-rules/commit/9a693591b7ff56f50d3ca261c5258b14e3533a19))
+
+- Improve top-level AGENTS.md instructions
+  ([`e548a5b`](https://github.com/wpfleger96/ai-rules/commit/e548a5b378f965523fb45067069a07f62e2a496b))
+
+
 ## v0.21.3 (2026-02-04)
 
 ### Bug Fixes
