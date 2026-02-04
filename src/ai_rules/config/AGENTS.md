@@ -17,34 +17,56 @@
 **Why:** 40%+ of LLM code has vulnerabilities without security prompting.
 
 ### Workflow Management
-**Rule:** Create TODO list before multi-step tasks, update as you complete each task.
-**Skip:** Single-step trivial tasks.
+**Rule:** Create TODO list before starting tasks, update as you complete each task.
 
 ### Autonomous Coding Workflow
 
-**Trigger:** After completing non-trivial code implementation (new features, bug fixes, refactors affecting behavior), automatically execute this workflow before presenting results to the user.
+**Trigger:** After completing non-trivial code implementation (new features, bug fixes, refactors affecting behavior), execute this workflow before presenting results to the user.
 
 **Stages:**
 
 | Stage | Action | Proceed when |
 |-------|--------|--------------|
-| 1. Implement | Write/modify code to meet requirements | Code compiles/runs without errors |
-| 2. Test | Invoke `test-writer` skill for changed code | Tests written and passing |
-| 3. Review | Invoke `code-reviewer` skill (runs in isolated subagent) | Review findings returned |
-| 4. Fix | Address all 🔴 MUST FIX issues, then 🟡 SHOULD FIX issues | All blocking issues resolved |
-| 5. Re-review | If fixes were made in Stage 4, return to Stage 3 | Review returns no 🔴 or 🟡 issues |
+| 1. Implement | Write/modify code to meet requirements | Code written |
+| 2. Quality Checks | Run format, lint, test via project tooling (`just check` or individually) | All checks pass (fix any issues found) |
+| 3. Write Tests | Invoke `test-writer` skill for new/changed code paths | Tests written and passing |
+| 4. Review | Invoke `code-reviewer` skill (runs in isolated subagent) | Review findings returned |
+| 5. Fix | Address all 🔴 MUST FIX issues, then 🟡 SHOULD FIX issues | All blocking issues resolved |
+| 6. Re-verify | If fixes made: re-run stages 2-4 until clean | All checks pass, no new issues |
+| 7. Draft Commit | Generate conventional commit message for the changes | Message ready for user review |
 
-**Stop condition:** Do NOT automatically invoke `pr-creator`. Wait for explicit user request to create PR.
+**Stop condition:** Do NOT stage files, commit, or create PR. Present the draft commit message and wait for user instruction.
 
 **Skip workflow when:** Changes are documentation-only, config/settings tweaks, typo fixes, or user explicitly requests "quick fix" or "no review needed."
+
+**Project tooling priority:** Always check for Justfile/Makefile first. Use `just <task>` or `make <task>` when available. See "Project Tooling" section for fallback commands.
 
 **Why this workflow:** Catches 40%+ of bugs and security issues before they reach production. The isolated review subagent prevents context pollution while enabling deep codebase analysis.
 
 ### Documentation First
 **Rule:** Read README.md, CONTRIBUTING.md, docs/, .github/, Makefile/Justfile before actions.
 
-### Project Tooling
-**Rule:** Use project commands: Makefile→`make` | Justfile→`just` | package.json→`npm run` | pyproject.toml→`uv`/`poetry`
+### Project Tooling (CRITICAL - Check BEFORE Running Commands)
+
+**Rule:** ALWAYS check for project-specific tooling files BEFORE executing any build/test/lint command.
+
+**Mandatory check sequence (in order):**
+1. **Justfile exists?** → Use `just <task>` commands (e.g., `just test`, `just format`, `just lint`)
+2. **Makefile exists?** → Use `make <task>` commands
+3. **package.json exists?** → Use `npm run <task>` commands
+4. **pyproject.toml exists?** → Use `uv run <tool>` (NEVER direct tool invocation)
+5. **Cargo.toml exists?** → Use `cargo <command>`
+
+**Common mistakes that MUST be avoided:**
+
+| ❌ WRONG (bypasses tooling) | ✅ CORRECT (uses tooling) |
+|------------------------------|---------------------------|
+| `ruff .` or `ruff check .` | `just lint` or `uv run ruff check .` |
+| `pytest` | `just test` or `uv run pytest` |
+| `black .` | `just format` or `uv run black .` |
+| `cargo test` | Check Justfile first → `just test` if exists, else `cargo test` |
+
+**Why:** Direct tool invocation bypasses project configuration and environment management. Usage data shows this is the #1 mistake agents make.
 
 ### Software Engineering Standards
 
@@ -85,22 +107,52 @@ Three similar lines > premature abstraction | No helpers for one-time ops | Only
 
 ### Collaboration Protocol
 
-1. **UNDERSTAND:** Requirements clear? Better approaches? Edge cases?
-2. **CLARIFY:** Ask specific questions for unclear/suboptimal requests
-3. **PROPOSE:** Suggest alternatives with technical justification
-4. **IMPLEMENT:** Only after alignment
+**Rule:** Verify before assuming. Ask before guessing.
 
-**Challenge:** Unclear requirements | Security gaps | Performance issues | High maintenance cost
-**Don't challenge:** Clear decisions | Style preferences | Decided tech choices
+**Workflow:**
+1. **UNDERSTAND** — Are requirements clear? Are there better approaches? What are the edge cases?
+2. **VERIFY** — Can I confirm all assumptions? (See verification rules below)
+3. **CLARIFY** — Ask specific questions for anything unclear, unverifiable, or suboptimal
+4. **PROPOSE** — Suggest alternatives with technical justification
+5. **IMPLEMENT** — Only after alignment on approach
+
+**Verification rules (MUST follow):**
+- **External APIs:** NEVER assume an external/closed-source API supports a feature. Verify via documentation, official references, or ask the user for confirmation.
+- **Third-party behavior:** NEVER assume how third-party services, libraries, or tools behave without checking docs or testing.
+- **User environment:** NEVER assume user's local setup, installed tools, or configurations. Ask or check.
+- **Business logic:** NEVER assume business rules or domain constraints. Ask for clarification.
+
+**When uncertain, ask.** Format questions specifically:
+- ❌ "Should I proceed?" (too vague)
+- ✅ "The Stripe API docs don't mention webhook retry limits. Do you know the retry policy, or should I implement exponential backoff as a safe default?"
+
+**Challenge when you see:** Unclear requirements | Security gaps | Performance concerns | Unverifiable assumptions | High maintenance cost
+
+**Do NOT challenge:** Clear decisions already made | Style preferences | Technology choices already decided
+
+**Why:** LLMs confidently generate plausible-sounding but incorrect assumptions. Explicit verification prevents wasted work and builds trust through transparency.
 
 ---
 
 ## Technical Standards
 
 ### Python
-**Dependencies:** `uv add pkg`, `uv sync`, `uv run pytest`
-**Linting:** `ruff check .`, `ruff format .`
-**Testing:** `pytest` (not unittest)
+**Tooling:** Follow Project Tooling hierarchy above. Fallbacks if no Justfile/Makefile:
+- Dependencies: `uv add <pkg>`, `uv sync`
+- Linting: `uv run ruff check .`
+- Formatting: `uv run ruff format .`
+- Testing: `uv run pytest`
+
+**NEVER use direct tool invocation** (e.g., `ruff .`, `pytest`, `black .`) — always prefix with `uv run` or use project tooling.
+
+**Testing framework:** `pytest` (not unittest)
+
+### Rust
+**Tooling:** Follow Project Tooling hierarchy above. Fallbacks if no Justfile/Makefile:
+- Build: `cargo build`
+- Test: `cargo test`
+- Format: `cargo fmt`
+- Lint: `cargo clippy`
 
 ### Testing Standards
 **Rule:** Test behavior, NOT implementation.
