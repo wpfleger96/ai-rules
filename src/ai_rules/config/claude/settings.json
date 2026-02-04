@@ -103,6 +103,7 @@
       "Bash(uv:*)",
       "Bash(uvx:*)",
       "Bash(wc:*)",
+      "Bash(xxd:*)",
       "Bash(yq:*)",
       "Bash(zcat:*)",
       "Read(*)",
