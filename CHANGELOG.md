@@ -1,6 +1,14 @@
 # CHANGELOG
 
 
+## v0.21.5 (2026-02-05)
+
+### Bug Fixes
+
+- Opus 4.6 just dropped
+  ([`d3868ca`](https://github.com/wpfleger96/ai-rules/commit/d3868caa9db4e6e3dc60cb5452f8f00e519a6e3a))
+
+
 ## v0.21.4 (2026-02-04)
 
 ### Bug Fixes
