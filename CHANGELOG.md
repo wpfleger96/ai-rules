@@ -1,6 +1,14 @@
 # CHANGELOG
 
 
+## v0.21.6 (2026-02-05)
+
+### Bug Fixes
+
+- Gas up work profile
+  ([`ad93453`](https://github.com/wpfleger96/ai-rules/commit/ad93453a80127ae9baf7a3c50940a661c14209d7))
+
+
 ## v0.21.5 (2026-02-05)
 
 ### Bug Fixes
