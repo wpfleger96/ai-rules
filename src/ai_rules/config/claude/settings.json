@@ -78,6 +78,7 @@
       "Bash(just:*)",
       "Bash(ls:*)",
       "Bash(lsof:*)",
+      "Bash(make:*)",
       "Bash(mkdir:*)",
       "Bash(mv:*)",
       "Bash(npm:*)",
