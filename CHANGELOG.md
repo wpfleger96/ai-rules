@@ -1,6 +1,14 @@
 # CHANGELOG
 
 
+## v0.21.8 (2026-02-06)
+
+### Bug Fixes
+
+- Nerfed
+  ([`4d8f17b`](https://github.com/wpfleger96/ai-rules/commit/4d8f17bd4b338ef04e62de41fbfbc9e80fed0757))
+
+
 ## v0.21.7 (2026-02-05)
 
 ### Bug Fixes
