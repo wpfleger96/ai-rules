@@ -286,13 +286,13 @@ def _display_pending_symlink_changes(agents: list["Agent"]) -> bool:
     """
     from rich.console import Console
 
-    from ai_rules.symlinks import check_symlink
+    from ai_rules.symlinks import check_symlink, get_content_diff
 
     console = Console()
     found_changes = False
 
     for agent in agents:
-        agent_changes = []
+        agent_changes: list[tuple[str, Path, Path, str | None]] = []
         for target, source in agent.get_filtered_symlinks():
             target_path = target.expanduser()
             status_code, _ = check_symlink(target_path, source)
@@ -302,17 +302,30 @@ def _display_pending_symlink_changes(agents: list["Agent"]) -> bool:
 
             found_changes = True
             if status_code == "missing":
-                agent_changes.append(("create", target_path, source))
-            elif status_code in ["wrong_target", "broken", "not_symlink"]:
-                agent_changes.append(("update", target_path, source))
+                agent_changes.append(("create", target_path, source, None))
+            elif status_code == "broken":
+                agent_changes.append(("update", target_path, source, None))
+            elif status_code in ["wrong_target", "not_symlink"]:
+                diff_output = None
+                try:
+                    if status_code == "wrong_target":
+                        actual = target_path.resolve()
+                        diff_output = get_content_diff(actual, source)
+                    elif status_code == "not_symlink":
+                        diff_output = get_content_diff(target_path, source)
+                except (OSError, RuntimeError):
+                    pass
+                agent_changes.append(("update", target_path, source, diff_output))
 
         if agent_changes:
             console.print(f"\n[bold]{agent.name}[/bold]")
-            for action, target, source in agent_changes:
+            for action, target, source, content_diff in agent_changes:
                 if action == "create":
                     console.print(f"  [green]+[/green] Create: {target} → {source}")
                 else:
                     console.print(f"  [yellow]↻[/yellow] Update: {target} → {source}")
+                    if content_diff:
+                        console.print(content_diff)
 
     return found_changes
 
@@ -1371,6 +1384,14 @@ def _display_symlink_status(
         console.print(
             f"  [yellow]⚠[/yellow] {target_display} [dim](not a symlink)[/dim]"
         )
+
+        try:
+            diff_output = get_content_diff(target.expanduser(), source)
+            if diff_output:
+                console.print(diff_output)
+        except (OSError, RuntimeError):
+            pass
+
         return False
     return True
 
@@ -2187,8 +2208,8 @@ def diff(agents: str | None) -> None:
     """Show differences between repo configs and installed symlinks."""
     from rich.console import Console
 
-    from ai_rules.config import Config
-    from ai_rules.symlinks import check_symlink
+    from ai_rules.config import AGENT_CONFIG_METADATA, Config
+    from ai_rules.symlinks import check_symlink, get_content_diff
 
     console = Console()
 
@@ -2203,39 +2224,70 @@ def diff(agents: str | None) -> None:
 
     for agent in selected_agents:
         agent_has_diff = False
-        agent_diffs = []
+        agent_diffs: list[tuple[Path, Path, str, str, str | None]] = []
 
         for target, source in agent.get_filtered_symlinks():
             target_path = target.expanduser()
             status_code, message = check_symlink(target_path, source)
 
             if status_code == "missing":
-                agent_diffs.append((target_path, source, "missing", "Not installed"))
+                agent_diffs.append(
+                    (target_path, source, "missing", "Not installed", None)
+                )
                 agent_has_diff = True
             elif status_code == "broken":
-                agent_diffs.append((target_path, source, "broken", "Broken symlink"))
+                agent_diffs.append(
+                    (target_path, source, "broken", "Broken symlink", None)
+                )
                 agent_has_diff = True
             elif status_code == "wrong_target":
                 try:
                     actual = target_path.resolve()
+                    diff_output = get_content_diff(actual, source)
                     agent_diffs.append(
-                        (target_path, source, "wrong", f"Points to {actual}")
+                        (
+                            target_path,
+                            source,
+                            "wrong",
+                            f"Points to {actual}",
+                            diff_output,
+                        )
                     )
                     agent_has_diff = True
                 except (OSError, RuntimeError):
                     agent_diffs.append(
-                        (target_path, source, "broken", "Broken symlink")
+                        (target_path, source, "broken", "Broken symlink", None)
                     )
                     agent_has_diff = True
             elif status_code == "not_symlink":
+                try:
+                    diff_output = get_content_diff(target_path, source)
+                except (OSError, RuntimeError):
+                    diff_output = None
                 agent_diffs.append(
-                    (target_path, source, "file", "Regular file (not symlink)")
+                    (
+                        target_path,
+                        source,
+                        "file",
+                        "Regular file (not symlink)",
+                        diff_output,
+                    )
                 )
+                agent_has_diff = True
+
+        agent_config = AGENT_CONFIG_METADATA.get(agent.agent_id)
+        cache_is_stale = False
+        if agent_config and agent.agent_id in config.settings_overrides:
+            base_settings_path = (
+                config_dir / agent.agent_id / agent_config["config_file"]
+            )
+            cache_is_stale = config.is_cache_stale(agent.agent_id, base_settings_path)
+            if cache_is_stale:
                 agent_has_diff = True
 
         if agent_has_diff:
             console.print(f"[bold]{agent.name}:[/bold]")
-            for path, expected_source, diff_type, desc in agent_diffs:
+            for path, expected_source, diff_type, desc, content_diff in agent_diffs:
                 if diff_type == "missing":
                     console.print(f"  [red]✗[/red] {path}")
                     console.print(f"    [dim]{desc}[/dim]")
@@ -2247,10 +2299,21 @@ def diff(agents: str | None) -> None:
                     console.print(f"  [yellow]⚠[/yellow] {path}")
                     console.print(f"    [dim]{desc}[/dim]")
                     console.print(f"    [dim]Expected: → {expected_source}[/dim]")
+                    if content_diff:
+                        console.print(content_diff)
                 elif diff_type == "file":
                     console.print(f"  [yellow]⚠[/yellow] {path}")
                     console.print(f"    [dim]{desc}[/dim]")
                     console.print(f"    [dim]Expected: → {expected_source}[/dim]")
+                    if content_diff:
+                        console.print(content_diff)
+
+            if cache_is_stale:
+                console.print("  [yellow]⚠[/yellow] Cached settings are stale")
+                diff_output = config.get_cache_diff(agent.agent_id, base_settings_path)
+                if diff_output:
+                    console.print(diff_output)
+
             console.print()
             found_differences = True
 

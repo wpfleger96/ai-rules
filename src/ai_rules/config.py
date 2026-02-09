@@ -607,8 +607,10 @@ class Config:
 
         Cache is considered stale if:
         - Cache file doesn't exist
-        - Base settings file is newer than cache
-        - User config is newer than cache (overrides changed)
+        - Base settings file is newer than cache (mtime check)
+        - User config is newer than cache (mtime check)
+        - Profile config is newer than cache (mtime check)
+        - Cache content differs from expected merged settings (content check)
 
         Args:
             agent: Agent name (e.g., 'claude', 'goose')
@@ -643,7 +645,7 @@ class Config:
             if profile_path.exists() and profile_path.stat().st_mtime > cache_mtime:
                 return True
 
-        return False
+        return self.get_cache_diff(agent, base_settings_path) is not None
 
     def get_cache_diff(self, agent: str, base_settings_path: Path) -> str | None:
         """Get unified diff between current state and expected merged settings.
