@@ -1,6 +1,27 @@
 # CHANGELOG
 
 
+## v0.22.0 (2026-02-09)
+
+### Bug Fixes
+
+- Clean up commit messages and PR descriptions
+  ([`2e63bae`](https://github.com/wpfleger96/ai-rules/commit/2e63bae1691bdde4e1cf5ee1570ab7592f8281cb))
+
+- Skill model configs
+  ([`8485d41`](https://github.com/wpfleger96/ai-rules/commit/8485d41586a429dadf22dfa0bcbaba4de95ab823))
+
+### Features
+
+- Add content diffs to diff/install commands and fix cache staleness
+  ([`1ddb125`](https://github.com/wpfleger96/ai-rules/commit/1ddb125cfc0b8f52ba88d16ea90a958493254572))
+
+- Show unified diffs in diff/install/status commands when symlinks are mispointed or regular files
+  exist instead of symlinks - Add content-based cache staleness check as fallback after mtime checks
+  - Deduplicate cache comparison logic via get_cache_diff - Fix duplicate agent header and broken
+  symlink handling edge cases
+
+
 ## v0.21.8 (2026-02-06)
 
 ### Bug Fixes
