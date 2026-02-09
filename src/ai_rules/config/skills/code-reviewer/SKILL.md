@@ -4,7 +4,7 @@ description: Performs thorough code review on local changes or PRs. Use this ski
 context: fork
 agent: general-purpose
 allowed-tools: AskUserQuestion, Bash, Glob, Grep, Read, TodoWrite
-model: sonnet
+model: opus
 metadata:
   trigger-keywords: "code review, review code, review changes, review PR, review pull request, pre-commit review, check my code"
 ---

@@ -1,6 +1,7 @@
 ---
 name: doc-writer
 description: "This skill should be used when the user asks to 'write docs', 'create documentation', 'update docs', 'improve documentation', 'review docs', 'document this code', 'add README', 'update README', 'write API docs', 'create architecture doc', 'how to document', 'what should I document', 'document the changes', 'update docs for this feature', or after implementing features to document new APIs, CLI commands, or behavior changes. Also triggers on mentions of README, ARCHITECTURE.md, CONTRIBUTING.md, API docs, examples, tutorials, user guides, or technical writing."
+model: sonnet
 metadata:
   trigger-keywords: "documentation, docs, document, readme, architecture.md, contributing.md, api docs, technical writing, user guide, reference doc, tutorial, example, docstring, how to document, what to document, document changes, update docs"
   trigger-patterns: "(write|create|update|improve|review|add).*doc, (document|explain).*(code|system|feature|change|api), (write|create|update|add).*(readme|guide|reference|tutorial|api.doc), after.*(implement|code|feature).*(doc|readme), (what|how).*(document|doc)"
