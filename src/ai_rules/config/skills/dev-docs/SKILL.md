@@ -19,7 +19,7 @@ Automatically creates task-specific PLAN files (`PLAN__<TASK>.md`) or updates ex
 
 ## Task-Specific PLAN Files
 
-**Purpose:** Single source of truth for plans and progress across sessions
+**Purpose:** Single source of truth for plans and progress across sessions. A new agent must be able to resume work using ONLY the PLAN file -- no prior session context, no codebase re-exploration for decisions already made.
 
 **Naming Convention:**
 - Format: `PLAN__<TASK>.md` (always `PLAN__` with two underscores)
@@ -83,10 +83,10 @@ See `references/templates.md` for PLAN.md structure.
 ### Create Mode
 
 Generate PLAN__<TASK>.md with:
-- Overview: 1-2 paragraph summary
-- Scope: Features, components, files
-- Purpose: Problem, value, requirements
-- Implementation Details: Hierarchical tasks with [STATUS]
+- Overview: 1-2 paragraph summary including architectural approach and key design decisions (with reasoning)
+- Scope: Features, components, files with role descriptions (what each file does in context of this plan)
+- Purpose: Problem, value, requirements, and relevant constraints or limitations discovered
+- Implementation Details: Hierarchical tasks with [STATUS], each containing enough detail for a new agent to implement without re-exploring the codebase (include HOW, not just WHAT)
 
 Write to `{git_root}/PLAN__<TASK>.md` and **validate**:
 - Compare structure to FIRST ExitPlanMode
@@ -105,6 +105,16 @@ Handle plan evolution if detected:
 - Add new areas to existing structure
 - Mark deprecated as `[CANCELLED - plan changed]`
 - Update Scope/Purpose if changed
+
+## Cold-Start Resumption Requirement
+
+Every PLAN file must be self-contained enough for a new agent to resume work without prior session context. When writing or updating, verify:
+
+- **Architectural context**: Key design decisions and WHY they were made (not just what was chosen, but what was rejected and why)
+- **Task detail**: Each [TODO] task describes HOW to implement, not just WHAT to implement -- include approach, relevant patterns, and target file paths
+- **Dependencies**: Tasks that must be completed in order are explicitly noted (e.g., "depends on Phase 1 completing" or "must run after database migration")
+- **Gotchas**: Any pitfalls, constraints, or non-obvious behaviors discovered during implementation are captured in the Gotchas section with enough detail to avoid re-discovery
+- **File roles**: The Scope section explains what each file does in the context of this plan, not just that it was modified
 
 ## Status Transitions & Evidence Strength
 
@@ -127,6 +137,7 @@ Handle plan evolution if detected:
 - Match ALL tasks to evidence, assign statuses intelligently
 - Include evidence-free tasks as [TODO] - never skip planned work
 - Use 3-space indentation, preserve hierarchy
+- Verify PLAN file passes cold-start test: could a new agent resume work using only this file?
 
 **Create Mode:**
 - **PREVENT RECENCY BIAS**: Prioritize FIRST ExitPlanMode
