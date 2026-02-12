@@ -1,6 +1,14 @@
 # CHANGELOG
 
 
+## v0.22.2 (2026-02-12)
+
+### Bug Fixes
+
+- Improve dev-docs quality
+  ([`6a8fc6f`](https://github.com/wpfleger96/ai-rules/commit/6a8fc6f3d6c79f0091a833686079a725c2f74023))
+
+
 ## v0.22.1 (2026-02-09)
 
 ### Bug Fixes
