@@ -1,6 +1,17 @@
 # CHANGELOG
 
 
+## v0.22.4 (2026-02-14)
+
+### Bug Fixes
+
+- Unhelpful commit messages
+  ([`abc1ff7`](https://github.com/wpfleger96/ai-rules/commit/abc1ff7542210629fb5081640676313e80f38dc2))
+
+- Validate command bug
+  ([`8eb0684`](https://github.com/wpfleger96/ai-rules/commit/8eb0684a9c7ab1ddc7a793743cc5d399c0e71c2f))
+
+
 ## v0.22.3 (2026-02-14)
 
 ### Bug Fixes
