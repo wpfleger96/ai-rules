@@ -2036,8 +2036,8 @@ def validate(agents: str | None) -> None:
             if not source.exists():
                 agent_issues.append((source, "Source file does not exist"))
                 all_valid = False
-            elif not source.is_file():
-                agent_issues.append((source, "Source is not a file"))
+            elif not source.is_file() and not source.is_dir():
+                agent_issues.append((source, "Source is not a file or directory"))
                 all_valid = False
             else:
                 console.print(f"  [green]✓[/green] {source.name}")
