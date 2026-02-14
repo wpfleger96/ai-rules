@@ -27,8 +27,6 @@ try:
 except PackageNotFoundError:
     __version__ = "dev"
 
-_NON_INTERACTIVE_FLAGS = frozenset({"--dry-run", "--help", "-h"})
-
 GIT_SUBPROCESS_TIMEOUT = 5
 
 
@@ -408,110 +406,6 @@ def check_first_run(agents: list["Agent"], force: bool) -> bool:
     return Confirm.ask("Continue?", default=False)
 
 
-def _background_update_check() -> None:
-    """Run update check in background thread for all registered tools.
-
-    This runs silently and saves results for display on next CLI invocation.
-    """
-    from datetime import datetime
-
-    from ai_rules.bootstrap import (
-        UPDATABLE_TOOLS,
-        check_tool_updates,
-        load_auto_update_config,
-        save_auto_update_config,
-        save_pending_update,
-    )
-
-    try:
-        for tool in UPDATABLE_TOOLS:
-            update_info = check_tool_updates(tool)
-            if update_info and update_info.has_update:
-                save_pending_update(update_info, tool.tool_id)
-
-        config = load_auto_update_config()
-        config.last_check = datetime.now().isoformat()
-        save_auto_update_config(config)
-    except Exception as e:
-        logger.debug(f"Background update check failed: {e}")
-
-
-def _is_interactive_context() -> bool:
-    """Determine if we're in an interactive CLI context.
-
-    Returns False when prompts should be suppressed:
-    - Click is in resilient_parsing mode (--help, shell completion)
-    - Non-interactive flags are present (--dry-run, --help, -h)
-    - stdin/stdout are not TTYs (piped or scripted)
-    """
-    import sys
-
-    try:
-        ctx = click.get_current_context(silent=True)
-        if ctx and ctx.resilient_parsing:
-            return False
-    except RuntimeError:
-        pass
-
-    if _NON_INTERACTIVE_FLAGS & set(sys.argv):
-        return False
-
-    return sys.stdin.isatty() and sys.stdout.isatty()
-
-
-def _check_pending_updates() -> None:
-    """Check for and display pending update notifications.
-
-    Shows interactive prompt in normal TTY contexts, non-interactive message
-    for --help, --dry-run, or non-TTY contexts.
-    """
-    from rich.console import Console
-    from rich.prompt import Confirm
-
-    from ai_rules.bootstrap import (
-        clear_all_pending_updates,
-        get_tool_by_id,
-        load_all_pending_updates,
-    )
-
-    console = Console()
-
-    try:
-        pending = load_all_pending_updates()
-        if not pending:
-            return
-
-        updates = []
-        for tid, info in pending.items():
-            tool = get_tool_by_id(tid)
-            if tool:
-                updates.append(
-                    f"{tool.display_name} {info.current_version} → {info.latest_version}"
-                )
-
-        if not updates:
-            return
-
-        update_label = "Update available" if len(updates) == 1 else "Updates available"
-        console.print(f"\n[cyan]{update_label}:[/cyan] {', '.join(updates)}")
-
-        if _is_interactive_context():
-            prompt = "Install now?" if len(updates) == 1 else "Install all updates?"
-            if Confirm.ask(prompt, default=False):
-                ctx = click.get_current_context()
-                ctx.invoke(
-                    upgrade, check=False, force=False, skip_install=False, only=None
-                )
-            else:
-                console.print("[dim]Run 'ai-rules upgrade' when ready[/dim]")
-        else:
-            console.print("[dim]Run 'ai-rules upgrade' to install[/dim]")
-
-        clear_all_pending_updates()
-    except Exception as e:
-        logger.debug(f"Failed to check pending updates: {e}")
-
-
 def version_callback(ctx: click.Context, param: click.Parameter, value: bool) -> None:
     """Custom version callback that also checks for updates.
 
@@ -571,24 +465,7 @@ def version_callback(ctx: click.Context, param: click.Parameter, value: bool) ->
 )
 def main() -> None:
     """AI Rules - Manage user-level AI agent configurations."""
-    import sys
-    import threading
-
-    from ai_rules.bootstrap import load_auto_update_config, should_check_now
-
-    if "upgrade" not in sys.argv:
-        _check_pending_updates()
-
-    try:
-        import os
-
-        if "PYTEST_CURRENT_TEST" not in os.environ:
-            config = load_auto_update_config()
-            if config.enabled and should_check_now(config):
-                thread = threading.Thread(target=_background_update_check, daemon=True)
-                thread.start()
-    except Exception:
-        pass
+    pass
 
 
 def cleanup_orphaned_symlinks(
@@ -2066,13 +1943,6 @@ def upgrade(
         except Exception as e:
             console.print(f"[yellow]⚠[/yellow] Could not run install: {e}")
             console.print("[dim]Run 'ai-rules install --rebuild-cache' manually[/dim]")
-
-    try:
-        from ai_rules.bootstrap import clear_all_pending_updates
-
-        clear_all_pending_updates()
-    except Exception:
-        pass
 
 
 @main.command()

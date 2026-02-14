@@ -74,7 +74,7 @@ src/ai_rules/
 │   ├── claude.py       # ClaudeAgent (settings, MCPs, extensions)
 │   ├── goose.py        # GooseAgent (config, hints)
 │   └── shared.py       # SharedAgent (AGENTS.md, shared skills)
-├── bootstrap/          # Auto-update and GitHub install utilities
+├── bootstrap/          # GitHub install utilities
 │   ├── installer.py    # Tool installation (PyPI and GitHub)
 │   ├── updater.py      # Update checking
 │   └── version.py      # Version parsing
@@ -206,5 +206,5 @@ uv run pytest -m state          # State management tests only
 | MCP management | `mcp.py`, `agents/claude.py` |
 | Skills management | `skills.py` (SkillManager), `agents/shared.py` |
 | Preserved fields tracking | `config.py` (ManagedFieldsTracker, PRESERVED_FIELDS) |
-| Auto-update/upgrade | `bootstrap/updater.py`, `bootstrap/installer.py` |
+| Upgrade checking | `bootstrap/updater.py`, `bootstrap/installer.py` |
 | GitHub install support | `bootstrap/installer.py` (GITHUB_REPO_URL) |

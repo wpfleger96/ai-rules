@@ -74,14 +74,6 @@ ai-rules upgrade --check      # Only check for updates
 
 The `upgrade` command automatically displays changelogs for new versions and installs without additional prompts.
 
-Auto-update checks run weekly by default. Configure in `~/.ai-rules/update_config.yaml`:
-
-```yaml
-enabled: true
-frequency: weekly  # daily, weekly, never
-notify_only: false
-```
-
 ## Usage
 
 > **Complete CLI Reference:** See [CLI Reference](docs/CLI_REFERENCE.md) for detailed command documentation.
@@ -176,7 +168,6 @@ settings_overrides:
 - `~/.ai-rules-config.yaml` - User-specific config (exclusions and overrides)
 - `~/.ai-rules/state.yaml` - Active profile and last install timestamp (auto-managed)
 - `~/.ai-rules/cache/` - Merged settings cache (auto-generated)
-- `~/.ai-rules/update_config.yaml` - Update check configuration
 
 ### Settings Overrides - Syncing Configs Across Machines
 
