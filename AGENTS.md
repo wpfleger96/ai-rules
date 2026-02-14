@@ -17,11 +17,10 @@ The name `ai-rules` was taken on PyPI, so the package is published as `ai-agent-
 ## Quick Commands
 
 ```bash
-just setup                    # First-time setup (deps + git hooks)
 just                          # Lint, format, and type check
 just test                     # Run tests
-just test-fast                # Tests without performance benchmarks (parallel)
-just benchmark-compare        # Run and compare performance benchmarks
+just test-unit                # Run unit tests only
+just test-integration         # Run integration tests only
 uv run ai-rules <cmd>         # Run CLI
 
 # GitHub installation
@@ -79,16 +78,17 @@ src/ai_rules/
 │   ├── updater.py      # Update checking
 │   └── version.py      # Version parsing
 └── config/             # Source configs (bundled in package)
-    ├── claude/         # Claude Code configs (settings, agents, commands, hooks)
-    │   ├── commands/   # Slash commands (.md files)
-    │   └── hooks/      # Hooks (skillRouter.py, subagentStop.py)
+    ├── AGENTS.md       # Shared behavioral rules
+    ├── chat_agent_hints.md  # Chat agent hints
+    ├── claude/         # Claude Code configs (CLAUDE.md, settings.json, mcps.json)
     ├── goose/          # Goose configs (.goosehints, config.yaml)
     ├── skills/         # **SHARED** skills (symlinked to both Claude & Goose)
-    │   ├── doc-writer/
-    │   ├── prompt-engineer/
-    │   └── test-writer/
+    │   ├── agents-md/, code-reviewer/, continue-crash/, dev-docs/
+    │   ├── doc-writer/, pr-creator/, prompt-critique/
+    │   ├── prompt-engineer/, test-writer/
     └── profiles/       # Built-in profiles (default.yaml, work.yaml)
 tests/
+├── fixtures/           # Test fixture files
 ├── unit/               # No filesystem side effects
 └── integration/        # Modifies files/symlinks
 ```
@@ -135,8 +135,7 @@ uv run pytest -m state          # State management tests only
 - Run `just` before committing (handles linting, formatting, type checks)
 - **pathlib.Path** not string paths
 - **rich.console** for CLI output
-- **Conventional commits** (`feat:`, `fix:`, `chore:`)
-- **ripgrep over grep** - Use `rg` instead of `grep -rn` for searching (10-100x faster on large codebases)
+- **Conventional commits** (`feat:`, `fix:`, `chore:`, `refactor:`, `docs:`)
 
 ## Common Gotchas
 
@@ -180,11 +179,9 @@ uv run pytest -m state          # State management tests only
    - Fails silently on network errors (still proceeds with upgrade)
    - Auto-forces install (no double prompt)
 
-## Slash Commands & Skills
+## Skills
 
-**Slash commands:** Explore `config/claude/commands/*.md` for available commands.
-
-**Skills:** Explore `config/skills/*/SKILL.md` for available skills.
+**Skills:** Explore `config/skills/*/SKILL.md` for available skills (9 total: agents-md, code-reviewer, continue-crash, dev-docs, doc-writer, pr-creator, prompt-critique, prompt-engineer, test-writer).
 - **SHARED between Claude Code and Goose** - symlinked to both `~/.claude/skills/` and `~/.config/goose/skills/`
 - Managed by SharedAgent (displays under "Shared:" in status)
 - To add a skill: Create subdir in `config/skills/` with `SKILL.md`
@@ -194,7 +191,6 @@ uv run pytest -m state          # State management tests only
 | Task | Files |
 |------|-------|
 | Add CLI command | `cli.py` (main function, command decorators) |
-| Add slash command | Create `.md` in `config/claude/commands/` |
 | Add skill | Create subdir in `config/skills/` with `SKILL.md` (shared) |
 | Config loading | `config.py` (Config class, load_config) |
 | Profile management | `profiles.py`, `state.py`, `cli.py::profile()` |

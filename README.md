@@ -298,13 +298,13 @@ Plugins are tracked in `~/.claude/plugins/installed_plugins.json` and synced acr
 config/
 ├── AGENTS.md              # User-level rules → ~/AGENTS.md
 ├── claude/
+│   ├── CLAUDE.md          # → ~/.claude/CLAUDE.md
 │   ├── settings.json      # → ~/.claude/settings.json
-│   ├── agents/*.md        # → ~/.claude/agents/*.md (dynamic)
-│   ├── commands/*.md      # → ~/.claude/commands/*.md (dynamic)
-│   └── hooks/*.py         # → ~/.claude/hooks/*.py (dynamic)
+│   └── mcps.json          # → ~/.claude/mcps.json
 ├── goose/
+│   ├── .goosehints        # → ~/.config/goose/.goosehints
 │   └── config.yaml        # → ~/.config/goose/config.yaml
-└── skills/                # Shared between Claude & Goose
+└── skills/                # Shared between Claude & Goose (9 skills)
     └── */SKILL.md         # → ~/.claude/skills/* + ~/.config/goose/skills/*
 ```
 
@@ -323,10 +323,6 @@ ai-rules status  # Shows Optional Tools section
 If a tool fails to install, ai-rules continues normally (fail-open behavior).
 
 ## Extending
-
-**Add Claude agent/command:**
-1. Create `config/claude/agents/my-agent.md` or `config/claude/commands/my-cmd.md`
-2. Run `ai-rules install`
 
 **Add shared skill (Claude Code + Goose):**
 1. Create `config/skills/my-skill/SKILL.md` with frontmatter:
@@ -386,8 +382,7 @@ just              # Run quick quality checks (sync, type-check, lint-check, form
 just --list       # List all available recipes
 
 # Setup
-just setup        # First-time setup: sync deps + install git hooks
-just sync         # Sync dependencies only
+just sync         # Sync dependencies
 
 # Code Quality
 just check        # Quick quality checks (no tests)
@@ -397,17 +392,9 @@ just format       # Auto-format code
 just type-check   # Run mypy type checking
 
 # Testing
-just test         # Run all tests (default config)
+just test         # Run all tests
 just test-unit    # Unit tests only
 just test-integration  # Integration tests only
-just test-cov     # Tests with coverage report
-
-# Benchmarking
-just benchmark-save     # Run and save baseline
-just benchmark-compare  # Compare against baseline
-just benchmark-record   # Compare and save
-just benchmark-list     # List saved benchmarks
-just benchmark-clean    # Remove all benchmarks
 
 # Build
 just build        # Build package

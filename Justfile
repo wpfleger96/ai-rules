@@ -43,33 +43,11 @@ pre-commit: sync type-check lint format test
 test:
     uv run pytest
 
-test-fast:
-    uv run pytest -m 'not performance' -n auto
-
 test-unit:
     uv run pytest -m unit
 
 test-integration:
     uv run pytest -m integration
-
-test-nocov:
-    uv run pytest -o addopts='-n auto -m "not performance"'
-
-# Performance Benchmarking
-benchmark-compare:
-    uv run pytest -m performance -o addopts='-v' --benchmark-compare
-
-benchmark-save:
-    uv run pytest -m performance -o addopts='-v' --benchmark-autosave
-
-benchmark-record:
-    uv run pytest -m performance -o addopts='-v' --benchmark-compare --benchmark-autosave
-
-benchmark-list:
-    @if [ -d .benchmarks ]; then echo "Saved benchmarks:"; ls -lh .benchmarks/*/; else echo "No saved benchmarks found"; fi
-
-benchmark-clean:
-    @if [ -d .benchmarks ]; then echo "Removing all saved benchmarks..."; rm -rf .benchmarks/; else echo "No saved benchmarks found"; fi
 
 # Build & Package
 build: sync
