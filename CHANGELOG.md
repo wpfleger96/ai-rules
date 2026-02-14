@@ -1,6 +1,14 @@
 # CHANGELOG
 
 
+## v0.22.3 (2026-02-14)
+
+### Bug Fixes
+
+- Background update causing bugs
+  ([`3f6b3ec`](https://github.com/wpfleger96/ai-rules/commit/3f6b3ecdfc5870e9e12bec86537001d1a3378d39))
+
+
 ## v0.22.2 (2026-02-12)
 
 ### Bug Fixes
