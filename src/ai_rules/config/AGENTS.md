@@ -182,6 +182,86 @@ def test_calls_hash_password():
 ### GitHub Integration
 **Rule:** Use `gh` CLI: `gh pr view 123` | `gh pr create` | `gh issue list --label bug` | `gh pr checks`
 
+### Commit Messages
+**Rule:** Subject states WHAT changed. Body explains WHY -- the problem, motivation, or design decision. Never narrate what's visible in `git show --stat` or the diff itself.
+
+**Subject line:** `<type>(<optional-scope>): <imperative verb> <specific change>` (50-72 chars)
+
+**Type accuracy:**
+
+| Type | Use when | NOT when |
+|------|----------|----------|
+| `feat:` | Genuinely new functionality or capability | Moving existing code to new files |
+| `fix:` | Correcting broken behavior | Refactoring that doesn't fix a bug |
+| `refactor:` | Restructuring without behavior change | Adding new features during restructure |
+| `docs:` | Documentation-only changes | Code changes with doc updates (use primary type) |
+| `chore:` | Dependencies, CI, config, tooling | Anything touching application logic |
+
+**Body (2-4 lines, skip if subject is self-explanatory):**
+- Describe the problem or motivation driving the change
+- Note design decisions, trade-offs, or alternatives considered
+- Mention relationship to larger effort when part of a series
+- Call out non-obvious side effects or included bug fixes
+
+**Test:** Does the body add information a reviewer can't get from the diff? YES → keep it. NO → cut it.
+
+```
+# ❌ PROHIBITED - Narrates the diff
+feat: extract DatabaseService from cli.py
+
+Extract db_stats command (lines 920-1017) into DatabaseService.
+Created services/database_service.py with get_stats() method.
+Added DatabaseStats schema to services/schemas.py.
+Updated CLI db_stats command to use service.
+Added 5 unit tests in tests/unit/test_database_service.py.
+All 421 tests pass (gained 5 new tests).
+
+# ✅ CORRECT - Explains WHY and provides context
+refactor: extract db_stats logic into DatabaseService
+
+cli.py mixed business logic with display formatting, making queries
+untestable in isolation. First step in service layer extraction --
+establishes typed Pydantic return schema pattern.
+```
+
+```
+# ❌ PROHIBITED - Method inventory, test count, marketing language
+feat: extract SessionService from cli.py
+
+Extract session business logic into SessionService with 6 methods
+covering list/show/delete/enable/disable/resolve operations.
+Service layer complete with full test coverage.
+[...12 more lines listing every method and schema...]
+
+# ✅ CORRECT - Problem, decision, noteworthy side-effect
+refactor: extract session operations from cli.py into SessionService
+
+Session commands had 300+ lines of inline raw SQL and ORM queries
+interleaved with click.echo formatting. Preserves raw SQL approach
+for complex filtered queries rather than converting to ORM. Fixes
+None-safety bug in statistics display (obstructive_apneas > 0
+crashed when value was None).
+```
+
+```
+# ❌ PROHIBITED - CI status in commit message
+feat: implement LTTB downsampling utility
+
+Add Largest Triangle Three Buckets (LTTB) algorithm for time-series
+downsampling. Created services/lttb.py with lttb_downsample() function.
+Added 12 comprehensive unit tests in tests/unit/test_lttb.py.
+All 416 tests pass, type check and lint pass.
+
+# ✅ CORRECT - Motivation and technical context
+feat: add LTTB downsampling for waveform rendering
+
+CPAP waveforms have ~720k points per 8-hour session at 25Hz.
+LTTB (Steinarsson 2013) reduces to ~2000 points while preserving
+visual peaks and valleys. Required by upcoming WaveformService.
+```
+
+**Why:** Commit messages are permanent documentation. `git show --stat` already shows files changed. `git log --oneline` shows only the subject. The body's job is to capture context that will be lost once the author's working memory fades -- the problem, the reasoning, the trade-offs.
+
 ---
 
 ## Style & Formatting
@@ -261,3 +341,19 @@ These rules are frequently ignored due to context window limitations. Placing th
 **NEVER write trivial tests.** Apply Test Value Framework:
 - **CRITICAL:** Business logic, security boundaries, data integrity
 - **SKIP:** Language features, framework code, implementation details
+
+### Commit Messages - MANDATORY
+
+**Body explains WHY, not WHAT.** The diff shows what changed. The body's job is context that will be lost: the problem, the motivation, the design decision.
+
+**NEVER include in commit messages:**
+1. Test/lint/format pass status (passing is a prerequisite, not an accomplishment)
+2. File names or line counts (`git show --stat` exists)
+3. Method/function/class inventories (the diff shows these)
+4. "Comprehensive", "complete", "full coverage" (marketing, not information)
+
+**ALWAYS use correct type prefix:**
+- `refactor:` when moving/restructuring existing code (NOT `feat:`)
+- `feat:` only for genuinely new functionality
+
+**Test:** Does the body help a developer understand WHY this change was made 6 months from now? YES → keep. NO → cut.
