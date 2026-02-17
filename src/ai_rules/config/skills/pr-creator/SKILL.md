@@ -1,7 +1,6 @@
 ---
 name: pr-creator
 description: Creates GitHub pull requests with comprehensive descriptions by analyzing git history and code changes
-disable-model-invocation: true
 allowed-tools: AskUserQuestion, Bash, Glob, Grep, Read, TodoWrite
 model: sonnet
 ---

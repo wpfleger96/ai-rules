@@ -1,7 +1,6 @@
 ---
 name: dev-docs
 description: Creates or updates PLAN.md based on session - auto-detects create vs update mode
-disable-model-invocation: true
 allowed-tools: AskUserQuestion, Bash, Edit, Glob, Grep, Read, TodoWrite, Write
 model: sonnet
 ---
