@@ -1,6 +1,24 @@
 # CHANGELOG
 
 
+## v0.22.5 (2026-02-17)
+
+### Bug Fixes
+
+- Skill permissions
+  ([`1d28665`](https://github.com/wpfleger96/ai-rules/commit/1d28665ff2ff94100e922cdea6ca9a721a59f915))
+
+### Chores
+
+- Update AGENTS.md and cleanup dead code
+  ([`666139f`](https://github.com/wpfleger96/ai-rules/commit/666139fda2cc56b3956ca43a9abdfcb54ee86d36))
+
+Removed empty performance/benchmark infrastructure (tests/performance/, .benchmarks/ data, 7
+  Justfile recipes). Updated AGENTS.md to match current codebase: fixed project structure tree
+  (removed nonexistent commands/hooks dirs, added all 9 skills), removed stale Quick Commands.
+  Updated README.md to remove references to deleted Justfile targets.
+
+
 ## v0.22.4 (2026-02-14)
 
 ### Bug Fixes
