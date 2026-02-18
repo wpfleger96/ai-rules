@@ -75,7 +75,7 @@ extensions:
     bundled: true
     available_tools: []
 GOOSE_AUTO_COMPACT_THRESHOLD: 0.0
-GOOSE_MODEL: claude-sonnet-4-5-20250929
+GOOSE_MODEL: claude-sonnet-4-6
 GOOSE_TELEMETRY_ENABLED: true
 ANTHROPIC_HOST: https://api.anthropic.com
 GOOSE_PROVIDER: anthropic
