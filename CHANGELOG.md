@@ -1,6 +1,14 @@
 # CHANGELOG
 
 
+## v0.23.0 (2026-02-18)
+
+### Features
+
+- Gas up Sonnet
+  ([`dfe0fbc`](https://github.com/wpfleger96/ai-rules/commit/dfe0fbc6c7ccf1b94415f55ab765937ae62b5a3b))
+
+
 ## v0.22.5 (2026-02-17)
 
 ### Bug Fixes
