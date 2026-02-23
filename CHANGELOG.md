@@ -1,6 +1,14 @@
 # CHANGELOG
 
 
+## v0.23.1 (2026-02-23)
+
+### Bug Fixes
+
+- Prefer local code exploration
+  ([`0256efd`](https://github.com/wpfleger96/ai-rules/commit/0256efdcdbbbd6f3c5e0781392c6d9b4f0435ffb))
+
+
 ## v0.23.0 (2026-02-18)
 
 ### Features
