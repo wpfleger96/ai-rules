@@ -3,7 +3,7 @@
 ## Quick Reference Checklist
 
 **Before completing tasks:**
-☐ Read README & docs | ☐ Create TODO list (multi-step) | ☐ Explore before implementing | ☐ Security checklist (external input) | ☐ Use project tooling (make/just/npm) | ☐ DRY & single responsibility | ☐ WHY comments only | ☐ Remove trailing whitespace | ☐ File ends with newline | ☐ Test behavior not implementation | ☐ AWS: --profile & --region | ☐ Keep simple | ☐ Ask clarifying questions
+☐ Read README & docs | ☐ Create TODO list (multi-step) | ☐ Explore before implementing | ☐ Security checklist (external input) | ☐ Use project tooling (make/just/npm) | ☐ DRY & single responsibility | ☐ WHY comments only | ☐ Remove trailing whitespace | ☐ File ends with newline | ☐ Test behavior not implementation | ☐ AWS: --profile & --region | ☐ Keep simple | ☐ Ask clarifying questions | ☐ GitHub URLs: explore code locally
 
 ---
 
@@ -180,7 +180,51 @@ def test_calls_hash_password():
 **Regex:** `^[a-z-]+-(dev|staging|production)--[a-z-]+$`
 
 ### GitHub Integration
-**Rule:** Use `gh` CLI: `gh pr view 123` | `gh pr create` | `gh issue list --label bug` | `gh pr checks`
+
+**Rule:** When given a GitHub URL (PR, issue, repo), **prefer exploring code locally** over reading it through `gh` CLI. Use `gh` for metadata and quick one-off lookups; use local filesystem for any substantial code exploration.
+
+**Path resolution:** `github.com/<org>/<repo_name>` → `~/Development/<repo_name>`
+
+**Worktree awareness:** Code may live in a git worktree instead of the repo root.
+- Worktree path: `~/Development/<repo_name>/.worktrees/<sanitized_branch>/`
+- Branch name sanitization: replace `/`, `\`, `:` with `-`
+  - `feature/auth` → `feature-auth`
+  - `user/wpfleger/fix-bug` → `user-wpfleger-fix-bug`
+
+**`gh` CLI: appropriate vs. preferred-local:**
+
+| Task | Approach |
+|------|----------|
+| PR metadata (branch, status, labels) | `gh pr view 123 --json headRefName,state,labels` |
+| Create/comment on PR/issue | `gh pr create`, `gh pr comment`, `gh issue list` |
+| Quick glance at a small PR diff | `gh pr diff 123` (acceptable for small/simple PRs) |
+| Substantial code exploration | **Local:** Read/Grep/Glob on `~/Development/<repo_name>` |
+| Multi-file review or repo navigation | **Local:** Glob/Grep/`git diff` on local checkout |
+| Understanding repo structure or context | **Local:** explore the full local codebase |
+
+```
+# ❌ Inefficient: reading code piecemeal through API
+gh api repos/squareup/goosed-slackbot/contents/src/main.py
+gh pr view 180 --json files  # then fetching each file via gh
+
+# ✅ Efficient: check PR branch, then explore locally
+gh pr view 180 --repo squareup/goosed-slackbot --json headRefName
+# → branch: feature/slack-events
+# → explore ~/Development/goosed-slackbot/.worktrees/feature-slack-events/
+```
+
+**Workflow when given PR URLs:**
+1. Run `gh pr view <num> --repo <org>/<repo> --json headRefName` to get the branch name
+2. Resolve local path: `~/Development/<repo_name>`
+3. Sanitize branch name (`/` `\` `:` → `-`), check for worktree: `~/Development/<repo_name>/.worktrees/<sanitized_branch>/`
+4. If worktree exists, explore there
+5. If NO worktree, check the repo root:
+   - If already on the correct branch → explore directly
+   - If on a different branch AND working tree is **clean** (`git status` shows no changes) → `git checkout <branch>`, then explore
+   - If on a different branch AND working tree is **dirty** → do NOT checkout. Ask the user how to proceed (they may want to stash, create a worktree, or work from the current state)
+6. Use Read, Grep, Glob, and `git diff` for all code exploration
+
+**Why:** Local filesystem reads are instant, support full-text search, and give access to the complete codebase -- not just the files changed in a PR. `gh` CLI returns small chunks and requires multiple API calls, making it inefficient for anything beyond quick metadata lookups or glancing at a small diff.
 
 ### Commit Messages
 **Rule:** Subject states WHAT changed. Body explains WHY -- the problem, motivation, or design decision. Never narrate what's visible in `git show --stat` or the diff itself.
