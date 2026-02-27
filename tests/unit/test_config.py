@@ -1,3 +1,5 @@
+import sys
+
 from pathlib import Path
 
 import pytest
@@ -813,3 +815,73 @@ settings_overrides:
 
         assert config.settings_overrides["claude"]["model"] == "user-model"
         assert config.settings_overrides["claude"]["timeout"] == 30
+
+
+@pytest.mark.unit
+@pytest.mark.config
+class TestTomlSupport:
+    """Test TOML format support for Codex CLI settings."""
+
+    def test_build_merged_toml_settings(self, tmp_path, monkeypatch):
+        home = tmp_path / "home"
+        home.mkdir()
+        monkeypatch.setenv("HOME", str(home))
+        monkeypatch.setattr(Path, "home", staticmethod(lambda: home))
+
+        base_settings_path = tmp_path / "config.toml"
+        base_settings_path.write_text(
+            'model = "gpt-5.2-codex"\napproval_policy = "on-request"\n'
+        )
+
+        config = Config(settings_overrides={"codex": {"model": "gpt-5.2"}})
+        cache_path = config.build_merged_settings("codex", base_settings_path)
+
+        assert cache_path is not None
+        assert cache_path.exists()
+
+        if sys.version_info >= (3, 11):
+            import tomllib
+        else:
+            import tomli as tomllib
+
+        with open(cache_path, "rb") as f:
+            cached = tomllib.load(f)
+
+        assert cached["model"] == "gpt-5.2"
+        assert cached["approval_policy"] == "on-request"
+
+    def test_validate_codex_override_path_valid(self, tmp_path):
+        settings_dir = tmp_path / "codex"
+        settings_dir.mkdir(parents=True)
+        (settings_dir / "config.toml").write_text('model = "gpt-5.2-codex"\n')
+
+        is_valid, error, _warning, _suggestions = validate_override_path(
+            "codex", "model", tmp_path
+        )
+
+        assert is_valid
+        assert error == ""
+
+    def test_validate_codex_override_path_invalid(self, tmp_path):
+        settings_dir = tmp_path / "codex"
+        settings_dir.mkdir(parents=True)
+        (settings_dir / "config.toml").write_text('model = "gpt-5.2-codex"\n')
+
+        is_valid, error, _warning, _suggestions = validate_override_path(
+            "codex", "nonexistent_key", tmp_path
+        )
+
+        assert not is_valid
+        assert "nonexistent_key" in error
+
+    def test_toml_settings_not_stale_without_overrides(self, tmp_path, monkeypatch):
+        home = tmp_path / "home"
+        home.mkdir()
+        monkeypatch.setenv("HOME", str(home))
+        monkeypatch.setattr(Path, "home", staticmethod(lambda: home))
+
+        base_settings_path = tmp_path / "config.toml"
+        base_settings_path.write_text('model = "gpt-5.2-codex"\n')
+
+        config = Config()
+        assert not config.is_cache_stale("codex", base_settings_path)

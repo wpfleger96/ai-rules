@@ -7,6 +7,7 @@ import pytest
 import yaml
 
 from ai_rules.agents.claude import ClaudeAgent
+from ai_rules.agents.codex import CodexAgent
 from ai_rules.agents.goose import GooseAgent
 from ai_rules.agents.shared import SharedAgent
 from ai_rules.cli import main
@@ -256,9 +257,10 @@ class TestStatusCacheValidation:
         config.marketplaces = []
 
         claude = ClaudeAgent(test_repo, config)
+        codex = CodexAgent(test_repo, config)
         goose = GooseAgent(test_repo, config)
         shared = SharedAgent(test_repo, config)
-        for agent in [claude, goose, shared]:
+        for agent in [claude, codex, goose, shared]:
             for target, source in agent.symlinks:
                 target_path = Path(str(target).replace("~", str(mock_home)))
                 create_symlink(target_path, source, force=False, dry_run=False)
@@ -289,9 +291,10 @@ class TestStatusCacheValidation:
         config.plugins = []
         config.marketplaces = []
         claude = ClaudeAgent(test_repo, config)
+        codex = CodexAgent(test_repo, config)
         goose = GooseAgent(test_repo, config)
         shared = SharedAgent(test_repo, config)
-        for agent in [claude, goose, shared]:
+        for agent in [claude, codex, goose, shared]:
             for target, source in agent.symlinks:
                 target_path = Path(str(target).replace("~", str(mock_home)))
                 create_symlink(target_path, source, force=False, dry_run=False)

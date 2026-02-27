@@ -39,7 +39,7 @@ class Agent(ABC):
     @property
     @abstractmethod
     def config_file_format(self) -> str:
-        """Config file format ('json' or 'yaml')."""
+        """Config file format ('json', 'yaml', or 'toml')."""
         pass
 
     @cached_property

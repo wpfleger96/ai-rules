@@ -74,6 +74,12 @@ def test_repo(tmp_path):
     claude_commands.mkdir()
     (claude_commands / "test-command.md").write_text("# Test Command\nCommand content")
 
+    codex_dir = config_root / "codex"
+    codex_dir.mkdir()
+    (codex_dir / "config.toml").write_text(
+        'model = "gpt-5.2-codex"\napproval_policy = "on-request"\n'
+    )
+
     goose_dir = config_root / "goose"
     goose_dir.mkdir()
     (goose_dir / "config.yaml").write_text("test: config")

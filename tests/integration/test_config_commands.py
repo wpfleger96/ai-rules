@@ -14,6 +14,7 @@ class TestConfigInitCommand:
 
         inputs = [
             "n",  # Exclude Claude Code settings?
+            "n",  # Exclude Codex CLI config?
             "n",  # Exclude Goose config?
             "n",  # Exclude Goose hints?
             "n",  # Exclude Shared agents file?
@@ -39,6 +40,7 @@ class TestConfigInitCommand:
 
         inputs = [
             "y",  # Exclude Claude Code settings?
+            "n",  # Exclude Codex CLI config?
             "n",  # Exclude Goose config?
             "y",  # Exclude Goose hints?
             "n",  # Exclude Shared agents file?
@@ -68,13 +70,14 @@ class TestConfigInitCommand:
             "n",
             "n",
             "n",
-            "n",  # Skip exclusions
+            "n",
+            "n",  # Skip exclusions (Claude, Codex, Goose config, Goose hints, Shared)
             "",  # No custom exclusions
             "y",  # Override settings?
             "1",  # Choose claude
             "model=claude-3-5-sonnet-20241022",  # Add override
             "",  # Finish overrides for claude
-            "3",  # Done with agents
+            "4",  # Done with agents
             "y",  # Save configuration?
         ]
 
@@ -122,7 +125,8 @@ class TestConfigInitCommand:
             "n",
             "n",
             "n",
-            "n",  # Skip exclusions
+            "n",
+            "n",  # Skip exclusions (Claude, Codex, Goose config, Goose hints, Shared)
             "",  # No custom exclusions
             "n",  # Override settings?
             "y",  # Save configuration?
@@ -146,7 +150,8 @@ class TestConfigInitCommand:
             "n",
             "n",
             "n",
-            "n",  # Skip exclusions
+            "n",
+            "n",  # Skip exclusions (Claude, Codex, Goose config, Goose hints, Shared)
             "",  # No custom exclusions
             "n",  # Override settings?
             "n",  # Configure projects?

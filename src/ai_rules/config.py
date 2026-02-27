@@ -6,6 +6,7 @@ import copy
 import json
 import re
 import shutil
+import sys
 
 from fnmatch import fnmatch
 from functools import lru_cache
@@ -13,6 +14,13 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 import yaml
+
+if sys.version_info >= (3, 11):
+    import tomllib
+else:
+    import tomli as tomllib
+
+import tomli_w
 
 from ai_rules.utils import deep_merge
 
@@ -33,6 +41,10 @@ AGENT_CONFIG_METADATA = {
         "config_file": "settings.json",
         "format": "json",
     },
+    "codex": {
+        "config_file": "config.toml",
+        "format": "toml",
+    },
     "goose": {
         "config_file": "config.yaml",
         "format": "yaml",
@@ -41,12 +53,74 @@ AGENT_CONFIG_METADATA = {
 
 AGENT_SKILLS_DIRS = {
     "claude": Path("~/.claude/skills"),
+    "codex": Path("~/.agents/skills"),
     "goose": Path("~/.config/goose/skills"),
 }
 
 PRESERVED_FIELDS = ["enabledPlugins", "hooks"]
 
 MANAGED_FIELDS_PATH = Path.home() / ".claude" / "ai-rules-managed-fields.json"
+
+_CONFIG_PARSE_ERRORS = (
+    json.JSONDecodeError,
+    yaml.YAMLError,
+    tomllib.TOMLDecodeError,
+    OSError,
+    ValueError,
+)
+
+
+def _load_config_file(path: Path, config_format: str) -> dict[str, Any]:
+    """Load a config file based on format.
+
+    Args:
+        path: Path to the config file
+        config_format: One of 'json', 'yaml', 'toml'
+
+    Returns:
+        Parsed config dictionary
+
+    Raises:
+        ValueError: If config_format is unsupported
+        OSError, json.JSONDecodeError, yaml.YAMLError, tomllib.TOMLDecodeError: on parse errors
+    """
+    if config_format == "toml":
+        with open(path, "rb") as f:
+            return tomllib.load(f)
+    elif config_format == "json":
+        with open(path) as f:
+            result: dict[str, Any] = json.load(f)
+            return result
+    elif config_format == "yaml":
+        with open(path) as f:
+            result = yaml.safe_load(f) or {}
+            return result
+    raise ValueError(f"Unsupported config format: {config_format}")
+
+
+def _dump_config_file(path: Path, data: dict[str, Any], config_format: str) -> None:
+    """Write a config file based on format.
+
+    Args:
+        path: Path to write the config file
+        data: Configuration dictionary to serialize
+        config_format: One of 'json', 'yaml', 'toml'
+
+    Raises:
+        ValueError: If config_format is unsupported
+        OSError, tomli_w errors: on write errors
+    """
+    if config_format == "toml":
+        with open(path, "wb") as f:
+            tomli_w.dump(data, f)
+    elif config_format == "json":
+        with open(path, "w") as f:
+            json.dump(data, f, indent=2)
+    elif config_format == "yaml":
+        with open(path, "w") as f:
+            yaml.safe_dump(data, f, default_flow_style=False, sort_keys=False)
+    else:
+        raise ValueError(f"Unsupported config format: {config_format}")
 
 
 def parse_setting_path(path: str) -> list[str | int]:
@@ -214,14 +288,8 @@ def validate_override_path(
         )
 
     try:
-        with open(settings_file) as f:
-            if config_format == "json":
-                base_settings = json.load(f)
-            elif config_format == "yaml":
-                base_settings = yaml.safe_load(f)
-            else:
-                return (False, f"Unsupported config format: {config_format}", "", [])
-    except (json.JSONDecodeError, yaml.YAMLError, OSError) as e:
+        base_settings = _load_config_file(settings_file, config_format)
+    except _CONFIG_PARSE_ERRORS as e:
         return (False, f"Failed to load base settings: {e}", "", [])
 
     try:
@@ -669,17 +737,11 @@ class Config:
         config_format = agent_config["format"]
 
         if not base_settings_path.exists():
-            base_settings = {}
+            base_settings: dict[str, Any] = {}
         else:
             try:
-                with open(base_settings_path) as f:
-                    if config_format == "json":
-                        base_settings = json.load(f)
-                    elif config_format == "yaml":
-                        base_settings = yaml.safe_load(f) or {}
-                    else:
-                        return None
-            except (json.JSONDecodeError, yaml.YAMLError, OSError):
+                base_settings = _load_config_file(base_settings_path, config_format)
+            except _CONFIG_PARSE_ERRORS:
                 return None
 
         cache_path = self.get_merged_settings_path(agent)
@@ -688,14 +750,8 @@ class Config:
         if cache_exists:
             assert cache_path is not None  # For type checker
             try:
-                with open(cache_path) as f:
-                    if config_format == "json":
-                        current_settings = json.load(f)
-                    elif config_format == "yaml":
-                        current_settings = yaml.safe_load(f) or {}
-                    else:
-                        return None
-            except (json.JSONDecodeError, yaml.YAMLError, OSError):
+                current_settings = _load_config_file(cache_path, config_format)
+            except _CONFIG_PARSE_ERRORS:
                 return None
             from_label = "Cached (current)"
             to_label = "Expected (merged)"
@@ -725,6 +781,9 @@ class Config:
             expected_text = yaml.dump(
                 expected_copy, default_flow_style=False, sort_keys=False
             )
+        elif config_format == "toml":
+            current_text = tomli_w.dumps(current_copy)
+            expected_text = tomli_w.dumps(expected_copy)
         else:
             return None
 
@@ -796,15 +855,12 @@ class Config:
         config_format = agent_config["format"]
 
         if not base_settings_path.exists():
-            base_settings = {}
+            base_settings: dict[str, Any] = {}
         else:
-            with open(base_settings_path) as f:
-                if config_format == "json":
-                    base_settings = json.load(f)
-                elif config_format == "yaml":
-                    base_settings = yaml.safe_load(f) or {}
-                else:
-                    return None
+            try:
+                base_settings = _load_config_file(base_settings_path, config_format)
+            except _CONFIG_PARSE_ERRORS:
+                return None
 
         merged = self.merge_settings(agent, base_settings)
         if cache_path:
@@ -832,11 +888,7 @@ class Config:
                 except (OSError, json.JSONDecodeError):
                     pass
 
-            with open(cache_path, "w") as f:
-                if config_format == "json":
-                    json.dump(merged, f, indent=2)
-                elif config_format == "yaml":
-                    yaml.safe_dump(merged, f, default_flow_style=False, sort_keys=False)
+            _dump_config_file(cache_path, merged, config_format)
 
         return cache_path
 

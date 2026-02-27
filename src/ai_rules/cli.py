@@ -100,11 +100,13 @@ def get_agents(config_dir: Path, config: "Config") -> list["Agent"]:
         List of all available agent instances
     """
     from ai_rules.agents.claude import ClaudeAgent
+    from ai_rules.agents.codex import CodexAgent
     from ai_rules.agents.goose import GooseAgent
     from ai_rules.agents.shared import SharedAgent
 
     return [
         ClaudeAgent(config_dir, config),
+        CodexAgent(config_dir, config),
         GooseAgent(config_dir, config),
         SharedAgent(config_dir, config),
     ]
@@ -155,6 +157,7 @@ def detect_old_config_symlinks() -> list[tuple[Path, Path]]:
     old_patterns = [
         "/config/AGENTS.md",
         "/config/claude/",
+        "/config/codex/",
         "/config/goose/",
         "/config/chat_agent_hints.md",
     ]
@@ -163,6 +166,7 @@ def detect_old_config_symlinks() -> list[tuple[Path, Path]]:
 
     check_paths = [
         Path.home() / ".claude",
+        Path.home() / ".codex",
         Path.home() / ".config" / "goose",
         Path.home() / "AGENTS.md",
     ]
@@ -1033,17 +1037,14 @@ def install(
         console.print(f"[dim]Using profile: {profile}[/dim]\n")
 
     if not dry_run:
-        claude_settings = config_dir / "claude" / "settings.json"
-        if claude_settings.exists():
-            config.build_merged_settings(
-                "claude", claude_settings, force_rebuild=rebuild_cache
-            )
+        from ai_rules.config import AGENT_CONFIG_METADATA
 
-        goose_settings = config_dir / "goose" / "config.yaml"
-        if goose_settings.exists():
-            config.build_merged_settings(
-                "goose", goose_settings, force_rebuild=rebuild_cache
-            )
+        for agent_id, agent_meta in AGENT_CONFIG_METADATA.items():
+            settings_path = config_dir / agent_id / agent_meta["config_file"]
+            if settings_path.exists():
+                config.build_merged_settings(
+                    agent_id, settings_path, force_rebuild=rebuild_cache
+                )
 
     all_agents = get_agents(config_dir, config)
     selected_agents = select_agents(all_agents, agents)
@@ -2542,7 +2543,7 @@ def config_show(merged: bool, agent: str | None) -> None:
     if merged:
         console.print("[bold]Merged Settings:[/bold]\n")
 
-        agents_to_show = [agent] if agent else ["claude", "goose"]
+        agents_to_show = [agent] if agent else ["claude", "codex", "goose"]
 
         for agent_name in agents_to_show:
             if agent_name not in cfg.settings_overrides:
@@ -2563,15 +2564,16 @@ def config_show(merged: bool, agent: str | None) -> None:
 
             base_path = config_dir / agent_name / agent_config["config_file"]
             if base_path.exists():
-                with open(base_path) as f:
-                    import json
+                from ai_rules.config import _CONFIG_PARSE_ERRORS, _load_config_file
 
-                    import yaml
-
-                    if agent_config["format"] == "json":
-                        base_settings = json.load(f)
-                    else:
-                        base_settings = yaml.safe_load(f)
+                try:
+                    base_settings = _load_config_file(base_path, agent_config["format"])
+                except _CONFIG_PARSE_ERRORS as e:
+                    console.print(
+                        f"  [red]✗[/red] Failed to load base settings from {base_path}: {e}"
+                    )
+                    console.print()
+                    continue
 
                 merged_settings = cfg.merge_settings(agent_name, base_settings)
 
@@ -2648,6 +2650,7 @@ def _get_common_exclusions() -> list[tuple[str, str, bool]]:
     """
     return [
         ("~/.claude/settings.json", "Claude Code settings", False),
+        ("~/.codex/config.toml", "Codex CLI config", False),
         ("~/.config/goose/config.yaml", "Goose config", False),
         ("~/.config/goose/.goosehints", "Goose hints", True),
         ("~/AGENTS.md", "Shared agents file", False),
@@ -2724,14 +2727,15 @@ def _collect_settings_overrides() -> dict[str, dict[str, Any]]:
     while True:
         console.print("\nWhich agent's settings do you want to override?")
         console.print("  1) claude")
-        console.print("  2) goose")
-        console.print("  3) done")
+        console.print("  2) codex")
+        console.print("  3) goose")
+        console.print("  4) done")
         agent_choice = console.input("> ").strip()
 
-        if agent_choice == "3" or not agent_choice:
+        if agent_choice == "4" or not agent_choice:
             break
 
-        agent_map = {"1": "claude", "2": "goose"}
+        agent_map = {"1": "claude", "2": "codex", "3": "goose"}
         agent = agent_map.get(agent_choice)
 
         if not agent:
