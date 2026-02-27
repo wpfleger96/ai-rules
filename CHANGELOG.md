@@ -1,6 +1,14 @@
 # CHANGELOG
 
 
+## v0.24.0 (2026-02-27)
+
+### Features
+
+- Codex CLI support
+  ([`6c6e01d`](https://github.com/wpfleger96/ai-rules/commit/6c6e01d1d063c1229ac1494254c69a61efa1a436))
+
+
 ## v0.23.2 (2026-02-27)
 
 ### Bug Fixes
