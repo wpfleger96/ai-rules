@@ -1,6 +1,14 @@
 # CHANGELOG
 
 
+## v0.23.2 (2026-02-27)
+
+### Bug Fixes
+
+- Fuck it
+  ([`0168bbc`](https://github.com/wpfleger96/ai-rules/commit/0168bbc5ef745d5f0690c553a2d394e2cb3ccc46))
+
+
 ## v0.23.1 (2026-02-23)
 
 ### Bug Fixes
