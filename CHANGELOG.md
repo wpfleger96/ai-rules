@@ -1,6 +1,14 @@
 # CHANGELOG
 
 
+## v0.27.0 (2026-03-13)
+
+### Features
+
+- Add Gemini CLI agent management and crossfire code review
+  ([`a7e6ca7`](https://github.com/wpfleger96/ai-rules/commit/a7e6ca7b98c03f35738dde24ab2a3338269c6d4e))
+
+
 ## v0.26.0 (2026-03-06)
 
 ### Features
