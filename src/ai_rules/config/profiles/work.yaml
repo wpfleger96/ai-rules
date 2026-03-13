@@ -8,6 +8,16 @@ settings_overrides:
       CLAUDE_CODE_SUBAGENT_MODEL: "claude-sonnet-4-6[1m]"
       ANTHROPIC_DEFAULT_OPUS_MODEL: "claude-opus-4-6[1m]"
     model: opusplan
+  gemini:
+    model:
+      name: "gemini-3.1-pro-preview"
+    security:
+      auth:
+        selectedType: "gemini-api-key"
+    ui:
+      useFullWidth: true
+  codex:
+    model: "gpt-5.2-codex"
 exclude_symlinks: []
 mcp_overrides: {}
 plugins:

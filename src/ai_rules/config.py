@@ -45,6 +45,10 @@ AGENT_CONFIG_METADATA = {
         "config_file": "config.toml",
         "format": "toml",
     },
+    "gemini": {
+        "config_file": "settings.json",
+        "format": "json",
+    },
     "goose": {
         "config_file": "config.yaml",
         "format": "yaml",
@@ -54,6 +58,9 @@ AGENT_CONFIG_METADATA = {
 AGENT_SKILLS_DIRS = {
     "claude": Path("~/.claude/skills"),
     "codex": Path("~/.agents/skills"),
+    # Gemini CLI not listed here — it discovers skills from ~/.agents/skills/ via
+    # built-in alias. Adding ~/.gemini/skills/ would cause "Skill conflict detected"
+    # warnings that break headless invocations (e.g., crossfire code review).
     "goose": Path("~/.config/goose/skills"),
 }
 

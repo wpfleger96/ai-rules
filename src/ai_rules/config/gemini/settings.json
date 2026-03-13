@@ -1,0 +1,13 @@
+{
+  "context": {
+    "fileName": ["GEMINI.md", "AGENTS.md"]
+  },
+  "tools": {
+    "shell": {
+      "enableInteractiveShell": false
+    }
+  },
+  "ide": {
+    "hasSeenNudge": true
+  }
+}

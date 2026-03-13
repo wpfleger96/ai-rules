@@ -101,12 +101,14 @@ def get_agents(config_dir: Path, config: "Config") -> list["Agent"]:
     """
     from ai_rules.agents.claude import ClaudeAgent
     from ai_rules.agents.codex import CodexAgent
+    from ai_rules.agents.gemini import GeminiAgent
     from ai_rules.agents.goose import GooseAgent
     from ai_rules.agents.shared import SharedAgent
 
     return [
         ClaudeAgent(config_dir, config),
         CodexAgent(config_dir, config),
+        GeminiAgent(config_dir, config),
         GooseAgent(config_dir, config),
         SharedAgent(config_dir, config),
     ]
@@ -2543,7 +2545,7 @@ def config_show(merged: bool, agent: str | None) -> None:
     if merged:
         console.print("[bold]Merged Settings:[/bold]\n")
 
-        agents_to_show = [agent] if agent else ["claude", "codex", "goose"]
+        agents_to_show = [agent] if agent else ["claude", "codex", "gemini", "goose"]
 
         for agent_name in agents_to_show:
             if agent_name not in cfg.settings_overrides:
@@ -2651,6 +2653,8 @@ def _get_common_exclusions() -> list[tuple[str, str, bool]]:
     return [
         ("~/.claude/settings.json", "Claude Code settings", False),
         ("~/.codex/config.toml", "Codex CLI config", False),
+        ("~/.gemini/settings.json", "Gemini CLI settings", False),
+        ("~/.gemini/GEMINI.md", "Gemini rules", True),
         ("~/.config/goose/config.yaml", "Goose config", False),
         ("~/.config/goose/.goosehints", "Goose hints", True),
         ("~/AGENTS.md", "Shared agents file", False),
@@ -2728,14 +2732,15 @@ def _collect_settings_overrides() -> dict[str, dict[str, Any]]:
         console.print("\nWhich agent's settings do you want to override?")
         console.print("  1) claude")
         console.print("  2) codex")
-        console.print("  3) goose")
-        console.print("  4) done")
+        console.print("  3) gemini")
+        console.print("  4) goose")
+        console.print("  5) done")
         agent_choice = console.input("> ").strip()
 
-        if agent_choice == "4" or not agent_choice:
+        if agent_choice == "5" or not agent_choice:
             break
 
-        agent_map = {"1": "claude", "2": "codex", "3": "goose"}
+        agent_map = {"1": "claude", "2": "codex", "3": "gemini", "4": "goose"}
         agent = agent_map.get(agent_choice)
 
         if not agent:

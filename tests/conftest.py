@@ -80,6 +80,11 @@ def test_repo(tmp_path):
         'model = "gpt-5.2-codex"\napproval_policy = "on-request"\n'
     )
 
+    gemini_dir = config_root / "gemini"
+    gemini_dir.mkdir()
+    (gemini_dir / "settings.json").write_text('{"name": "gemini-3.1-pro-preview"}')
+    (gemini_dir / "GEMINI.md").write_text("@~/AGENTS.md\n")
+
     goose_dir = config_root / "goose"
     goose_dir.mkdir()
     (goose_dir / "config.yaml").write_text("test: config")

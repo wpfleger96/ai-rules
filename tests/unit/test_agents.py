@@ -2,6 +2,7 @@ import pytest
 
 from ai_rules.agents.claude import ClaudeAgent
 from ai_rules.agents.codex import CodexAgent
+from ai_rules.agents.gemini import GeminiAgent
 from ai_rules.agents.goose import GooseAgent
 from ai_rules.agents.shared import SharedAgent
 from ai_rules.config import Config
@@ -105,6 +106,42 @@ class TestCodexAgent:
         targets = [str(target) for target, _ in symlinks]
         assert "~/.codex/config.toml" not in targets
         assert "~/.codex/AGENTS.md" in targets
+
+
+@pytest.mark.unit
+@pytest.mark.agents
+class TestGeminiAgent:
+    """Test Gemini CLI agent symlink discovery and filtering."""
+
+    def test_discovers_all_symlinks(self, test_repo):
+        agent = GeminiAgent(test_repo, Config(exclude_symlinks=[]))
+
+        symlinks = agent.symlinks
+
+        targets = [str(target) for target, _ in symlinks]
+        assert "~/.gemini/GEMINI.md" in targets
+        assert "~/.gemini/settings.json" in targets
+        assert len(targets) == 2
+
+    def test_gemini_md_points_to_agent_config_source(self, test_repo):
+        agent = GeminiAgent(test_repo, Config(exclude_symlinks=[]))
+
+        symlinks = agent.symlinks
+        gemini_md_entries = [(t, s) for t, s in symlinks if "GEMINI.md" in str(t)]
+
+        assert len(gemini_md_entries) == 1
+        _, source = gemini_md_entries[0]
+        assert source == test_repo / "gemini" / "GEMINI.md"
+
+    def test_excludes_filtered_symlinks(self, test_repo):
+        config = Config(exclude_symlinks=["~/.gemini/settings.json"])
+        agent = GeminiAgent(test_repo, config)
+
+        symlinks = agent.get_filtered_symlinks()
+
+        targets = [str(target) for target, _ in symlinks]
+        assert "~/.gemini/settings.json" not in targets
+        assert "~/.gemini/GEMINI.md" in targets
 
 
 @pytest.mark.unit
