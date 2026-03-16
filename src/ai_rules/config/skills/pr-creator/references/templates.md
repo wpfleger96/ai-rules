@@ -122,14 +122,6 @@ Only include when non-obvious:
 - Query now uses index on `user_id` (10x faster for large datasets)
 ```
 
-**Testing Instructions (only if non-trivial setup):**
-```
-**Testing:**
-1. Set `FEATURE_FLAG=true` in .env
-2. Run `npm run seed` to populate test data
-3. Navigate to /users page
-```
-
 ## Complete Examples
 
 ### Feature PR
@@ -288,6 +280,18 @@ Currently, webhook failures are silently dropped, causing data sync issues for i
 - Implement exponential backoff retry (3 attempts)
 - Store failed webhooks in `webhook_failures` table
 ```
+
+---
+
+❌ **Test plan with trivial steps:**
+```
+## Test Plan
+- [ ] Verify the feature works
+- [ ] Run the tests
+- [ ] Check for regressions
+```
+
+✅ **Omit test plan entirely** -- leave test planning to humans.
 
 ## Brevity Principles
 

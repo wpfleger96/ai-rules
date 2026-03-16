@@ -63,6 +63,7 @@ Use structure from `references/templates.md`. Key principles:
 - Specific technical terms, no marketing language; backtick-wrap code identifiers (env vars, functions, paths, endpoints)
 - Plain bullets (`-`), no bold/headers in body; no hard line wraps in prose paragraphs
 - Issue refs at end with proper keywords; all external references as clickable markdown links (see `references/templates.md`)
+- Never include a "Test Plan" or "Testing" section -- leave test planning to humans
 
 See `references/templates.md` for detailed structure and examples.
 

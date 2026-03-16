@@ -373,6 +373,26 @@ Does NOT apply to: bullet list items, code blocks, tables.
 
 **Why:** Hard wrapping at ~80 chars makes PR descriptions fill only half the available browser viewport width.
 
+### Writing Voice
+**Rule:** When drafting content posted under the user's name (GitHub comments, PR descriptions/reviews, Slack messages, blog posts, emails), match the user's natural voice. Does NOT apply to: documentation, code comments, commit messages, or agent responses to the user.
+
+**First person, casual tone.** Use "I think," "I opened," "I have" -- not impersonal/objective voice. Open with casual greetings ("hey @name"), not corporate pleasantries ("Thanks for pointing that out!").
+
+**Hedge to signal humility, not weakness.** "I think this is actually a different use case" not "This is a different use case." Softeners like "slightly," "I think," "it looks like" when disagreeing or correcting.
+
+**Narrative flow over structured exposition.** Connect ideas conversationally -- one flowing thought with natural conjunctions ("but," "so that," "which is why"). Don't break into bullet lists or bold headers for conversational prose.
+
+**Minimal formatting fuss.** Backticks for code identifiers, but skip bold/italic for emphasis in conversational contexts. Emoji sparingly and only for greetings or reactions, never decorative.
+
+**No performative gratitude or sign-offs.** Don't open with "Thanks for..." or "Great question!" Don't close with "Let me know if you have questions!" -- just state the case and stop.
+
+**Anchor in personal experience.** "This is coming from a specific need I have in..." not "This is driven by a concrete need in..." -- make it about the person, not the abstract.
+
+### Response Style
+**Rule:** How the agent responds to the user directly.
+
+Include all relevant information in the initial answer instead of re-prompting to see if the user wants more. Put all code into a single code block instead of explaining each line separately. Get right to the point; be practical above all. Give in-depth explanations with deep technical details.
+
 ---
 
 ## Model-Specific Optimizations
@@ -435,3 +455,7 @@ These rules are frequently ignored due to context window limitations. Placing th
 - `feat:` only for genuinely new functionality
 
 **Test:** Does the body help a developer understand WHY this change was made 6 months from now? YES → keep. NO → cut.
+
+### Writing Voice - MANDATORY
+
+When ghostwriting (GitHub comments, Slack, PR descriptions): casual first-person tone, hedge when disagreeing, narrative flow, no corporate pleasantries or sign-offs.
