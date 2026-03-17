@@ -1,6 +1,14 @@
 # CHANGELOG
 
 
+## v0.28.0 (2026-03-17)
+
+### Features
+
+- Extract crossfire into generic agent
+  ([`e49b332`](https://github.com/wpfleger96/ai-rules/commit/e49b332ee02a82cdb1e271d38e84f08693fbed30))
+
+
 ## v0.27.1 (2026-03-16)
 
 ### Bug Fixes
