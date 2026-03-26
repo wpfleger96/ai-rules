@@ -1,6 +1,14 @@
 # CHANGELOG
 
 
+## v0.28.2 (2026-03-26)
+
+### Bug Fixes
+
+- Plan file handling in git worktrees
+  ([`2c6e4cb`](https://github.com/wpfleger96/ai-rules/commit/2c6e4cbdb02effd86f2b50ec1c878eaf6ee89377))
+
+
 ## v0.28.1 (2026-03-25)
 
 ### Bug Fixes
