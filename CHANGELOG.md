@@ -1,6 +1,24 @@
 # CHANGELOG
 
 
+## v0.29.0 (2026-04-01)
+
+### Features
+
+- Consolidate crossfire agent into self-contained skills
+  ([`ff9d5e7`](https://github.com/wpfleger96/ai-rules/commit/ff9d5e78f75f595de49c5f48dd5bee241f3b6326))
+
+The crossfire system had three components that didn't connect: a skill dispatcher, a code-reviewer
+  integration, and a custom agent definition with all the CLI orchestration logic. The agent was
+  unreachable in practice — subagents can't spawn other subagents, and neither skill had
+  context:fork, so agent:general-purpose was a no-op.
+
+Merged the agent's orchestration (CLI availability checks, temp file handling, parallel codex/gemini
+  execution, consensus synthesis) into both skills directly. Added context:fork to code-reviewer so
+  it runs isolated and model:opus actually takes effect. Fixed mktemp template that failed on macOS
+  BSD (suffix after X pattern) and added gemini API key presence to the availability check.
+
+
 ## v0.28.2 (2026-03-26)
 
 ### Bug Fixes
