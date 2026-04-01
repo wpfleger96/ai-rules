@@ -1,8 +1,9 @@
 ---
 name: code-reviewer
 description: Performs thorough code review on local changes or PRs. Use this skill proactively after implementing code changes to catch issues before commit/push. Also use when reviewing PRs from other engineers.
+context: fork
 agent: general-purpose
-allowed-tools: Agent, AskUserQuestion, Bash, Glob, Grep, Read, TodoWrite
+allowed-tools: AskUserQuestion, Bash, Glob, Grep, Read, TodoWrite
 model: opus
 metadata:
   trigger-keywords: "code review, review code, review changes, review PR, review pull request, pre-commit review, check my code"
@@ -148,25 +149,144 @@ For each issue identified:
 
 **Only execute this phase if `crossfire` was in `${ARGS}`.** If crossfire was not requested, skip directly to the Output Format section.
 
-After completing your own four-phase review, delegate to the **crossfire agent** for independent multi-model review. Different models have different blind spots — cross-model agreement is stronger signal than any single review.
+After completing your own four-phase review, get independent multi-model perspectives using external CLI agents. Different models have different blind spots — cross-model agreement is stronger signal than any single review.
 
-**Spawn the crossfire agent** using the Agent tool with:
-- **Artifact**: the diff used in your review (whichever source was non-empty from Mode Detection)
-- **Review focus**: "Code review of a git diff. The primary reviewer (Claude) completed a 4-phase analysis covering design, simplicity, security, and functionality. Look for issues the primary reviewer may have missed."
-- **Context**: include your Phase 3 findings summary so the crossfire agent knows what was already flagged
+#### Step 1: Check CLI Availability
 
-The crossfire agent handles all CLI orchestration (Codex + Gemini parallel launch, output collection, and consensus synthesis). Wait for its response, then proceed to Phase 6.
+```bash
+CODEX_AVAILABLE=$(command -v codex >/dev/null 2>&1 && echo "yes" || echo "no")
+GEMINI_AVAILABLE=$(command -v gemini >/dev/null 2>&1 && [ -f ~/.env/gemini_cli.key ] && echo "yes" || echo "no")
+```
+
+If neither CLI is available, note "Crossfire unavailable: neither `codex` nor `gemini` CLI found" and skip to the Output Format section. If only one is available, proceed with that single CLI.
+
+#### Step 2: Build the Review Prompt
+
+Construct a prompt for the external CLI agents with these sections in order:
+
+1. **Preamble:**
+```
+You are reviewing the following code diff. Analyze it critically from your perspective as an independent reviewer. The primary AI agent (Claude) completed a 4-phase analysis covering design, simplicity, security, and functionality. Look for issues the primary reviewer may have missed.
+```
+
+2. **Primary reviewer findings** — include your Phase 3 findings summary so the external models know what's already been flagged and can focus on blind spots.
+
+3. **Review instructions:**
+```
+For each concern you identify, categorize it as:
+- CRITICAL: Fundamental flaw, security risk, data loss potential, or incorrect approach
+- IMPORTANT: Significant gap, missing consideration, or maintainability concern
+- MINOR: Nice-to-have improvement, style issue, or alternative worth considering
+
+Structure your response as:
+
+## Concerns
+
+### [CRITICAL/IMPORTANT/MINOR]: <title>
+<explanation of the concern and why it matters>
+
+## What's Done Well
+<acknowledge strengths — what should NOT be changed>
+
+## Alternative Approaches
+<if you would have taken a fundamentally different approach, describe it briefly>
+```
+
+4. **Artifact** — append the diff at the end after a `--- ARTIFACT ---` separator.
+
+#### Step 3: Write Prompt and Launch CLIs
+
+Write the full prompt to a temp file — do NOT pass as a command-line argument (large diffs exceed OS `ARG_MAX` limit). Launch both CLIs in background referencing the file:
+
+```bash
+PROMPT_FILE=$(mktemp /tmp/crossfire-prompt-XXXXXX)
+# Write the constructed prompt from Step 2 to $PROMPT_FILE
+
+CODEX_OUT=$(mktemp)
+GEMINI_OUT=$(mktemp)
+REPO_ROOT=$(git rev-parse --show-toplevel 2>/dev/null || pwd)
+
+# Codex (background) — only if available
+if [ "$CODEX_AVAILABLE" = "yes" ]; then
+  codex exec -C "$REPO_ROOT" \
+    --dangerously-bypass-approvals-and-sandbox \
+    "Read the file at $PROMPT_FILE and follow the review instructions inside it." \
+    > "$CODEX_OUT" 2>&1 &
+  CODEX_PID=$!
+fi
+
+# Gemini (background) — only if available
+if [ "$GEMINI_AVAILABLE" = "yes" ] && [ -f ~/.env/gemini_cli.key ]; then
+  GEMINI_API_KEY=$(cat ~/.env/gemini_cli.key) gemini --yolo \
+    -p "Read the file at $PROMPT_FILE and follow the review instructions inside it." \
+    > "$GEMINI_OUT" 2>&1 &
+  GEMINI_PID=$!
+fi
+
+# Wait for both
+[ -n "$CODEX_PID" ] && { wait $CODEX_PID; CODEX_EXIT=$?; }
+[ -n "$GEMINI_PID" ] && { wait $GEMINI_PID; GEMINI_EXIT=$?; }
+```
+
+#### Step 4: Read and Validate Outputs
+
+Read each output file. Check for:
+- Non-zero exit code → mark as "Unavailable: CLI exited with error"
+- Empty output → mark as "Unavailable: no output produced"
+
+Clean up ALL temp files after reading:
+```bash
+rm -f "$PROMPT_FILE" "$CODEX_OUT" "$GEMINI_OUT"
+```
+
+#### Step 5: Produce Crossfire Report
+
+Synthesize the raw outputs into a structured crossfire report:
+
+**Cross-model consensus:**
+- Concern flagged by both Codex and Gemini = **agreed** (high confidence)
+- Concern flagged by only one model = **potential blind spot** (note which model)
+
+**Severity resolution:**
+- If models disagree on severity, use the highest (CRITICAL > IMPORTANT > MINOR)
+
+Format the report as:
+```
+## Crossfire Review
+
+### Codex (GPT)
+[Paste Codex output, or "Unavailable: [reason]"]
+
+### Gemini
+[Paste Gemini output, or "Unavailable: [reason]"]
+
+### Cross-Model Consensus
+
+**Agreed concerns (2+ models flagged):**
+- [SEVERITY] [Concern]: flagged by [which models]
+
+**Single-model concerns (potential blind spots):**
+- [SEVERITY] [Concern]: only [model] flagged this
+
+### Strengths Confirmed
+[Items multiple models agreed are done well]
+
+### Summary
+[2-3 sentence synthesis]
+```
+
+Then proceed to Phase 6.
 
 ### Phase 6: Synthesis
 
-Integrate the crossfire agent's findings with your own review into the final output (see Output Format below). Apply these rules:
+Integrate the crossfire report's findings with your own review into the final output (see Output Format below). Apply these rules:
 
 **Map crossfire severities to code review categories:**
 - CRITICAL → 🔴 MUST FIX
 - IMPORTANT → 🟡 SHOULD FIX
 - MINOR → 🟢 CONSIDER
 
-**Cross-model consensus (from crossfire agent output):**
+**Cross-model consensus (from crossfire report):**
 - **Agreed concerns** (2+ models flagged) = high confidence — merge into your findings at the mapped severity level
 - **Single-model concerns** (potential blind spots) = note in the Crossfire Summary section but do NOT auto-promote to your findings
 
@@ -230,7 +350,7 @@ Structure your review in two parts:
 
 ### Part 2: Crossfire Summary
 
-Paste the crossfire agent's full output below. The agent returns a pre-synthesized report with Codex/Gemini outputs, cross-model consensus, and a summary. If crossfire was not requested or no CLIs were available, note "Crossfire unavailable" and skip.
+Paste the Phase 5 crossfire report below (Codex/Gemini outputs, cross-model consensus, and summary). If crossfire was not requested or no CLIs were available, note "Crossfire unavailable" and skip.
 
 ## Key Requirements
 
