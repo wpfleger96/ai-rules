@@ -67,11 +67,106 @@ Review a pull request opened by another engineer.
 
 ---
 
-After gathering changes, proceed to **Phase 1: Context Gathering** with the unified diff.
+After gathering changes:
+- **If crossfire was NOT requested:** proceed directly to Phase 1.
+- **If crossfire WAS requested:** execute Phase 0 first, then proceed to Phase 1.
 
 ## Review Methodology
 
 Follow this structured approach for thorough analysis:
+
+### Phase 0: Launch Crossfire
+
+**Only execute this phase if `crossfire` was in `${ARGS}`.** Otherwise skip to Phase 1.
+
+Launch the external CLI reviews immediately so they run in parallel with your own analysis (Phases 1-4). The external models review the diff independently — without your findings — ensuring unbiased perspectives.
+
+#### Step 1: Save the Diff
+
+Write the gathered diff to `/tmp/crossfire-review.diff` so the background script can access it.
+
+#### Step 2: Build and Write the Review Prompt
+
+Write a prompt file to `/tmp/crossfire-review.prompt` with these sections in order:
+
+1. **Preamble:**
+```
+You are reviewing the following code diff. Analyze it critically as an independent reviewer. Your job is to catch issues the primary reviewer may have missed.
+```
+
+2. **Review instructions:**
+```
+For each concern you identify, categorize it as:
+- CRITICAL: Fundamental flaw, security risk, data loss potential, or incorrect approach
+- IMPORTANT: Significant gap, missing consideration, or maintainability concern
+- MINOR: Nice-to-have improvement, style issue, or alternative worth considering
+
+Structure your response as:
+
+## Concerns
+
+### [CRITICAL/IMPORTANT/MINOR]: <title>
+<explanation of the concern and why it matters>
+
+## What's Done Well
+<acknowledge strengths — what should NOT be changed>
+
+## Alternative Approaches
+<if you would have taken a fundamentally different approach, describe it briefly>
+```
+
+3. **Artifact:** Append the diff after a `--- ARTIFACT ---` separator. Read it from `/tmp/crossfire-review.diff`.
+
+#### Step 3: Launch CLIs in Background
+
+Use a **single Bash call with `run_in_background=true`**. This fires the command and returns immediately so you can continue to Phase 1 while the CLIs execute.
+
+```bash
+# Check CLI availability
+CODEX_AVAILABLE=$(command -v codex >/dev/null 2>&1 && echo "yes" || echo "no")
+GEMINI_AVAILABLE=$(command -v gemini >/dev/null 2>&1 && [ -f ~/.env/gemini_cli.key ] && echo "yes" || echo "no")
+
+REPO_ROOT=$(git rev-parse --show-toplevel 2>/dev/null || pwd)
+CODEX_RAN="no"; GEMINI_RAN="no"
+CODEX_EXIT="-1"; GEMINI_EXIT="-1"
+
+# Launch Codex (background)
+if [ "$CODEX_AVAILABLE" = "yes" ]; then
+  CODEX_RAN="yes"
+  codex exec -C "$REPO_ROOT" \
+    --dangerously-bypass-approvals-and-sandbox \
+    "Read the file at /tmp/crossfire-review.prompt and follow the review instructions inside it." \
+    > /tmp/crossfire-review.codex 2>&1 &
+  CODEX_PID=$!
+fi
+
+# Launch Gemini (background)
+if [ "$GEMINI_AVAILABLE" = "yes" ] && [ -f ~/.env/gemini_cli.key ]; then
+  GEMINI_RAN="yes"
+  GEMINI_API_KEY=$(cat ~/.env/gemini_cli.key) gemini --yolo \
+    -p "Read the file at /tmp/crossfire-review.prompt and follow the review instructions inside it." \
+    > /tmp/crossfire-review.gemini 2>&1 &
+  GEMINI_PID=$!
+fi
+
+# Wait for both
+[ -n "$CODEX_PID" ] && { wait $CODEX_PID; CODEX_EXIT=$?; }
+[ -n "$GEMINI_PID" ] && { wait $GEMINI_PID; GEMINI_EXIT=$?; }
+
+# Write meta file
+cat > /tmp/crossfire-review.meta << EOF
+CODEX_RAN=$CODEX_RAN
+CODEX_EXIT=$CODEX_EXIT
+GEMINI_RAN=$GEMINI_RAN
+GEMINI_EXIT=$GEMINI_EXIT
+EOF
+
+echo "Crossfire CLIs complete. Results in /tmp/crossfire-review.*"
+```
+
+If neither CLI is available, the meta file will show both as not run — Phase 5 will note "Crossfire unavailable."
+
+**Proceed immediately to Phase 1 without waiting for the background notification.**
 
 ### Phase 1: Context Gathering
 Before reviewing code, establish understanding:
@@ -145,101 +240,32 @@ For each issue identified:
 3. Show why it matters (security risk, maintenance burden, etc.)
 4. Propose concrete fix with code example where helpful
 
-### Phase 5: Crossfire Review
+### Phase 5: Read Crossfire Results
 
 **Only execute this phase if `crossfire` was in `${ARGS}`.** If crossfire was not requested, skip directly to the Output Format section.
 
-After completing your own four-phase review, get independent multi-model perspectives using external CLI agents. Different models have different blind spots — cross-model agreement is stronger signal than any single review.
+The crossfire CLIs were launched in Phase 0 and have been running in parallel with your analysis. By now they should be complete (you'll have received a background notification). If you have not yet received the notification, wait for it before proceeding.
 
-#### Step 1: Check CLI Availability
+#### Step 1: Retrieve Results
 
-```bash
-CODEX_AVAILABLE=$(command -v codex >/dev/null 2>&1 && echo "yes" || echo "no")
-GEMINI_AVAILABLE=$(command -v gemini >/dev/null 2>&1 && [ -f ~/.env/gemini_cli.key ] && echo "yes" || echo "no")
-```
+Read the results from the fixed paths written during Phase 0:
 
-If neither CLI is available, note "Crossfire unavailable: neither `codex` nor `gemini` CLI found" and skip to the Output Format section. If only one is available, proceed with that single CLI.
+1. Read `/tmp/crossfire-review.meta` to confirm which CLIs ran and their exit codes.
+2. Read `/tmp/crossfire-review.codex` if Codex was run.
+3. Read `/tmp/crossfire-review.gemini` if Gemini was run.
 
-#### Step 2: Build the Review Prompt
+For each output:
+- If the meta file shows neither CLI ran → note "Crossfire unavailable: neither `codex` nor `gemini` CLI found"
+- If exit code was non-zero → mark as "Unavailable: CLI exited with error (exit code N)"
+- If the output file is empty → mark as "Unavailable: no output produced"
 
-Construct a prompt for the external CLI agents with these sections in order:
-
-1. **Preamble:**
-```
-You are reviewing the following code diff. Analyze it critically from your perspective as an independent reviewer. The primary AI agent (Claude) completed a 4-phase analysis covering design, simplicity, security, and functionality. Look for issues the primary reviewer may have missed.
-```
-
-2. **Primary reviewer findings** — include your Phase 3 findings summary so the external models know what's already been flagged and can focus on blind spots.
-
-3. **Review instructions:**
-```
-For each concern you identify, categorize it as:
-- CRITICAL: Fundamental flaw, security risk, data loss potential, or incorrect approach
-- IMPORTANT: Significant gap, missing consideration, or maintainability concern
-- MINOR: Nice-to-have improvement, style issue, or alternative worth considering
-
-Structure your response as:
-
-## Concerns
-
-### [CRITICAL/IMPORTANT/MINOR]: <title>
-<explanation of the concern and why it matters>
-
-## What's Done Well
-<acknowledge strengths — what should NOT be changed>
-
-## Alternative Approaches
-<if you would have taken a fundamentally different approach, describe it briefly>
-```
-
-4. **Artifact** — append the diff at the end after a `--- ARTIFACT ---` separator.
-
-#### Step 3: Write Prompt and Launch CLIs
-
-Write the full prompt to a temp file — do NOT pass as a command-line argument (large diffs exceed OS `ARG_MAX` limit). Launch both CLIs in background referencing the file:
+#### Step 2: Clean Up
 
 ```bash
-PROMPT_FILE=$(mktemp /tmp/crossfire-prompt-XXXXXX)
-# Write the constructed prompt from Step 2 to $PROMPT_FILE
-
-CODEX_OUT=$(mktemp)
-GEMINI_OUT=$(mktemp)
-REPO_ROOT=$(git rev-parse --show-toplevel 2>/dev/null || pwd)
-
-# Codex (background) — only if available
-if [ "$CODEX_AVAILABLE" = "yes" ]; then
-  codex exec -C "$REPO_ROOT" \
-    --dangerously-bypass-approvals-and-sandbox \
-    "Read the file at $PROMPT_FILE and follow the review instructions inside it." \
-    > "$CODEX_OUT" 2>&1 &
-  CODEX_PID=$!
-fi
-
-# Gemini (background) — only if available
-if [ "$GEMINI_AVAILABLE" = "yes" ] && [ -f ~/.env/gemini_cli.key ]; then
-  GEMINI_API_KEY=$(cat ~/.env/gemini_cli.key) gemini --yolo \
-    -p "Read the file at $PROMPT_FILE and follow the review instructions inside it." \
-    > "$GEMINI_OUT" 2>&1 &
-  GEMINI_PID=$!
-fi
-
-# Wait for both
-[ -n "$CODEX_PID" ] && { wait $CODEX_PID; CODEX_EXIT=$?; }
-[ -n "$GEMINI_PID" ] && { wait $GEMINI_PID; GEMINI_EXIT=$?; }
+rm -f /tmp/crossfire-review.prompt /tmp/crossfire-review.diff /tmp/crossfire-review.codex /tmp/crossfire-review.gemini /tmp/crossfire-review.meta
 ```
 
-#### Step 4: Read and Validate Outputs
-
-Read each output file. Check for:
-- Non-zero exit code → mark as "Unavailable: CLI exited with error"
-- Empty output → mark as "Unavailable: no output produced"
-
-Clean up ALL temp files after reading:
-```bash
-rm -f "$PROMPT_FILE" "$CODEX_OUT" "$GEMINI_OUT"
-```
-
-#### Step 5: Produce Crossfire Report
+#### Step 3: Produce Crossfire Report
 
 Synthesize the raw outputs into a structured crossfire report:
 
