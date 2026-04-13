@@ -1,6 +1,14 @@
 # CHANGELOG
 
 
+## v0.31.1 (2026-04-13)
+
+### Bug Fixes
+
+- Gemini can't access files outside its CWD
+  ([`3a45cc2`](https://github.com/wpfleger96/ai-rules/commit/3a45cc2b5b6991e58fc15742bf50331fc111f6d0))
+
+
 ## v0.31.0 (2026-04-08)
 
 ### Features
