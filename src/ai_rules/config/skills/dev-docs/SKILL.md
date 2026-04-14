@@ -8,7 +8,8 @@ model: sonnet
 ## Context
 
 - Main repo root: !`sh -c 'COMMON=$(git rev-parse --path-format=absolute --git-common-dir 2>/dev/null) && dirname "$COMMON" || echo "NOT_IN_GIT_REPO"'`
-- PLAN files: !`sh -c 'COMMON=$(git rev-parse --path-format=absolute --git-common-dir 2>/dev/null); if [ -z "$COMMON" ]; then echo "NOT_IN_GIT_REPO"; exit 0; fi; PROJECT_ROOT=$(dirname "$COMMON"); cd "$PROJECT_ROOT" && for f in PLAN__*.md; do [ -f "$f" ] && echo "$f" && found=1; done; if [ -z "$found" ]; then [ -f PLAN.md ] && echo "LEGACY_PLAN" || echo "NO_PLAN_FILES"; fi' 2>/dev/null | sed 's/PLAN__//;s/\.md$//' | paste -sd ',' -`
+- Project root: !`sh -c 'COMMON=$(git rev-parse --path-format=absolute --git-common-dir 2>/dev/null); if [ -z "$COMMON" ]; then echo "NOT_IN_GIT_REPO"; exit 0; fi; MAIN_ROOT=$(dirname "$COMMON"); WT_ROOT=$(git rev-parse --show-toplevel 2>/dev/null); CWD_PATH=$(pwd); REL="${CWD_PATH#"$WT_ROOT"}"; REL="${REL#/}"; if [ -z "$REL" ]; then echo "$MAIN_ROOT"; else echo "$MAIN_ROOT/$REL"; fi'`
+- PLAN files: !`sh -c 'COMMON=$(git rev-parse --path-format=absolute --git-common-dir 2>/dev/null); if [ -z "$COMMON" ]; then echo "NOT_IN_GIT_REPO"; exit 0; fi; MAIN_ROOT=$(dirname "$COMMON"); WT_ROOT=$(git rev-parse --show-toplevel 2>/dev/null); CWD_PATH=$(pwd); REL="${CWD_PATH#"$WT_ROOT"}"; REL="${REL#/}"; if [ -z "$REL" ]; then PROJECT_ROOT="$MAIN_ROOT"; else PROJECT_ROOT="$MAIN_ROOT/$REL"; fi; found=""; cd "$PROJECT_ROOT" && for f in PLAN__*.md; do [ -f "$f" ] && echo "$f" && found=1; done; if [ -z "$found" ]; then [ -f PLAN.md ] && echo "LEGACY_PLAN" || echo "NO_PLAN_FILES"; fi' 2>/dev/null | sed 's/PLAN__//;s/\.md$//' | paste -sd ',' -`
 - Worktree/CWD: !`pwd`
 - Last commit: !`git log -1 --format="%h %ai %s" 2>/dev/null || echo "NO_COMMITS"`
 
@@ -28,13 +29,31 @@ Automatically creates task-specific PLAN files (`PLAN__<TASK>.md`) or updates ex
 
 ## CRITICAL: File Location
 
-**ALWAYS write PLAN files to the MAIN git repository root, NEVER to a worktree root or ~/.claude/plans/**
+**ALWAYS write PLAN files to the project root, NEVER to a worktree path or ~/.claude/plans/**
 
-- Target path: `{main_repo_root}/PLAN__<TASK>.md`
-- `{main_repo_root}` is the "Main repo root" value from the Context section above
-- When working inside a git worktree, `{main_repo_root}` differs from "Worktree/CWD" — always use `{main_repo_root}`
-- Claude Code's `~/.claude/plans/` is separate and unrelated
-- The `/dev-docs` command manages repository-local documentation
+- Target path: `{project_root}/PLAN__<TASK>.md`
+- `{project_root}` is the "Project root" value from the Context section above
+
+**How project root is resolved:**
+
+The project root combines `--git-common-dir` (main repo root, worktree-safe) with `--show-toplevel` (current working tree root) to compute the correct target:
+
+1. Find the relative path from CWD to the working tree root (`--show-toplevel`)
+2. Apply that relative path to the main repo root (`--git-common-dir`)
+
+This handles worktrees (CWD may be inside `<repo>/.worktrees/<name>/`) and monorepos (CWD may be a subdirectory like `<repo>/<app>/`) correctly — including both at once.
+
+| Situation | Main repo root | Worktree/CWD | Project root |
+|---|---|---|---|
+| Standard repo | `/repos/myapp` | `/repos/myapp` | `/repos/myapp` |
+| Worktree | `/repos/myapp` | `/repos/myapp/.worktrees/feat` | `/repos/myapp` |
+| Monorepo | `/repos/mono` | `/repos/mono/builderbot-slack` | `/repos/mono/builderbot-slack` |
+| Worktree + monorepo | `/repos/mono` | `/repos/mono/.worktrees/feat/builderbot-slack` | `/repos/mono/builderbot-slack` |
+
+**Never use:**
+- A worktree path (e.g., `<repo>/.worktrees/<name>/`) as the PLAN file location
+- `~/.claude/plans/` — this is Claude Code's internal storage, unrelated to this skill
+- The monorepo root when CWD is an app subdirectory within it
 
 ## Phase 1: Determine Mode
 
@@ -89,7 +108,7 @@ Generate PLAN__<TASK>.md with:
 - Purpose: Problem, value, requirements, and relevant constraints or limitations discovered
 - Implementation Details: Hierarchical tasks with [STATUS], each containing enough detail for a new agent to implement without re-exploring the codebase (include HOW, not just WHAT)
 
-Write to `{main_repo_root}/PLAN__<TASK>.md` and **validate**:
+Write to `{project_root}/PLAN__<TASK>.md` and **validate**:
 - Compare structure to FIRST ExitPlanMode
 - Count items: original N items should match generated
 - Future work documented as [TODO], not omitted
@@ -144,7 +163,7 @@ Every PLAN file must be self-contained enough for a new agent to resume work wit
 - **PREVENT RECENCY BIAS**: Prioritize FIRST ExitPlanMode
 - **PRESERVE STRUCTURE**: Match original organization exactly
 - Document entire plan regardless of progress
-- Generate valid task name, create in main repo root (NEVER in worktree root or ~/.claude/plans/)
+- Generate valid task name, create in project root (NEVER in worktree path or ~/.claude/plans/)
 
 **Update Mode:**
 - Use Edit tool with exact matching
