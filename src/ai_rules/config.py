@@ -29,30 +29,29 @@ if TYPE_CHECKING:
 
 __all__ = [
     "Config",
-    "AGENT_CONFIG_METADATA",
+    "AGENT_FORMATS",
+    "FORMAT_CONFIG_FILES",
     "AGENT_SKILLS_DIRS",
-    "parse_setting_path",
+    "CONFIG_PARSE_ERRORS",
+    "ManagedFieldsTracker",
+    "dump_config_file",
+    "load_config_file",
     "navigate_path",
+    "parse_setting_path",
     "validate_override_path",
 ]
 
-AGENT_CONFIG_METADATA = {
-    "claude": {
-        "config_file": "settings.json",
-        "format": "json",
-    },
-    "codex": {
-        "config_file": "config.toml",
-        "format": "toml",
-    },
-    "gemini": {
-        "config_file": "settings.json",
-        "format": "json",
-    },
-    "goose": {
-        "config_file": "config.yaml",
-        "format": "yaml",
-    },
+AGENT_FORMATS: dict[str, str] = {
+    "claude": "json",
+    "codex": "toml",
+    "gemini": "json",
+    "goose": "yaml",
+}
+
+FORMAT_CONFIG_FILES: dict[str, str] = {
+    "json": "settings.json",
+    "toml": "config.toml",
+    "yaml": "config.yaml",
 }
 
 AGENT_SKILLS_DIRS = {
@@ -64,11 +63,9 @@ AGENT_SKILLS_DIRS = {
     "goose": Path("~/.config/goose/skills"),
 }
 
-PRESERVED_FIELDS = ["enabledPlugins", "hooks"]
-
 MANAGED_FIELDS_PATH = Path.home() / ".claude" / "ai-rules-managed-fields.json"
 
-_CONFIG_PARSE_ERRORS = (
+CONFIG_PARSE_ERRORS = (
     json.JSONDecodeError,
     yaml.YAMLError,
     tomllib.TOMLDecodeError,
@@ -77,7 +74,7 @@ _CONFIG_PARSE_ERRORS = (
 )
 
 
-def _load_config_file(path: Path, config_format: str) -> dict[str, Any]:
+def load_config_file(path: Path, config_format: str) -> dict[str, Any]:
     """Load a config file based on format.
 
     Args:
@@ -105,7 +102,7 @@ def _load_config_file(path: Path, config_format: str) -> dict[str, Any]:
     raise ValueError(f"Unsupported config format: {config_format}")
 
 
-def _dump_config_file(path: Path, data: dict[str, Any], config_format: str) -> None:
+def dump_config_file(path: Path, data: dict[str, Any], config_format: str) -> None:
     """Write a config file based on format.
 
     Args:
@@ -272,7 +269,7 @@ def validate_override_path(
         - If invalid (hard error): (False, 'error message', '', ['suggestion1', 'suggestion2'])
         - If valid with warning: (True, '', 'warning message', ['suggestion1', 'suggestion2'])
     """
-    valid_agents = list(AGENT_CONFIG_METADATA.keys())
+    valid_agents = list(AGENT_FORMATS.keys())
     if agent not in valid_agents:
         return (
             False,
@@ -281,10 +278,8 @@ def validate_override_path(
             valid_agents,
         )
 
-    agent_config = AGENT_CONFIG_METADATA[agent]
-    config_file = agent_config["config_file"]
-    config_format = agent_config["format"]
-
+    config_format = AGENT_FORMATS[agent]
+    config_file = FORMAT_CONFIG_FILES.get(config_format, "settings.json")
     settings_file = config_dir / agent / config_file
     if not settings_file.exists():
         return (
@@ -295,8 +290,8 @@ def validate_override_path(
         )
 
     try:
-        base_settings = _load_config_file(settings_file, config_format)
-    except _CONFIG_PARSE_ERRORS as e:
+        base_settings = load_config_file(settings_file, config_format)
+    except CONFIG_PARSE_ERRORS as e:
         return (False, f"Failed to load base settings: {e}", "", [])
 
     try:
@@ -328,7 +323,7 @@ def validate_override_path(
 
 
 class ManagedFieldsTracker:
-    """Track ai-rules contributions to PRESERVED_FIELDS.
+    """Track ai-rules contributions to preserved fields.
 
     Prevents stale entries when ai-rules removes something from source config
     while preserving user-added entries.
@@ -383,10 +378,11 @@ class ManagedFieldsTracker:
         self,
         existing_settings: dict[str, Any],
         source_settings: dict[str, Any],
+        preserved_fields: list[str],
     ) -> dict[str, Any]:
         """Remove stale ai-rules contributions from existing settings.
 
-        For each PRESERVED_FIELD:
+        For each preserved field:
         1. Get what ai-rules previously contributed (from tracking file)
         2. Get what ai-rules currently contributes (from source settings)
         3. Find entries in existing that match stale ai-rules contributions
@@ -398,7 +394,7 @@ class ManagedFieldsTracker:
 
         cleaned = copy.deepcopy(existing_settings)
 
-        for field in PRESERVED_FIELDS:
+        for field in preserved_fields:
             tracked = self.get_field_contributions(field)
             if not tracked:
                 continue
@@ -629,13 +625,16 @@ class Config:
 
         return deep_merge(base_settings, self.settings_overrides[agent])
 
-    def get_merged_settings_path(self, agent: str) -> Path | None:
+    def get_merged_settings_path(
+        self, agent: str, config_file_name: str
+    ) -> Path | None:
         """Get the path to cached merged settings for an agent.
 
         Returns None if agent has no overrides (should use base file directly).
 
         Args:
             agent: Agent name (e.g., 'claude', 'goose')
+            config_file_name: Config file name (e.g., 'settings.json')
 
         Returns:
             Path to cached merged settings file, or None if no overrides exist
@@ -643,13 +642,9 @@ class Config:
         if agent not in self.settings_overrides:
             return None
 
-        agent_config = AGENT_CONFIG_METADATA.get(agent)
-        if not agent_config:
-            return None
-
         cache_dir = self.get_cache_dir() / agent
         cache_dir.mkdir(parents=True, exist_ok=True)
-        return cache_dir / agent_config["config_file"]
+        return cache_dir / config_file_name
 
     def get_settings_file_for_symlink(
         self, agent: str, base_settings_path: Path
@@ -671,235 +666,15 @@ class Config:
         if agent not in self.settings_overrides:
             return base_settings_path
 
-        cache_path = self.get_merged_settings_path(agent)
+        cache_path = self.get_merged_settings_path(agent, base_settings_path.name)
         if cache_path and cache_path.exists():
             return cache_path
 
         return base_settings_path
 
-    def is_cache_stale(self, agent: str, base_settings_path: Path) -> bool:
-        """Check if cached merged settings are stale.
-
-        Cache is considered stale if:
-        - Cache file doesn't exist
-        - Base settings file is newer than cache (mtime check)
-        - User config is newer than cache (mtime check)
-        - Profile config is newer than cache (mtime check)
-        - Cache content differs from expected merged settings (content check)
-
-        Args:
-            agent: Agent name (e.g., 'claude', 'goose')
-            base_settings_path: Path to base settings file
-
-        Returns:
-            True if cache needs rebuilding, False otherwise
-        """
-        if agent not in self.settings_overrides:
-            return False
-
-        cache_path = self.get_merged_settings_path(agent)
-        if not cache_path or not cache_path.exists():
-            return True
-
-        cache_mtime = cache_path.stat().st_mtime
-
-        if base_settings_path.exists():
-            if base_settings_path.stat().st_mtime > cache_mtime:
-                return True
-
-        user_config_path = Path.home() / ".ai-rules-config.yaml"
-        if user_config_path.exists():
-            if user_config_path.stat().st_mtime > cache_mtime:
-                return True
-
-        if self.profile_name and self.profile_name != "default":
-            from ai_rules.profiles import ProfileLoader
-
-            loader = ProfileLoader()
-            profile_path = loader._profiles_dir / f"{self.profile_name}.yaml"
-            if profile_path.exists() and profile_path.stat().st_mtime > cache_mtime:
-                return True
-
-        return self.get_cache_diff(agent, base_settings_path) is not None
-
-    def get_cache_diff(self, agent: str, base_settings_path: Path) -> str | None:
-        """Get unified diff between current state and expected merged settings.
-
-        Args:
-            agent: Agent name (e.g., 'claude', 'goose')
-            base_settings_path: Path to base settings in repo
-
-        Returns:
-            Formatted diff string with Rich markup, or None if no diff
-        """
-        import difflib
-
-        if agent not in self.settings_overrides:
-            return None
-
-        agent_config = AGENT_CONFIG_METADATA.get(agent)
-        if not agent_config:
-            return None
-
-        config_format = agent_config["format"]
-
-        if not base_settings_path.exists():
-            base_settings: dict[str, Any] = {}
-        else:
-            try:
-                base_settings = _load_config_file(base_settings_path, config_format)
-            except _CONFIG_PARSE_ERRORS:
-                return None
-
-        cache_path = self.get_merged_settings_path(agent)
-        cache_exists = cache_path and cache_path.exists()
-
-        if cache_exists:
-            assert cache_path is not None  # For type checker
-            try:
-                current_settings = _load_config_file(cache_path, config_format)
-            except _CONFIG_PARSE_ERRORS:
-                return None
-            from_label = "Cached (current)"
-            to_label = "Expected (merged)"
-        else:
-            current_settings = base_settings
-            from_label = "Base (current)"
-            to_label = "Expected (with overrides)"
-
-        expected_settings = self.merge_settings(agent, base_settings)
-
-        current_copy = copy.deepcopy(current_settings)
-        expected_copy = copy.deepcopy(expected_settings)
-        for field in PRESERVED_FIELDS:
-            current_copy.pop(field, None)
-            expected_copy.pop(field, None)
-
-        if current_copy == expected_copy:
-            return None
-
-        if config_format == "json":
-            current_text = json.dumps(current_copy, indent=2)
-            expected_text = json.dumps(expected_copy, indent=2)
-        elif config_format == "yaml":
-            current_text = yaml.dump(
-                current_copy, default_flow_style=False, sort_keys=False
-            )
-            expected_text = yaml.dump(
-                expected_copy, default_flow_style=False, sort_keys=False
-            )
-        elif config_format == "toml":
-            current_text = tomli_w.dumps(current_copy)
-            expected_text = tomli_w.dumps(expected_copy)
-        else:
-            return None
-
-        current_lines = current_text.splitlines(keepends=True)
-        expected_lines = expected_text.splitlines(keepends=True)
-
-        diff = difflib.unified_diff(
-            current_lines,
-            expected_lines,
-            fromfile=from_label,
-            tofile=to_label,
-            lineterm="",
-        )
-
-        diff_lines = []
-        for line in diff:
-            line = line.rstrip("\n")
-            if (
-                line.startswith("---")
-                or line.startswith("+++")
-                or line.startswith("@@")
-            ):
-                diff_lines.append(f"[dim]    {line}[/dim]")
-            elif line.startswith("+"):
-                diff_lines.append(f"[green]    {line}[/green]")
-            elif line.startswith("-"):
-                diff_lines.append(f"[red]    {line}[/red]")
-            else:
-                diff_lines.append(f"[dim]    {line}[/dim]")
-
-        if not diff_lines:
-            return None
-
-        return "\n".join(diff_lines)
-
-    def build_merged_settings(
-        self,
-        agent: str,
-        base_settings_path: Path,
-        force_rebuild: bool = False,
-    ) -> Path | None:
-        """Build merged settings file in cache if overrides exist.
-
-        Only rebuilds cache if:
-        - force_rebuild is True, OR
-        - Cache doesn't exist or is stale
-
-        Args:
-            agent: Agent name (e.g., 'claude', 'goose')
-            base_settings_path: Path to base config file
-            force_rebuild: Force rebuild even if cache exists and is fresh
-
-        Returns:
-            Path to merged settings file, or None if no overrides exist
-        """
-        if agent not in self.settings_overrides:
-            return None
-
-        cache_path = self.get_merged_settings_path(agent)
-
-        if not force_rebuild and cache_path and cache_path.exists():
-            if not self.is_cache_stale(agent, base_settings_path):
-                return cache_path
-
-        agent_config = AGENT_CONFIG_METADATA.get(agent)
-        if not agent_config:
-            return None
-
-        config_format = agent_config["format"]
-
-        if not base_settings_path.exists():
-            base_settings: dict[str, Any] = {}
-        else:
-            try:
-                base_settings = _load_config_file(base_settings_path, config_format)
-            except _CONFIG_PARSE_ERRORS:
-                return None
-
-        merged = self.merge_settings(agent, base_settings)
-        if cache_path:
-            cache_path.parent.mkdir(parents=True, exist_ok=True)
-
-            if config_format == "json":
-                tracker = ManagedFieldsTracker()
-
-                if cache_path.exists():
-                    try:
-                        with open(cache_path) as f:
-                            existing = json.load(f)
-
-                        existing = tracker.cleanup_stale_entries(existing, merged)
-
-                        for field in PRESERVED_FIELDS:
-                            if field in existing:
-                                merged[field] = existing[field]
-                    except (OSError, json.JSONDecodeError):
-                        pass
-
-                for field in PRESERVED_FIELDS:
-                    merged_value = merged.get(field)
-                    if merged_value:
-                        tracker.set_field_contributions(field, merged_value)
-                    else:
-                        tracker.set_field_contributions(field, None)
-                tracker.save()
-
-            _dump_config_file(cache_path, merged, config_format)
-
-        return cache_path
+    # NOTE: is_cache_stale(), get_cache_diff(), and build_merged_settings()
+    # have been moved to Agent base class (agents/base.py) where they can
+    # access agent-specific metadata (config_file_format, preserved_fields).
 
     @staticmethod
     def load_user_config() -> dict[str, Any]:

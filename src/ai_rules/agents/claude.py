@@ -35,6 +35,10 @@ class ClaudeAgent(Agent):
     def config_file_format(self) -> str:
         return "json"
 
+    @property
+    def preserved_fields(self) -> list[str]:
+        return ["enabledPlugins", "hooks"]
+
     @cached_property
     def symlinks(self) -> list[tuple[Path, Path]]:
         """Cached list of all Claude Code symlinks including dynamic agents/commands."""

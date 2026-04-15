@@ -5,6 +5,8 @@ from pathlib import Path
 import pytest
 import yaml
 
+from ai_rules.agents.claude import ClaudeAgent
+from ai_rules.agents.codex import CodexAgent
 from ai_rules.config import (
     Config,
     navigate_path,
@@ -20,17 +22,25 @@ def cache_setup(tmp_path, monkeypatch):
     home.mkdir()
     monkeypatch.setenv("HOME", str(home))
 
-    base_settings_path = tmp_path / "settings.json"
+    config_dir = tmp_path / "config"
+    claude_dir = config_dir / "claude"
+    claude_dir.mkdir(parents=True)
+
+    base_settings_path = claude_dir / "settings.json"
     base_settings_path.write_text('{"model": "claude-opus-4-20250514"}')
 
     config = Config(
         settings_overrides={"claude": {"model": "claude-sonnet-4-5-20250929"}}
     )
 
+    agent = ClaudeAgent(config_dir, config)
+
     return {
         "home": home,
         "base_settings_path": base_settings_path,
         "config": config,
+        "config_dir": config_dir,
+        "agent": agent,
         "repo_root": tmp_path,
     }
 
@@ -244,10 +254,9 @@ settings_overrides:
         """Test that merged settings are written to cache."""
         import json
 
-        config = cache_setup["config"]
-        base_path = cache_setup["base_settings_path"]
+        agent = cache_setup["agent"]
 
-        cache_path = config.build_merged_settings("claude", base_path)
+        cache_path = agent.build_merged_settings()
 
         assert cache_path is not None
         assert cache_path.exists()
@@ -257,56 +266,62 @@ settings_overrides:
 
         assert cached["model"] == "claude-sonnet-4-5-20250929"
 
-    def test_build_merged_settings_without_overrides_returns_none(self, tmp_path):
+    def test_build_merged_settings_without_overrides_returns_none(
+        self, tmp_path, monkeypatch
+    ):
         """Test that no cache is created when there are no overrides."""
-        base_settings_path = tmp_path / "settings.json"
-        base_settings_path.write_text('{"model": "claude-opus-4-20250514"}')
+        home = tmp_path / "home"
+        home.mkdir()
+        monkeypatch.setenv("HOME", str(home))
+
+        config_dir = tmp_path / "config"
+        claude_dir = config_dir / "claude"
+        claude_dir.mkdir(parents=True)
+        (claude_dir / "settings.json").write_text('{"model": "claude-opus-4-20250514"}')
 
         config = Config(settings_overrides={})
-        cache_path = config.build_merged_settings("claude", base_settings_path)
+        agent = ClaudeAgent(config_dir, config)
+        cache_path = agent.build_merged_settings()
 
         assert cache_path is None
 
     def test_cache_staleness_when_missing(self, cache_setup):
         """Test that cache is stale when it doesn't exist."""
-        config = cache_setup["config"]
-        base_path = cache_setup["base_settings_path"]
+        agent = cache_setup["agent"]
 
-        assert config.is_cache_stale("claude", base_path) is True
+        assert agent.is_cache_stale() is True
 
     def test_cache_staleness_when_fresh(self, cache_setup):
         """Test that cache is fresh when recently built."""
         import time
 
-        config = cache_setup["config"]
-        base_path = cache_setup["base_settings_path"]
+        agent = cache_setup["agent"]
 
-        config.build_merged_settings("claude", base_path)
+        agent.build_merged_settings()
         time.sleep(0.01)
 
-        assert config.is_cache_stale("claude", base_path) is False
+        assert agent.is_cache_stale() is False
 
     def test_cache_staleness_when_base_updated(self, cache_setup):
         """Test that cache is stale when base settings are modified."""
         import time
 
-        config = cache_setup["config"]
+        agent = cache_setup["agent"]
         base_path = cache_setup["base_settings_path"]
 
-        config.build_merged_settings("claude", base_path)
+        agent.build_merged_settings()
         time.sleep(0.02)
 
         base_path.write_text('{"model": "claude-opus-4-20250514", "new": "value"}')
         time.sleep(0.02)
 
-        assert config.is_cache_stale("claude", base_path) is True
+        assert agent.is_cache_stale() is True
 
     def test_get_cache_diff_when_cache_missing(self, cache_setup):
         """Test that diff shows base vs expected when cache doesn't exist."""
-        config = cache_setup["config"]
-        base_path = cache_setup["base_settings_path"]
+        agent = cache_setup["agent"]
 
-        diff = config.get_cache_diff("claude", base_path)
+        diff = agent.get_cache_diff()
 
         assert diff is not None
         assert "Base (current)" in diff
@@ -317,24 +332,21 @@ settings_overrides:
         """Test that cache rebuild is skipped when fresh but happens when forced."""
         import time
 
-        config = cache_setup["config"]
-        base_path = cache_setup["base_settings_path"]
+        agent = cache_setup["agent"]
 
-        cache_path1 = config.build_merged_settings("claude", base_path)
+        cache_path1 = agent.build_merged_settings()
         assert cache_path1 is not None
         mtime1 = cache_path1.stat().st_mtime
 
         time.sleep(0.01)
 
-        cache_path2 = config.build_merged_settings("claude", base_path)
+        cache_path2 = agent.build_merged_settings()
         assert cache_path2 is not None
         mtime2 = cache_path2.stat().st_mtime
         assert mtime1 == mtime2
 
         time.sleep(0.01)
-        cache_path3 = config.build_merged_settings(
-            "claude", base_path, force_rebuild=True
-        )
+        cache_path3 = agent.build_merged_settings(force_rebuild=True)
         assert cache_path3 is not None
         mtime3 = cache_path3.stat().st_mtime
         assert mtime3 > mtime2
@@ -361,13 +373,14 @@ settings_overrides:
             )
         )
 
-        base_settings = tmp_path / "settings.json"
-        base_settings.write_text(json.dumps({"model": "base"}))
+        config_dir = tmp_path / "config"
+        claude_dir = config_dir / "claude"
+        claude_dir.mkdir(parents=True)
+        (claude_dir / "settings.json").write_text(json.dumps({"model": "base"}))
 
         config = Config(settings_overrides={"claude": {"model": "new"}})
-        result_path = config.build_merged_settings(
-            "claude", base_settings, force_rebuild=True
-        )
+        agent = ClaudeAgent(config_dir, config)
+        result_path = agent.build_merged_settings(force_rebuild=True)
 
         assert result_path is not None
         with open(result_path) as f:
@@ -383,14 +396,18 @@ settings_overrides:
         home.mkdir()
         monkeypatch.setenv("HOME", str(home))
 
-        base_settings_path = tmp_path / "settings.json"
+        config_dir = tmp_path / "config"
+        claude_dir = config_dir / "claude"
+        claude_dir.mkdir(parents=True)
+        base_settings_path = claude_dir / "settings.json"
         base_settings_path.write_text('{"model": "claude-opus-4-20250514"}')
 
         config = Config(
             settings_overrides={"claude": {"model": "claude-sonnet-4-5-20250929"}}
         )
+        agent = ClaudeAgent(config_dir, config)
 
-        cache_path = config.build_merged_settings("claude", base_settings_path)
+        cache_path = agent.build_merged_settings()
 
         result = config.get_settings_file_for_symlink("claude", base_settings_path)
         assert result == cache_path
@@ -828,13 +845,16 @@ class TestTomlSupport:
         monkeypatch.setenv("HOME", str(home))
         monkeypatch.setattr(Path, "home", staticmethod(lambda: home))
 
-        base_settings_path = tmp_path / "config.toml"
-        base_settings_path.write_text(
+        config_dir = tmp_path / "config"
+        codex_dir = config_dir / "codex"
+        codex_dir.mkdir(parents=True)
+        (codex_dir / "config.toml").write_text(
             'model = "gpt-5.2-codex"\napproval_policy = "on-request"\n'
         )
 
         config = Config(settings_overrides={"codex": {"model": "gpt-5.2"}})
-        cache_path = config.build_merged_settings("codex", base_settings_path)
+        agent = CodexAgent(config_dir, config)
+        cache_path = agent.build_merged_settings()
 
         assert cache_path is not None
         assert cache_path.exists()
@@ -880,8 +900,11 @@ class TestTomlSupport:
         monkeypatch.setenv("HOME", str(home))
         monkeypatch.setattr(Path, "home", staticmethod(lambda: home))
 
-        base_settings_path = tmp_path / "config.toml"
-        base_settings_path.write_text('model = "gpt-5.2-codex"\n')
+        config_dir = tmp_path / "config"
+        codex_dir = config_dir / "codex"
+        codex_dir.mkdir(parents=True)
+        (codex_dir / "config.toml").write_text('model = "gpt-5.2-codex"\n')
 
         config = Config()
-        assert not config.is_cache_stale("codex", base_settings_path)
+        agent = CodexAgent(config_dir, config)
+        assert not agent.is_cache_stale()

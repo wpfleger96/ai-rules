@@ -148,10 +148,10 @@ class TestStatusCacheValidation:
             yaml.dump(user_config, f)
 
         config = Config.load()
-        cache_path = config.get_merged_settings_path("claude")
+        cache_path = config.get_merged_settings_path("claude", "settings.json")
         assert cache_path is not None
 
-        config.build_merged_settings("claude", test_repo / "claude" / "settings.json")
+        ClaudeAgent(test_repo, config).build_merged_settings()
         assert cache_path.exists()
 
         time.sleep(0.01)
@@ -159,7 +159,7 @@ class TestStatusCacheValidation:
         base_settings_path = test_repo / "claude" / "settings.json"
         base_settings_path.write_text('{"test": "updated"}')
 
-        assert config.is_cache_stale("claude", base_settings_path)
+        assert ClaudeAgent(test_repo, config).is_cache_stale()
 
         result = runner.invoke(main, ["status"], catch_exceptions=False)
         assert result.exit_code == 1
@@ -182,10 +182,10 @@ class TestStatusCacheValidation:
             yaml.dump(user_config, f)
 
         config = Config.load()
-        cache_path = config.get_merged_settings_path("claude")
+        cache_path = config.get_merged_settings_path("claude", "settings.json")
         assert cache_path is not None
 
-        config.build_merged_settings("claude", test_repo / "claude" / "settings.json")
+        ClaudeAgent(test_repo, config).build_merged_settings()
         assert cache_path.exists()
 
         time.sleep(0.01)
@@ -195,9 +195,7 @@ class TestStatusCacheValidation:
             yaml.dump(user_config, f)
 
         config_reloaded = Config.load()
-        assert config_reloaded.is_cache_stale(
-            "claude", test_repo / "claude" / "settings.json"
-        )
+        assert ClaudeAgent(test_repo, config_reloaded).is_cache_stale()
 
         result = runner.invoke(main, ["status"], catch_exceptions=False)
         assert result.exit_code == 1
@@ -220,7 +218,7 @@ class TestStatusCacheValidation:
             yaml.dump(user_config, f)
 
         config = Config.load()
-        config.build_merged_settings("claude", test_repo / "claude" / "settings.json")
+        ClaudeAgent(test_repo, config).build_merged_settings()
 
         time.sleep(0.01)
 
@@ -253,7 +251,7 @@ class TestStatusCacheValidation:
             yaml.dump(user_config, f)
 
         config = Config.load()
-        config.build_merged_settings("claude", test_repo / "claude" / "settings.json")
+        ClaudeAgent(test_repo, config).build_merged_settings()
         config.plugins = []
         config.marketplaces = []
 
@@ -267,9 +265,7 @@ class TestStatusCacheValidation:
                 target_path = Path(str(target).replace("~", str(mock_home)))
                 create_symlink(target_path, source, force=False, dry_run=False)
 
-        assert not config.is_cache_stale(
-            "claude", test_repo / "claude" / "settings.json"
-        )
+        assert not ClaudeAgent(test_repo, config).is_cache_stale()
 
         result = runner.invoke(
             main, ["status"], catch_exceptions=False, env={"HOME": str(mock_home)}
@@ -325,7 +321,7 @@ class TestStatusCacheValidation:
             yaml.dump(user_config, f)
 
         config = Config.load()
-        config.build_merged_settings("claude", test_repo / "claude" / "settings.json")
+        ClaudeAgent(test_repo, config).build_merged_settings()
 
         time.sleep(0.01)
 

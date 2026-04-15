@@ -29,6 +29,10 @@ class GooseAgent(Agent):
     def config_file_format(self) -> str:
         return "yaml"
 
+    @property
+    def preserved_fields(self) -> list[str]:
+        return ["extensions"]
+
     @cached_property
     def symlinks(self) -> list[tuple[Path, Path]]:
         """Cached list of all Goose symlinks."""

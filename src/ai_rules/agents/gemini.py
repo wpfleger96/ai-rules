@@ -29,6 +29,10 @@ class GeminiAgent(Agent):
     def config_file_format(self) -> str:
         return "json"
 
+    @property
+    def preserved_fields(self) -> list[str]:
+        return ["ide"]
+
     @cached_property
     def symlinks(self) -> list[tuple[Path, Path]]:
         """Cached list of all Gemini CLI symlinks."""

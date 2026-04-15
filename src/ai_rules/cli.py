@@ -1038,18 +1038,14 @@ def install(
     if profile and profile != "default":
         console.print(f"[dim]Using profile: {profile}[/dim]\n")
 
-    if not dry_run:
-        from ai_rules.config import AGENT_CONFIG_METADATA
-
-        for agent_id, agent_meta in AGENT_CONFIG_METADATA.items():
-            settings_path = config_dir / agent_id / agent_meta["config_file"]
-            if settings_path.exists():
-                config.build_merged_settings(
-                    agent_id, settings_path, force_rebuild=rebuild_cache
-                )
-
     all_agents = get_agents(config_dir, config)
     selected_agents = select_agents(all_agents, agents)
+
+    if not dry_run:
+        for agent in all_agents:
+            base_path = agent._base_settings_path
+            if base_path.exists():
+                agent.build_merged_settings(force_rebuild=rebuild_cache)
 
     if not dry_run:
         old_symlinks = detect_old_config_symlinks()
@@ -1285,7 +1281,7 @@ def status(agents: str | None) -> None:
     """Check status of AI agent symlinks."""
     from rich.console import Console
 
-    from ai_rules.config import AGENT_CONFIG_METADATA, Config
+    from ai_rules.config import Config
     from ai_rules.state import get_active_profile
     from ai_rules.symlinks import check_symlink
 
@@ -1330,14 +1326,10 @@ def status(agents: str | None) -> None:
 
         for target, _ in excluded_symlinks:
             console.print(f"  [dim]○[/dim] {target} [dim](excluded by config)[/dim]")
-        agent_config = AGENT_CONFIG_METADATA.get(agent.agent_id)
-        if agent_config and agent.agent_id in config.settings_overrides:
-            base_settings_path = (
-                config_dir / agent.agent_id / agent_config["config_file"]
-            )
-            if config.is_cache_stale(agent.agent_id, base_settings_path):
+        if agent.agent_id in config.settings_overrides:
+            if agent.is_cache_stale():
                 console.print("  [yellow]⚠[/yellow] Cached settings are stale")
-                diff_output = config.get_cache_diff(agent.agent_id, base_settings_path)
+                diff_output = agent.get_cache_diff()
                 if diff_output:
                     console.print(diff_output)
                 all_correct = False
@@ -1426,22 +1418,19 @@ def status(agents: str | None) -> None:
             extension_status = agent.get_extension_status()  # type: ignore[attr-defined]
 
             merged_settings_for_hooks = {}
-            agent_config = AGENT_CONFIG_METADATA.get(agent.agent_id)
-            if agent_config:
-                base_settings_path = (
-                    config_dir / agent.agent_id / agent_config["config_file"]
-                )
-                if base_settings_path.exists():
-                    import json
+            base_settings_path = agent._base_settings_path
+            if base_settings_path.exists():
+                from ai_rules.config import CONFIG_PARSE_ERRORS, load_config_file
 
-                    try:
-                        with open(base_settings_path) as f:
-                            base_settings = json.load(f)
-                        merged_settings_for_hooks = config.merge_settings(
-                            agent.agent_id, base_settings
-                        )
-                    except (json.JSONDecodeError, OSError):
-                        pass
+                try:
+                    base_settings = load_config_file(
+                        base_settings_path, agent.config_file_format
+                    )
+                    merged_settings_for_hooks = config.merge_settings(
+                        agent.agent_id, base_settings
+                    )
+                except CONFIG_PARSE_ERRORS:
+                    pass
 
             from ai_rules.claude_extensions import ClaudeExtensionManager
 
@@ -2071,7 +2060,7 @@ def diff(agents: str | None) -> None:
     """Show differences between repo configs and installed symlinks."""
     from rich.console import Console
 
-    from ai_rules.config import AGENT_CONFIG_METADATA, Config
+    from ai_rules.config import Config
     from ai_rules.symlinks import check_symlink, get_content_diff
 
     console = Console()
@@ -2138,13 +2127,9 @@ def diff(agents: str | None) -> None:
                 )
                 agent_has_diff = True
 
-        agent_config = AGENT_CONFIG_METADATA.get(agent.agent_id)
         cache_is_stale = False
-        if agent_config and agent.agent_id in config.settings_overrides:
-            base_settings_path = (
-                config_dir / agent.agent_id / agent_config["config_file"]
-            )
-            cache_is_stale = config.is_cache_stale(agent.agent_id, base_settings_path)
+        if agent.agent_id in config.settings_overrides:
+            cache_is_stale = agent.is_cache_stale()
             if cache_is_stale:
                 agent_has_diff = True
 
@@ -2173,7 +2158,7 @@ def diff(agents: str | None) -> None:
 
             if cache_is_stale:
                 console.print("  [yellow]⚠[/yellow] Cached settings are stale")
-                diff_output = config.get_cache_diff(agent.agent_id, base_settings_path)
+                diff_output = agent.get_cache_diff()
                 if diff_output:
                     console.print(diff_output)
 
@@ -2546,21 +2531,22 @@ def config_show(merged: bool, agent: str | None) -> None:
 
             console.print(f"[bold]{agent_name}:[/bold]")
 
-            from ai_rules.config import AGENT_CONFIG_METADATA
+            from ai_rules.config import AGENT_FORMATS, FORMAT_CONFIG_FILES
 
-            agent_config = AGENT_CONFIG_METADATA.get(agent_name)
-            if not agent_config:
+            agent_format = AGENT_FORMATS.get(agent_name)
+            if not agent_format:
                 console.print(f"  [red]✗[/red] Unknown agent: {agent_name}")
                 console.print()
                 continue
 
-            base_path = config_dir / agent_name / agent_config["config_file"]
+            config_file = FORMAT_CONFIG_FILES.get(agent_format, "settings.json")
+            base_path = config_dir / agent_name / config_file
             if base_path.exists():
-                from ai_rules.config import _CONFIG_PARSE_ERRORS, _load_config_file
+                from ai_rules.config import CONFIG_PARSE_ERRORS, load_config_file
 
                 try:
-                    base_settings = _load_config_file(base_path, agent_config["format"])
-                except _CONFIG_PARSE_ERRORS as e:
+                    base_settings = load_config_file(base_path, agent_format)
+                except CONFIG_PARSE_ERRORS as e:
                     console.print(
                         f"  [red]✗[/red] Failed to load base settings from {base_path}: {e}"
                     )
