@@ -1,2 +1,3 @@
+model = "gpt-5.4"
 approval_policy = "on-request"
 trust_level = "trusted"
