@@ -190,7 +190,7 @@ def test_calls_hash_password():
 - Worktree path: `~/Development/<repo_name>/.worktrees/<sanitized_branch>/`
 - Branch name sanitization: replace `/`, `\`, `:` with `-`
   - `feature/auth` → `feature-auth`
-  - `user/wpfleger/fix-bug` → `user-wpfleger-fix-bug`
+  - `user/jsmith/fix-bug` → `user-jsmith-fix-bug`
 
 **`gh` CLI: appropriate vs. preferred-local:**
 
@@ -205,13 +205,13 @@ def test_calls_hash_password():
 
 ```
 # ❌ Inefficient: reading code piecemeal through API
-gh api repos/squareup/goosed-slackbot/contents/src/main.py
-gh pr view 180 --json files  # then fetching each file via gh
+gh api repos/acme/my-service/contents/src/main.py
+gh pr view 42 --json files  # then fetching each file via gh
 
 # ✅ Efficient: check PR branch, then explore locally
-gh pr view 180 --repo squareup/goosed-slackbot --json headRefName
+gh pr view 42 --repo acme/my-service --json headRefName
 # → branch: feature/slack-events
-# → explore ~/Development/goosed-slackbot/.worktrees/feature-slack-events/
+# → explore ~/Development/my-service/.worktrees/feature-slack-events/
 ```
 
 **Workflow when given PR URLs:**

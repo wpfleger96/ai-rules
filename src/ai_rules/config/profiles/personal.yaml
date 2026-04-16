@@ -1,0 +1,8 @@
+name: personal
+description: Personal configuration with additional tools and integrations
+extends: default
+settings_overrides:
+  claude:
+    model: opusplan
+exclude_symlinks: []
+mcp_overrides: {}

@@ -4,9 +4,6 @@ extends: null
 settings_overrides: {}
 exclude_symlinks: []
 mcp_overrides: {}
-plugins:
-  - name: plugin-dev
-    marketplace: claude-plugins-official
 marketplaces:
   - name: cc-marketplace
     source: ananddtyagi/cc-marketplace

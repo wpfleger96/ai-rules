@@ -672,10 +672,6 @@ class Config:
 
         return base_settings_path
 
-    # NOTE: is_cache_stale(), get_cache_diff(), and build_merged_settings()
-    # have been moved to Agent base class (agents/base.py) where they can
-    # access agent-specific metadata (config_file_format, preserved_fields).
-
     @staticmethod
     def load_user_config() -> dict[str, Any]:
         """Load user config file with defaults.
