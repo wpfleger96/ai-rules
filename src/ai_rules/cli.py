@@ -457,6 +457,20 @@ def version_callback(ctx: click.Context, param: click.Parameter, value: bool) ->
         logger.debug(f"Failed to get statusline version: {e}")
 
     try:
+        from ai_rules.bootstrap import get_tool_version, is_command_available
+
+        if is_command_available("basic-memory"):
+            bm_version = get_tool_version("basic-memory")
+            if bm_version:
+                console.print(f"basic-memory, version {bm_version}")
+            else:
+                console.print(
+                    "basic-memory, version [dim](installed, version unknown)[/dim]"
+                )
+    except Exception as e:
+        logger.debug(f"Failed to get basic-memory version: {e}")
+
+    try:
         from ai_rules.bootstrap import check_tool_updates, get_tool_by_id
 
         tool = get_tool_by_id("ai-agent-rules")
@@ -1046,6 +1060,7 @@ def install(
     from rich.prompt import Confirm
 
     from ai_rules.bootstrap import (
+        ensure_basic_memory_installed,
         ensure_statusline_installed,
         get_effective_install_source,
     )
@@ -1100,6 +1115,19 @@ def install(
     except ProfileNotFoundError as e:
         console.print(f"[red]Error:[/red] {e}")
         sys.exit(1)
+
+    bm_result, bm_message = ensure_basic_memory_installed(
+        dry_run=dry_run, config=config
+    )
+    if bm_result == "installed":
+        if dry_run and bm_message:
+            console.print(f"[dim]{bm_message}[/dim]\n")
+        else:
+            console.print("[green]✓[/green] Installed basic-memory\n")
+    elif bm_result == "failed":
+        console.print(
+            "[yellow]⚠[/yellow] Failed to install basic-memory (continuing anyway)\n"
+        )
 
     if not dry_run:
         set_active_profile(profile)
@@ -1660,12 +1688,18 @@ def status(agents: str | None) -> None:
     console.print("[bold cyan]Optional Tools[/bold cyan]\n")
     from ai_rules.bootstrap import is_command_available
 
-    statusline_missing = False
+    optional_tools_missing = False
     if is_command_available("claude-statusline"):
         console.print("  [green]✓[/green] claude-statusline installed")
     else:
         console.print("  [yellow]○[/yellow] claude-statusline not installed")
-        statusline_missing = True
+        optional_tools_missing = True
+
+    if is_command_available("basic-memory"):
+        console.print("  [green]✓[/green] basic-memory installed")
+    else:
+        console.print("  [yellow]○[/yellow] basic-memory not installed")
+        optional_tools_missing = True
 
     console.print()
 
@@ -1707,7 +1741,7 @@ def status(agents: str | None) -> None:
                 "[yellow]💡 Run 'ai-agent-rules install' to fix issues[/yellow]"
             )
         sys.exit(1)
-    elif statusline_missing:
+    elif optional_tools_missing:
         console.print("[green]All symlinks are correct![/green]")
         console.print(
             "[yellow]💡 Run 'ai-agent-rules install' to install optional tools[/yellow]"
@@ -1838,7 +1872,7 @@ def list_agents_cmd() -> None:
 )
 @click.option(
     "--only",
-    type=click.Choice(["ai-agent-rules", "ai-rules", "statusline"]),
+    type=click.Choice(["ai-agent-rules", "ai-rules", "statusline", "basic-memory"]),
     help="Only upgrade specific tool",
 )
 def upgrade(
