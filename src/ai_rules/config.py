@@ -703,8 +703,12 @@ class Config:
         with open(user_config_path, "w") as f:
             yaml.dump(data, f, default_flow_style=False, sort_keys=False)
 
-    def cleanup_orphaned_cache(self) -> list[str]:
-        """Remove cache files for agents that no longer have overrides.
+    def cleanup_orphaned_cache(self, agents_needing_cache: set[str]) -> list[str]:
+        """Remove cache files for agents that no longer need them.
+
+        Args:
+            agents_needing_cache: Set of agent IDs that need caches (overrides
+                or preserved_fields). Callers must compute this via Agent.needs_cache.
 
         Returns:
             List of agent IDs whose caches were removed
@@ -717,7 +721,7 @@ class Config:
         for agent_dir in cache_dir.iterdir():
             if agent_dir.is_dir():
                 agent_id = agent_dir.name
-                if agent_id not in self.settings_overrides:
+                if agent_id not in agents_needing_cache:
                     shutil.rmtree(agent_dir)
                     removed.append(agent_id)
 

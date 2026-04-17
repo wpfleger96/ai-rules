@@ -713,22 +713,28 @@ class TestCacheCleanup:
     """Tests for orphaned cache cleanup functionality."""
 
     def test_cleanup_orphaned_cache(self, tmp_path, monkeypatch):
-        """Test that orphaned cache files are removed."""
+        """Test that orphaned cache files are removed but needed ones are kept."""
 
         home = tmp_path / "home"
         home.mkdir()
         monkeypatch.setenv("HOME", str(home))
         monkeypatch.setattr(Path, "home", staticmethod(lambda: home))
 
-        cache_dir = home / ".ai-rules" / "cache" / "claude"
-        cache_dir.mkdir(parents=True)
-        (cache_dir / "settings.json").write_text('{"orphaned": true}')
+        claude_cache = home / ".ai-rules" / "cache" / "claude"
+        claude_cache.mkdir(parents=True)
+        (claude_cache / "settings.json").write_text('{"active": true}')
+
+        stale_cache = home / ".ai-rules" / "cache" / "old_agent"
+        stale_cache.mkdir(parents=True)
+        (stale_cache / "config.json").write_text('{"stale": true}')
 
         config = Config(settings_overrides={})
 
-        removed = config.cleanup_orphaned_cache()
-        assert "claude" in removed
-        assert not cache_dir.exists()
+        removed = config.cleanup_orphaned_cache(agents_needing_cache={"claude"})
+        assert "old_agent" in removed
+        assert "claude" not in removed
+        assert claude_cache.exists()
+        assert not stale_cache.exists()
 
     def test_cleanup_preserves_cache_with_overrides(self, tmp_path, monkeypatch):
         """Test that cache files with active overrides are preserved."""
@@ -744,7 +750,7 @@ class TestCacheCleanup:
 
         config = Config(settings_overrides={"claude": {"model": "test"}})
 
-        removed = config.cleanup_orphaned_cache()
+        removed = config.cleanup_orphaned_cache(agents_needing_cache={"claude"})
         assert removed == []
         assert cache_dir.exists()
 
@@ -757,7 +763,7 @@ class TestCacheCleanup:
         monkeypatch.setattr(Path, "home", staticmethod(lambda: home))
 
         config = Config(settings_overrides={})
-        removed = config.cleanup_orphaned_cache()
+        removed = config.cleanup_orphaned_cache(agents_needing_cache=set())
         assert removed == []
 
 

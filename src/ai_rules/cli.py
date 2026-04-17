@@ -1092,7 +1092,8 @@ def install(
         console.print("[bold]Dry run mode - no changes will be made[/bold]\n")
 
     if not dry_run:
-        orphaned = config.cleanup_orphaned_cache()
+        agents_needing_cache = {a.agent_id for a in selected_agents if a.needs_cache}
+        orphaned = config.cleanup_orphaned_cache(agents_needing_cache)
         if orphaned:
             console.print(
                 f"[dim]✓ Cleaned up orphaned cache for: {', '.join(orphaned)}[/dim]"
@@ -2523,7 +2524,13 @@ def config_show(merged: bool, agent: str | None) -> None:
         agents_to_show = [agent] if agent else ["claude", "codex", "gemini", "goose"]
 
         for agent_name in agents_to_show:
-            if agent_name not in cfg.settings_overrides:
+            has_overrides = agent_name in cfg.settings_overrides
+            cache_path = cfg.get_merged_settings_path(
+                agent_name, "settings.json", force=True
+            )
+            has_cache = cache_path and cache_path.exists()
+
+            if not has_overrides and not has_cache:
                 console.print(
                     f"[dim]{agent_name}: No overrides (using base settings)[/dim]\n"
                 )
@@ -2556,7 +2563,8 @@ def config_show(merged: bool, agent: str | None) -> None:
                 merged_settings = cfg.merge_settings(agent_name, base_settings)
 
                 overridden_keys = []
-                for key in cfg.settings_overrides[agent_name]:
+                agent_overrides = cfg.settings_overrides.get(agent_name, {})
+                for key in agent_overrides:
                     if key in base_settings:
                         old_val = base_settings[key]
                         new_val = merged_settings[key]
@@ -2577,9 +2585,10 @@ def config_show(merged: bool, agent: str | None) -> None:
                 console.print(
                     f"  [yellow]⚠[/yellow] No base settings found at {base_path}"
                 )
-                console.print(
-                    f"  [dim]Overrides: {cfg.settings_overrides[agent_name]}[/dim]"
-                )
+                if has_overrides:
+                    console.print(
+                        f"  [dim]Overrides: {cfg.settings_overrides[agent_name]}[/dim]"
+                    )
 
             console.print()
     else:
