@@ -1326,7 +1326,7 @@ def status(agents: str | None) -> None:
 
         for target, _ in excluded_symlinks:
             console.print(f"  [dim]○[/dim] {target} [dim](excluded by config)[/dim]")
-        if agent.agent_id in config.settings_overrides:
+        if agent.needs_cache:
             if agent.is_cache_stale():
                 console.print("  [yellow]⚠[/yellow] Cached settings are stale")
                 diff_output = agent.get_cache_diff()
@@ -2128,7 +2128,7 @@ def diff(agents: str | None) -> None:
                 agent_has_diff = True
 
         cache_is_stale = False
-        if agent.agent_id in config.settings_overrides:
+        if agent.needs_cache:
             cache_is_stale = agent.is_cache_stale()
             if cache_is_stale:
                 agent_has_diff = True

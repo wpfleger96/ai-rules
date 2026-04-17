@@ -251,7 +251,6 @@ class TestStatusCacheValidation:
             yaml.dump(user_config, f)
 
         config = Config.load()
-        ClaudeAgent(test_repo, config).build_merged_settings()
         config.plugins = []
         config.marketplaces = []
 
@@ -260,6 +259,8 @@ class TestStatusCacheValidation:
         gemini = GeminiAgent(test_repo, config)
         goose = GooseAgent(test_repo, config)
         shared = SharedAgent(test_repo, config)
+        for agent in [claude, codex, gemini, goose]:
+            agent.build_merged_settings()
         for agent in [claude, codex, gemini, goose, shared]:
             for target, source in agent.symlinks:
                 target_path = Path(str(target).replace("~", str(mock_home)))
@@ -293,6 +294,8 @@ class TestStatusCacheValidation:
         gemini = GeminiAgent(test_repo, config)
         goose = GooseAgent(test_repo, config)
         shared = SharedAgent(test_repo, config)
+        for agent in [claude, codex, gemini, goose]:
+            agent.build_merged_settings()
         for agent in [claude, codex, gemini, goose, shared]:
             for target, source in agent.symlinks:
                 target_path = Path(str(target).replace("~", str(mock_home)))

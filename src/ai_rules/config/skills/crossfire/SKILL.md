@@ -15,7 +15,9 @@ metadata:
 - Uncommitted changes: !`git status --porcelain 2>/dev/null | wc -l | xargs`
 - PLAN files: !`sh -c 'COMMON=$(git rev-parse --path-format=absolute --git-common-dir 2>/dev/null); if [ -z "$COMMON" ]; then exit 0; fi; PROJECT_ROOT=$(dirname "$COMMON"); cd "$PROJECT_ROOT" && for f in PLAN__*.md; do [ -f "$f" ] && echo "$f"; done' 2>/dev/null | head -5`
 
-You are a crossfire review coordinator. Your job is to identify the artifact the user wants reviewed, then run independent reviews via Codex (GPT) and Gemini CLIs in parallel, and synthesize a consensus report.
+# Run Crossfire Review
+
+Detect what to review from `${ARGS}` using the Artifact Detection rules below, then proceed immediately to Orchestration.
 
 ## Artifact Detection
 
@@ -51,14 +53,14 @@ If no args provided:
 
 ---
 
-After determining the artifact (and optional review focus), proceed to **Orchestration**.
+Once you have the artifact and optional review focus, proceed immediately to **Orchestration** without waiting for further user input.
 
 ## Orchestration
 
 ### Step 1: Check CLI Availability
 
 ```bash
-CODEX_AVAILABLE=$(command -v codex >/dev/null 2>&1 && [ -f ~/.env/openai.key ] && echo "yes" || echo "no")
+CODEX_AVAILABLE=$(command -v codex >/dev/null 2>&1 && echo "yes" || echo "no")
 GEMINI_AVAILABLE=$(command -v gemini >/dev/null 2>&1 && [ -f ~/.env/gemini_cli.key ] && echo "yes" || echo "no")
 ```
 
@@ -118,7 +120,7 @@ Structure your response as:
 
 ### Step 3: Write Prompt and Launch CLIs
 
-Write the full prompt to a temp file. Do NOT pass it as a command-line argument — large artifacts (diffs, plans) exceed the OS `ARG_MAX` limit (~256KB on macOS). By writing to a file and giving the CLI a short instruction to read it, the command line stays small.
+Write the full prompt to a temp file. Do NOT pass it as a command-line argument or via stdin — large artifacts exceed the OS `ARG_MAX` limit, and stdin piping causes Codex to echo the full prompt to stderr. Instead, write to a file, close stdin with `< /dev/null` (prevents non-TTY hang), and instruct the CLI to `cat` the file.
 
 ```bash
 PROMPT_DIR=$(mktemp -d /tmp/crossfire-prompt-XXXXXX)
@@ -137,10 +139,10 @@ trap 'rm -rf "$PROMPT_DIR" "$CODEX_OUT" "$CODEX_ERR" "$GEMINI_OUT"' EXIT INT TER
 
 # Codex (background) — only if available
 if [ "$CODEX_AVAILABLE" = "yes" ]; then
-  OPENAI_API_KEY=$(cat ~/.env/openai.key) timeout 300 codex exec -C "$REPO_ROOT" \
+  timeout 300 codex exec -C "$REPO_ROOT" \
     --dangerously-bypass-approvals-and-sandbox \
-    "Follow the review instructions below." \
-    < "$PROMPT_FILE" \
+    "Run cat \"$PROMPT_FILE\" and follow the instructions in the output." \
+    < /dev/null \
     > "$CODEX_OUT" 2>"$CODEX_ERR" &
   CODEX_PID=$!
 fi

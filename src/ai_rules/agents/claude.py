@@ -51,7 +51,7 @@ class ClaudeAgent(Agent):
         settings_file = self.config_dir / "claude" / "settings.json"
         if settings_file.exists():
             target_file = self.config.get_settings_file_for_symlink(
-                "claude", settings_file
+                "claude", settings_file, force=bool(self.preserved_fields)
             )
             result.append((Path("~/.claude/settings.json"), target_file))
 

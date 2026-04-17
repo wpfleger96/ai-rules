@@ -266,13 +266,14 @@ settings_overrides:
 
         assert cached["model"] == "claude-sonnet-4-5-20250929"
 
-    def test_build_merged_settings_without_overrides_returns_none(
+    def test_build_merged_settings_without_overrides_creates_cache_for_preserved_fields(
         self, tmp_path, monkeypatch
     ):
-        """Test that no cache is created when there are no overrides."""
+        """Test that cache is created for agents with preserved_fields even without overrides."""
         home = tmp_path / "home"
         home.mkdir()
         monkeypatch.setenv("HOME", str(home))
+        monkeypatch.setattr(Path, "home", staticmethod(lambda: home))
 
         config_dir = tmp_path / "config"
         claude_dir = config_dir / "claude"
@@ -283,7 +284,8 @@ settings_overrides:
         agent = ClaudeAgent(config_dir, config)
         cache_path = agent.build_merged_settings()
 
-        assert cache_path is None
+        assert cache_path is not None
+        assert cache_path.exists()
 
     def test_cache_staleness_when_missing(self, cache_setup):
         """Test that cache is stale when it doesn't exist."""
@@ -894,7 +896,10 @@ class TestTomlSupport:
         assert not is_valid
         assert "nonexistent_key" in error
 
-    def test_toml_settings_not_stale_without_overrides(self, tmp_path, monkeypatch):
+    def test_toml_settings_stale_without_cache_when_preserved_fields(
+        self, tmp_path, monkeypatch
+    ):
+        """Agents with preserved_fields report stale when no cache exists."""
         home = tmp_path / "home"
         home.mkdir()
         monkeypatch.setenv("HOME", str(home))
@@ -903,8 +908,11 @@ class TestTomlSupport:
         config_dir = tmp_path / "config"
         codex_dir = config_dir / "codex"
         codex_dir.mkdir(parents=True)
-        (codex_dir / "config.toml").write_text('model = "gpt-5.2-codex"\n')
+        (codex_dir / "config.toml").write_text('model = "gpt-5.4"\n')
 
         config = Config()
         agent = CodexAgent(config_dir, config)
+        assert agent.is_cache_stale()
+
+        agent.build_merged_settings()
         assert not agent.is_cache_stale()

@@ -626,20 +626,21 @@ class Config:
         return deep_merge(base_settings, self.settings_overrides[agent])
 
     def get_merged_settings_path(
-        self, agent: str, config_file_name: str
+        self, agent: str, config_file_name: str, *, force: bool = False
     ) -> Path | None:
         """Get the path to cached merged settings for an agent.
 
-        Returns None if agent has no overrides (should use base file directly).
+        Returns None if agent has no overrides and force is False.
 
         Args:
             agent: Agent name (e.g., 'claude', 'goose')
             config_file_name: Config file name (e.g., 'settings.json')
+            force: Return cache path even without overrides (for preserved_fields)
 
         Returns:
-            Path to cached merged settings file, or None if no overrides exist
+            Path to cached merged settings file, or None
         """
-        if agent not in self.settings_overrides:
+        if not force and agent not in self.settings_overrides:
             return None
 
         cache_dir = self.get_cache_dir() / agent
@@ -647,26 +648,29 @@ class Config:
         return cache_dir / config_file_name
 
     def get_settings_file_for_symlink(
-        self, agent: str, base_settings_path: Path
+        self, agent: str, base_settings_path: Path, *, force: bool = False
     ) -> Path:
         """Get the appropriate settings file to use for symlinking.
 
-        Returns cached merged settings if overrides exist and cache is valid,
-        otherwise returns the base settings file.
+        Returns cached merged settings if overrides or force is set and cache
+        exists, otherwise returns the base settings file.
 
         This method does NOT build the cache - use build_merged_settings for that.
 
         Args:
             agent: Agent name (e.g., 'claude', 'goose')
             base_settings_path: Path to base settings file
+            force: Use cache even without overrides (for preserved_fields)
 
         Returns:
             Path to settings file to use (either cached or base)
         """
-        if agent not in self.settings_overrides:
+        if not force and agent not in self.settings_overrides:
             return base_settings_path
 
-        cache_path = self.get_merged_settings_path(agent, base_settings_path.name)
+        cache_path = self.get_merged_settings_path(
+            agent, base_settings_path.name, force=force
+        )
         if cache_path and cache_path.exists():
             return cache_path
 

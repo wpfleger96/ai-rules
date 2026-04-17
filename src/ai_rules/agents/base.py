@@ -57,6 +57,13 @@ class Agent(ABC):
         """
         return []
 
+    @property
+    def needs_cache(self) -> bool:
+        """Whether this agent needs a cache file (has overrides or preserved fields)."""
+        return self.agent_id in self.config.settings_overrides or bool(
+            self.preserved_fields
+        )
+
     @cached_property
     @abstractmethod
     def symlinks(self) -> list[tuple[Path, Path]]:
@@ -96,11 +103,11 @@ class Agent(ABC):
             load_config_file,
         )
 
-        if self.agent_id not in self.config.settings_overrides:
+        if not self.needs_cache:
             return None
 
         cache_path = self.config.get_merged_settings_path(
-            self.agent_id, self.config_file_name
+            self.agent_id, self.config_file_name, force=True
         )
 
         if not force_rebuild and cache_path and cache_path.exists():
@@ -162,11 +169,11 @@ class Agent(ABC):
         Returns:
             True if cache needs rebuilding, False otherwise
         """
-        if self.agent_id not in self.config.settings_overrides:
+        if not self.needs_cache:
             return False
 
         cache_path = self.config.get_merged_settings_path(
-            self.agent_id, self.config_file_name
+            self.agent_id, self.config_file_name, force=True
         )
         if not cache_path or not cache_path.exists():
             return True
@@ -206,7 +213,7 @@ class Agent(ABC):
 
         from ai_rules.config import CONFIG_PARSE_ERRORS, load_config_file
 
-        if self.agent_id not in self.config.settings_overrides:
+        if not self.needs_cache:
             return None
 
         config_format = self.config_file_format
@@ -221,7 +228,7 @@ class Agent(ABC):
                 return None
 
         cache_path = self.config.get_merged_settings_path(
-            self.agent_id, self.config_file_name
+            self.agent_id, self.config_file_name, force=True
         )
         cache_exists = cache_path and cache_path.exists()
 
