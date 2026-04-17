@@ -11,10 +11,12 @@ from collections.abc import Callable
 from dataclasses import dataclass
 
 from .installer import (
+    BASIC_MEMORY_GITHUB_REPO,
     GITHUB_REPO,
     STATUSLINE_GITHUB_REPO,
     UV_NOT_FOUND_ERROR,
     ToolSource,
+    _is_basic_memory_configured,
     _validate_package_name,
     get_tool_source,
     get_tool_version,
@@ -65,6 +67,7 @@ class ToolSpec:
     get_version: Callable[[], str | None]
     is_installed: Callable[[], bool]
     github_repo: str | None = None
+    is_enabled: Callable[[], bool] | None = None
 
     @property
     def github_install_url(self) -> str | None:
@@ -387,6 +390,19 @@ def perform_tool_upgrade(tool: ToolSpec) -> tuple[bool, str, bool]:
         return False, f"Unexpected error: {e}", False
 
 
+def _is_basic_memory_configured_for_active_profile() -> bool:
+    """Check if basic-memory is configured for the currently active profile."""
+    try:
+        from ai_rules.config import Config
+        from ai_rules.state import get_active_profile
+
+        profile = get_active_profile() or "default"
+        config = Config.load(profile=profile)
+        return _is_basic_memory_configured(config)
+    except Exception:
+        return False
+
+
 UPDATABLE_TOOLS: list[ToolSpec] = [
     ToolSpec(
         tool_id="ai-rules",
@@ -403,6 +419,15 @@ UPDATABLE_TOOLS: list[ToolSpec] = [
         get_version=lambda: get_tool_version("claude-code-statusline"),
         is_installed=lambda: is_command_available("claude-statusline"),
         github_repo=STATUSLINE_GITHUB_REPO,
+    ),
+    ToolSpec(
+        tool_id="basic-memory",
+        package_name="basic-memory",
+        display_name="basic-memory",
+        get_version=lambda: get_tool_version("basic-memory"),
+        is_installed=lambda: is_command_available("basic-memory"),
+        github_repo=BASIC_MEMORY_GITHUB_REPO,
+        is_enabled=lambda: _is_basic_memory_configured_for_active_profile(),
     ),
 ]
 
