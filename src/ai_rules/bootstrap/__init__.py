@@ -10,6 +10,7 @@ Designed to be self-contained and easily extractable for use in other projects.
 from .installer import (
     UV_NOT_FOUND_ERROR,
     ToolSource,
+    ensure_basic_memory_installed,
     ensure_statusline_installed,
     get_tool_config_dir,
     get_tool_source,
@@ -34,6 +35,7 @@ __all__ = [
     "parse_version",
     "UV_NOT_FOUND_ERROR",
     "ToolSource",
+    "ensure_basic_memory_installed",
     "ensure_statusline_installed",
     "get_tool_config_dir",
     "get_tool_source",

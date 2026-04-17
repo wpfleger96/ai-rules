@@ -133,6 +133,9 @@ Three similar lines > premature abstraction | No helpers for one-time ops | Only
 
 **Why:** LLMs confidently generate plausible-sounding but incorrect assumptions. Explicit verification prevents wasted work and builds trust through transparency.
 
+### Persistent Knowledge Base (basic-memory)
+A persistent knowledge base exists at `~/basic-memory/`. Use basic-memory MCP tools (`search_notes`, `build_context`) for cross-project context. When learning something worth persisting, invoke the `/kb` skill for formatting conventions before calling `write_note`.
+
 ---
 
 ## Technical Standards
