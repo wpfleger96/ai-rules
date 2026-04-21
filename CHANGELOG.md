@@ -1,6 +1,18 @@
 # CHANGELOG
 
 
+## v0.34.0 (2026-04-21)
+
+### Features
+
+- Ban test plan sections from PR descriptions
+  ([`a0f9230`](https://github.com/wpfleger96/ai-rules/commit/a0f9230bc7e2f46b7f3f294c582a5de968b33ebb))
+
+Claude Code's system prompt now injects a `## Test plan` template into PR descriptions by default.
+  The pr-creator skill already overrides this, but agents creating PRs via `gh pr create` or
+  built-in flows bypass the skill. Adding the rule to AGENTS.md (always loaded) closes the gap.
+
+
 ## v0.33.0 (2026-04-21)
 
 ### Features
