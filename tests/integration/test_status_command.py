@@ -140,7 +140,7 @@ class TestStatusCacheValidation:
 
         monkeypatch.setattr(ai_rules.cli, "get_config_dir", lambda: test_repo)
 
-        user_config_path = mock_home / ".ai-rules-config.yaml"
+        user_config_path = mock_home / ".ai-agent-rules-config.yaml"
         user_config = {
             "version": 1,
             "settings_overrides": {"claude": {"test_override": "value"}},
@@ -174,7 +174,7 @@ class TestStatusCacheValidation:
 
         monkeypatch.setattr(ai_rules.cli, "get_config_dir", lambda: test_repo)
 
-        user_config_path = mock_home / ".ai-rules-config.yaml"
+        user_config_path = mock_home / ".ai-agent-rules-config.yaml"
         user_config: dict[str, Any] = {
             "version": 1,
             "settings_overrides": {"claude": {"test_override": "value"}},
@@ -210,7 +210,7 @@ class TestStatusCacheValidation:
 
         monkeypatch.setattr(ai_rules.cli, "get_config_dir", lambda: test_repo)
 
-        user_config_path = mock_home / ".ai-rules-config.yaml"
+        user_config_path = mock_home / ".ai-agent-rules-config.yaml"
         user_config = {
             "version": 1,
             "settings_overrides": {"claude": {"test_override": "value"}},
@@ -243,7 +243,7 @@ class TestStatusCacheValidation:
             lambda: (_ for _ in ()).throw(RuntimeError("Not in git repo")),
         )
 
-        user_config_path = mock_home / ".ai-rules-config.yaml"
+        user_config_path = mock_home / ".ai-agent-rules-config.yaml"
         user_config = {
             "version": 1,
             "settings_overrides": {"claude": {"test_override": "value"}},
@@ -318,7 +318,7 @@ class TestStatusCacheValidation:
 
         monkeypatch.setattr(ai_rules.cli, "get_config_dir", lambda: test_repo)
 
-        user_config_path = mock_home / ".ai-rules-config.yaml"
+        user_config_path = mock_home / ".ai-agent-rules-config.yaml"
         user_config = {
             "version": 1,
             "settings_overrides": {"claude": {"model": "claude-sonnet-4"}},
@@ -363,7 +363,7 @@ class TestStatusCacheValidation:
 
         monkeypatch.setattr(ai_rules.cli, "get_config_dir", lambda: test_repo)
 
-        user_config_path = mock_home / ".ai-rules-config.yaml"
+        user_config_path = mock_home / ".ai-agent-rules-config.yaml"
         user_config = {
             "version": 1,
             "settings_overrides": {"claude": {"model": "claude-sonnet-4"}},

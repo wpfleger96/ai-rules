@@ -185,7 +185,9 @@ class Agent(ABC):
             if base_settings_path.stat().st_mtime > cache_mtime:
                 return True
 
-        user_config_path = Path.home() / ".ai-rules-config.yaml"
+        from ai_rules.config import get_user_config_path
+
+        user_config_path = get_user_config_path()
         if user_config_path.exists():
             if user_config_path.stat().st_mtime > cache_mtime:
                 return True

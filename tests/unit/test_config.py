@@ -50,7 +50,7 @@ def cache_setup(tmp_path, monkeypatch):
 class TestConfigLoading:
     """Test configuration file loading.
 
-    Note: As of v0.5.0, only user-level config (~/.ai-rules-config.yaml) is supported.
+    Note: As of v0.5.0, only user-level config (~/.ai-agent-rules-config.yaml) is supported.
     Repo-level config support was removed.
     """
 
@@ -60,7 +60,7 @@ class TestConfigLoading:
         monkeypatch.setenv("HOME", str(home))
         monkeypatch.setattr(Path, "home", staticmethod(lambda: home))
 
-        user_config = home / ".ai-rules-config.yaml"
+        user_config = home / ".ai-agent-rules-config.yaml"
         user_config.write_text(
             "version: 1\nexclude_symlinks:\n  - ~/.config/goose/config.yaml\n"
         )
@@ -85,7 +85,7 @@ class TestConfigLoading:
         monkeypatch.setenv("HOME", str(home))
         monkeypatch.setattr(Path, "home", staticmethod(lambda: home))
 
-        user_config = home / ".ai-rules-config.yaml"
+        user_config = home / ".ai-agent-rules-config.yaml"
         user_config.write_text("invalid: yaml: content: [[[")
 
         with pytest.raises(yaml.YAMLError):
@@ -181,7 +181,7 @@ class TestSettingsOverrides:
         monkeypatch.setenv("HOME", str(home))
         monkeypatch.setattr(Path, "home", staticmethod(lambda: home))
 
-        config_path = home / ".ai-rules-config.yaml"
+        config_path = home / ".ai-agent-rules-config.yaml"
         config_path.write_text(
             """version: 1
 settings_overrides:
@@ -363,7 +363,7 @@ settings_overrides:
         home.mkdir()
         monkeypatch.setenv("HOME", str(home))
 
-        cache_dir = home / ".ai-rules" / "cache" / "claude"
+        cache_dir = home / ".ai-agent-rules" / "cache" / "claude"
         cache_dir.mkdir(parents=True)
         cache_file = cache_dir / "settings.json"
         cache_file.write_text(
@@ -720,11 +720,11 @@ class TestCacheCleanup:
         monkeypatch.setenv("HOME", str(home))
         monkeypatch.setattr(Path, "home", staticmethod(lambda: home))
 
-        claude_cache = home / ".ai-rules" / "cache" / "claude"
+        claude_cache = home / ".ai-agent-rules" / "cache" / "claude"
         claude_cache.mkdir(parents=True)
         (claude_cache / "settings.json").write_text('{"active": true}')
 
-        stale_cache = home / ".ai-rules" / "cache" / "old_agent"
+        stale_cache = home / ".ai-agent-rules" / "cache" / "old_agent"
         stale_cache.mkdir(parents=True)
         (stale_cache / "config.json").write_text('{"stale": true}')
 
@@ -744,7 +744,7 @@ class TestCacheCleanup:
         monkeypatch.setenv("HOME", str(home))
         monkeypatch.setattr(Path, "home", staticmethod(lambda: home))
 
-        cache_dir = home / ".ai-rules" / "cache" / "claude"
+        cache_dir = home / ".ai-agent-rules" / "cache" / "claude"
         cache_dir.mkdir(parents=True)
         (cache_dir / "settings.json").write_text('{"active": true}')
 
@@ -811,7 +811,7 @@ settings_overrides:
         home.mkdir()
         monkeypatch.setattr(Path, "home", staticmethod(lambda: home))
 
-        (home / ".ai-rules-config.yaml").write_text("""
+        (home / ".ai-agent-rules-config.yaml").write_text("""
 settings_overrides:
   claude:
     model: user-model

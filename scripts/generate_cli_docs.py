@@ -11,7 +11,7 @@ from ai_rules.cli import main
 
 
 def discover_commands(
-    group: Any, prefix: str = "ai-rules", include_root: bool = True
+    group: Any, prefix: str = "ai-agent-rules", include_root: bool = True
 ) -> list[str]:
     """Recursively discover all CLI commands."""
     commands = []
@@ -66,9 +66,9 @@ def generate() -> None:
             print(f"  - {cmd}")
 
     output: list[str] = [
-        "# ai-rules CLI Reference\n\n",
+        "# ai-agent-rules CLI Reference\n\n",
         "Auto-generated from `--help`. Do not edit manually.\n\n",
-        "This is the complete CLI reference for ai-rules. For quick start examples and usage guides, see [README.md](../README.md).\n\n",
+        "This is the complete CLI reference for ai-agent-rules. For quick start examples and usage guides, see [README.md](../README.md).\n\n",
     ]
 
     for cmd in commands:

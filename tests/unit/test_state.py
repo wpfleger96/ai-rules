@@ -13,7 +13,7 @@ def state_setup(tmp_path, monkeypatch):
     monkeypatch.setenv("HOME", str(home))
     monkeypatch.setattr(Path, "home", staticmethod(lambda: home))
 
-    state_dir = home / ".ai-rules"
+    state_dir = home / ".ai-agent-rules"
     state_dir.mkdir()
 
     return {

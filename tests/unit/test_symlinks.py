@@ -50,7 +50,7 @@ class TestCreateSymlink:
 
         assert result == SymlinkResult.CREATED
         assert target.is_symlink()
-        backup_files = list(tmp_path.glob("target.txt.ai-rules-backup.*"))
+        backup_files = list(tmp_path.glob("target.txt.ai-agent-rules-backup.*"))
         assert len(backup_files) == 1
         assert backup_files[0].read_text() == "original content"
 
@@ -88,7 +88,7 @@ class TestCreateSymlink:
 
         assert result == SymlinkResult.CREATED
         assert target.read_text() == "original content"
-        backup_files = list(tmp_path.glob("target.txt.ai-rules-backup.*"))
+        backup_files = list(tmp_path.glob("target.txt.ai-agent-rules-backup.*"))
         assert len(backup_files) == 0
 
     def test_fails_when_source_does_not_exist(self, tmp_path):

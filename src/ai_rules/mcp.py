@@ -36,13 +36,19 @@ class MCPStatus:
         self.has_overrides: dict[str, bool] = {}
 
 
-MANAGED_BY_VALUE = "ai-rules"
+MANAGED_BY_VALUE = "ai-agent-rules"
+_MANAGED_BY_VALUE_LEGACY = "ai-rules"
+
+
+def is_managed_value(v: str | None) -> bool:
+    """Check if a value matches the current or legacy managed-by marker."""
+    return v in (MANAGED_BY_VALUE, _MANAGED_BY_VALUE_LEGACY)
 
 
 class MCPManager(ABC):
     """Abstract base for agent-specific MCP config managers."""
 
-    BACKUP_SUFFIX = "ai-rules-backup"
+    BACKUP_SUFFIX = "ai-agent-rules-backup"
 
     # --- abstract interface ---------------------------------------------------
 
@@ -181,7 +187,7 @@ class MCPManager(ABC):
         tracked_mcps = {
             name
             for name, cfg in current_mcps.items()
-            if cfg.get(self._marker_field) == MANAGED_BY_VALUE
+            if is_managed_value(cfg.get(self._marker_field))
         }
         removed_mcps = tracked_mcps - set(native_mcps.keys())
 
@@ -226,7 +232,7 @@ class MCPManager(ABC):
         tracked_mcps = {
             name
             for name, cfg in current_mcps.items()
-            if cfg.get(self._marker_field) == MANAGED_BY_VALUE
+            if is_managed_value(cfg.get(self._marker_field))
         }
 
         if not tracked_mcps:
@@ -261,7 +267,7 @@ class MCPManager(ABC):
         marker = self._marker_field
 
         for name, mcp_config in installed_mcps.items():
-            if mcp_config.get(marker) == MANAGED_BY_VALUE:
+            if is_managed_value(mcp_config.get(marker)):
                 if name in native_mcps:
                     status.managed_mcps[name] = mcp_config
                     expected_clean = {
@@ -450,18 +456,16 @@ class CodexMCPManager(MCPManager):
     Uses tomlkit for round-trip editing so non-MCP keys (approval_policy,
     trust_level, model) and comments are preserved.
 
-    The managed-names list is stored in a dedicated [_ai_rules_managed] section
+    The managed-names list is stored in a dedicated TOML section
     because TOML inline per-table markers are awkward.
     """
 
-    _MANAGED_SECTION = "_ai_rules_managed"
+    _MANAGED_SECTION = "_ai_agent_rules_managed"
+    _LEGACY_MANAGED_SECTION = "_ai_rules_managed"
 
     @property
     def _marker_field(self) -> str:
-        # Codex uses a dedicated section rather than per-entry markers;
-        # this value is returned for interface compatibility but not embedded
-        # inside individual MCP entries.
-        return "_ai_rules_managed_entry"
+        return "_ai_agent_rules_managed_entry"
 
     @property
     def _config_path(self) -> Path:
@@ -479,7 +483,9 @@ class CodexMCPManager(MCPManager):
             return tomlkit.load(f)
 
     def _get_managed_names(self, doc: Any) -> set[str]:
-        section = doc.get(self._MANAGED_SECTION, {})
+        section = doc.get(self._MANAGED_SECTION) or doc.get(
+            self._LEGACY_MANAGED_SECTION, {}
+        )
         names = section.get("names", [])
         return set(names) if isinstance(names, list) else set()
 
@@ -510,7 +516,7 @@ class CodexMCPManager(MCPManager):
         mcp_table = tomlkit.table()
 
         for name, cfg in mcps.items():
-            is_managed = cfg.get(self._marker_field) == MANAGED_BY_VALUE
+            is_managed = is_managed_value(cfg.get(self._marker_field))
             entry = tomlkit.table()
             for k, v in cfg.items():
                 if k == self._marker_field:
@@ -531,6 +537,9 @@ class CodexMCPManager(MCPManager):
         mgmt_section = tomlkit.table()
         mgmt_section["names"] = managed_names
         doc[self._MANAGED_SECTION] = mgmt_section
+
+        if self._LEGACY_MANAGED_SECTION in doc:
+            del doc[self._LEGACY_MANAGED_SECTION]
 
         with open(self._config_path, "w") as f:
             f.write(tomlkit.dumps(doc))

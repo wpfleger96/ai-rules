@@ -1,4 +1,4 @@
-"""Command-line interface for ai-rules."""
+"""Command-line interface for ai-agent-rules."""
 
 import logging
 import os
@@ -28,6 +28,12 @@ except PackageNotFoundError:
     __version__ = "dev"
 
 GIT_SUBPROCESS_TIMEOUT = 5
+
+
+def get_user_config_path() -> Path:
+    from ai_rules.config import get_user_config_path as _get_user_config_path
+
+    return _get_user_config_path()
 
 
 def _get_plugin_status(config: "Config") -> tuple[Any, Any] | None:
@@ -430,7 +436,7 @@ def version_callback(ctx: click.Context, param: click.Parameter, value: bool) ->
     if not value or ctx.resilient_parsing:
         return
 
-    console.print(f"ai-rules, version {__version__}")
+    console.print(f"ai-agent-rules, version {__version__}")
 
     try:
         from ai_rules.bootstrap import get_tool_version, is_command_available
@@ -449,14 +455,14 @@ def version_callback(ctx: click.Context, param: click.Parameter, value: bool) ->
     try:
         from ai_rules.bootstrap import check_tool_updates, get_tool_by_id
 
-        tool = get_tool_by_id("ai-rules")
+        tool = get_tool_by_id("ai-agent-rules")
         if tool:
             update_info = check_tool_updates(tool, timeout=3)
             if update_info and update_info.has_update:
                 console.print(
                     f"\n[cyan]Update available:[/cyan] {update_info.current_version} → {update_info.latest_version}"
                 )
-                console.print("[dim]Run 'ai-rules upgrade' to install[/dim]")
+                console.print("[dim]Run 'ai-agent-rules upgrade' to install[/dim]")
     except Exception as e:
         logger.debug(f"Failed to check for updates in version callback: {e}")
 
@@ -721,9 +727,9 @@ def setup(
     skip_completions: bool,
     profile: str | None,
 ) -> None:
-    """One-time setup: install symlinks and make ai-rules available system-wide.
+    """One-time setup: install symlinks and make ai-agent-rules available system-wide.
 
-    This is the recommended way to install ai-rules for first-time users.
+    This is the recommended way to install ai-agent-rules for first-time users.
 
     Example:
         uvx ai-agent-rules setup
@@ -744,8 +750,8 @@ def setup(
         perform_tool_upgrade,
     )
 
-    console.print("[bold cyan]Step 1/3: Install ai-rules system-wide[/bold cyan]")
-    console.print("This allows you to run 'ai-rules' from any directory.\n")
+    console.print("[bold cyan]Step 1/3: Install ai-agent-rules system-wide[/bold cyan]")
+    console.print("This allows you to run 'ai-agent-rules' from any directory.\n")
 
     statusline_result, statusline_message = ensure_statusline_installed(
         dry_run=dry_run, from_github=github
@@ -766,7 +772,7 @@ def setup(
             "[yellow]⚠[/yellow] Failed to install claude-statusline (continuing anyway)"
         )
 
-    ai_rules_tool = get_tool_by_id("ai-rules")
+    ai_rules_tool = get_tool_by_id("ai-agent-rules")
     tool_install_success = False
 
     if ai_rules_tool and ai_rules_tool.is_installed():
@@ -780,12 +786,12 @@ def setup(
             source_name = "GitHub" if github else "PyPI"
             if dry_run:
                 console.print(
-                    f"[dim]Would switch ai-rules from {current_source.name if current_source else 'unknown'} to {source_name}[/dim]"
+                    f"[dim]Would switch ai-agent-rules from {current_source.name if current_source else 'unknown'} to {source_name}[/dim]"
                 )
                 tool_install_success = True
             else:
                 if not yes and not Confirm.ask(
-                    f"Switch ai-rules to {source_name} install?", default=True
+                    f"Switch ai-agent-rules to {source_name} install?", default=True
                 ):
                     console.print("[yellow]Skipped source switch[/yellow]")
                     tool_install_success = True
@@ -814,26 +820,28 @@ def setup(
                 if update_info and update_info.has_update:
                     if dry_run:
                         console.print(
-                            f"[dim]Would upgrade ai-rules {update_info.current_version} → {update_info.latest_version}[/dim]"
+                            f"[dim]Would upgrade ai-agent-rules {update_info.current_version} → {update_info.latest_version}[/dim]"
                         )
                         tool_install_success = True
                     else:
                         if not yes and not Confirm.ask(
-                            f"Upgrade ai-rules {update_info.current_version} → {update_info.latest_version}?",
+                            f"Upgrade ai-agent-rules {update_info.current_version} → {update_info.latest_version}?",
                             default=True,
                         ):
-                            console.print("[yellow]Skipped ai-rules upgrade[/yellow]")
+                            console.print(
+                                "[yellow]Skipped ai-agent-rules upgrade[/yellow]"
+                            )
                             tool_install_success = True
                         else:
                             success, msg, _ = perform_tool_upgrade(ai_rules_tool)
                             if success:
                                 console.print(
-                                    f"[green]✓[/green] Upgraded ai-rules ({update_info.current_version} → {update_info.latest_version})"
+                                    f"[green]✓[/green] Upgraded ai-agent-rules ({update_info.current_version} → {update_info.latest_version})"
                                 )
                                 tool_install_success = True
                             else:
                                 console.print(
-                                    "[red]Error:[/red] Failed to upgrade ai-rules"
+                                    "[red]Error:[/red] Failed to upgrade ai-agent-rules"
                                 )
                 else:
                     tool_install_success = True
@@ -842,9 +850,9 @@ def setup(
 
     if not tool_install_success:
         if not yes and not dry_run:
-            if not Confirm.ask("Install ai-rules permanently?", default=True):
+            if not Confirm.ask("Install ai-agent-rules permanently?", default=True):
                 console.print(
-                    "\n[yellow]Skipped.[/yellow] You can still run via: uvx ai-rules <command>"
+                    "\n[yellow]Skipped.[/yellow] You can still run via: uvx ai-agent-rules <command>"
                 )
                 return
 
@@ -910,6 +918,8 @@ def setup(
             get_supported_shells,
             install_completion,
             is_completion_installed,
+            is_legacy_completion_block,
+            update_completion,
         )
 
         console.print("\n[bold cyan]Step 3/3: Shell completion setup[/bold cyan]\n")
@@ -918,7 +928,16 @@ def setup(
         if shell:
             config_path = find_config_file(shell)
             if config_path and is_completion_installed(config_path):
-                console.print(f"[green]✓[/green] {shell} completion already installed")
+                if is_legacy_completion_block(config_path):
+                    success, msg = update_completion(shell, dry_run=dry_run)
+                    if success:
+                        console.print(f"[green]✓[/green] {msg}")
+                    else:
+                        console.print(f"[yellow]⚠[/yellow] {msg}")
+                else:
+                    console.print(
+                        f"[green]✓[/green] {shell} completion already installed"
+                    )
             elif (
                 yes
                 or dry_run
@@ -939,7 +958,9 @@ def setup(
         console.print("\n[dim]Dry run complete - no changes were made.[/dim]")
     else:
         console.print("\n[green]✓ Setup complete![/green]")
-        console.print("You can now run [bold]ai-rules[/bold] from anywhere.")
+        console.print(
+            "You can now run [bold]ai-agent-rules[/bold] (or [bold]ai-rules[/bold]) from anywhere."
+        )
 
 
 @main.command()
@@ -1192,7 +1213,7 @@ def install(
         shell = detect_shell()
         if shell:
             success, msg = install_completion(shell, dry_run=dry_run)
-            if success and not dry_run:
+            if success and not dry_run and "already installed" not in msg:
                 console.print(f"\n[dim]✓ {msg}[/dim]")
 
     format_summary(
@@ -1606,7 +1627,7 @@ def status(agents: str | None) -> None:
         else:
             console.print(
                 f"  [yellow]○[/yellow] {shell} completion not installed "
-                "(run: ai-rules completions install)"
+                "(run: ai-agent-rules completions install)"
             )
     else:
         supported = ", ".join(get_supported_shells())
@@ -1619,15 +1640,17 @@ def status(agents: str | None) -> None:
     if not all_correct:
         if cache_stale:
             console.print(
-                "[yellow]💡 Run 'ai-rules install --rebuild-cache' to fix issues[/yellow]"
+                "[yellow]💡 Run 'ai-agent-rules install --rebuild-cache' to fix issues[/yellow]"
             )
         else:
-            console.print("[yellow]💡 Run 'ai-rules install' to fix issues[/yellow]")
+            console.print(
+                "[yellow]💡 Run 'ai-agent-rules install' to fix issues[/yellow]"
+            )
         sys.exit(1)
     elif statusline_missing:
         console.print("[green]All symlinks are correct![/green]")
         console.print(
-            "[yellow]💡 Run 'ai-rules install' to install optional tools[/yellow]"
+            "[yellow]💡 Run 'ai-agent-rules install' to install optional tools[/yellow]"
         )
     else:
         console.print("[green]All symlinks are correct![/green]")
@@ -1753,19 +1776,19 @@ def list_agents_cmd() -> None:
 )
 @click.option(
     "--only",
-    type=click.Choice(["ai-rules", "statusline"]),
+    type=click.Choice(["ai-agent-rules", "ai-rules", "statusline"]),
     help="Only upgrade specific tool",
 )
 def upgrade(
     check: bool, force: bool, yes: bool, skip_install: bool, only: str | None
 ) -> None:
-    """Upgrade ai-rules and related tools to the latest versions from PyPI.
+    """Upgrade ai-agent-rules and related tools to the latest versions from PyPI.
 
     Examples:
-        ai-rules upgrade                    # Check and install all updates
-        ai-rules upgrade --check            # Only check for updates
-        ai-rules upgrade -y                 # Auto-confirm installation
-        ai-rules upgrade --only=statusline  # Only upgrade statusline tool
+        ai-agent-rules upgrade                    # Check and install all updates
+        ai-agent-rules upgrade --check            # Only check for updates
+        ai-agent-rules upgrade -y                 # Auto-confirm installation
+        ai-agent-rules upgrade --only=statusline  # Only upgrade statusline tool
     """
     from rich.console import Console
     from rich.prompt import Confirm
@@ -1775,10 +1798,16 @@ def upgrade(
         check_tool_updates,
         perform_tool_upgrade,
     )
+    from ai_rules.bootstrap.updater import _TOOL_ID_ALIASES
 
     console = Console()
 
-    tools = [t for t in UPDATABLE_TOOLS if only is None or t.tool_id == only]
+    resolved_only = _TOOL_ID_ALIASES.get(only, only) if only else None
+    tools = [
+        t
+        for t in UPDATABLE_TOOLS
+        if resolved_only is None or t.tool_id == resolved_only
+    ]
     tools = [t for t in tools if t.is_installed()]
 
     if not tools:
@@ -1842,7 +1871,7 @@ def upgrade(
 
     if check:
         if tool_updates:
-            console.print("\nRun [bold]ai-rules upgrade[/bold] to install")
+            console.print("\nRun [bold]ai-agent-rules upgrade[/bold] to install")
         return
 
     if not force and not yes:
@@ -1871,7 +1900,7 @@ def upgrade(
                 console.print(
                     f"[green]✓[/green] {tool.display_name} upgraded to {new_version}"
                 )
-                if tool.tool_id == "ai-rules":
+                if tool.tool_id == "ai-agent-rules":
                     ai_rules_upgraded = True
             elif new_version == update_info.current_version:
                 console.print(
@@ -1881,7 +1910,7 @@ def upgrade(
                 console.print(
                     f"[green]✓[/green] {tool.display_name} upgraded to {new_version}"
                 )
-                if tool.tool_id == "ai-rules":
+                if tool.tool_id == "ai-agent-rules":
                     ai_rules_upgraded = True
         else:
             console.print(
@@ -1892,7 +1921,9 @@ def upgrade(
         try:
             import subprocess
 
-            console.print("\n[dim]Running 'ai-rules install --rebuild-cache'...[/dim]")
+            console.print(
+                "\n[dim]Running 'ai-agent-rules install --rebuild-cache'...[/dim]"
+            )
 
             from ai_rules.state import get_active_profile
 
@@ -1900,7 +1931,7 @@ def upgrade(
 
             result = subprocess.run(
                 [
-                    "ai-rules",
+                    "ai-agent-rules",
                     "install",
                     "--rebuild-cache",
                     "-y",
@@ -1919,21 +1950,23 @@ def upgrade(
                     f"[yellow]⚠[/yellow] Install failed with exit code {result.returncode}"
                 )
                 console.print(
-                    "[dim]Run 'ai-rules install --rebuild-cache' manually to retry[/dim]"
+                    "[dim]Run 'ai-agent-rules install --rebuild-cache' manually to retry[/dim]"
                 )
         except subprocess.TimeoutExpired:
             console.print("[yellow]⚠[/yellow] Install timed out after 30 seconds")
             console.print(
-                "[dim]Run 'ai-rules install --rebuild-cache' manually to retry[/dim]"
+                "[dim]Run 'ai-agent-rules install --rebuild-cache' manually to retry[/dim]"
             )
         except Exception as e:
             console.print(f"[yellow]⚠[/yellow] Could not run install: {e}")
-            console.print("[dim]Run 'ai-rules install --rebuild-cache' manually[/dim]")
+            console.print(
+                "[dim]Run 'ai-agent-rules install --rebuild-cache' manually[/dim]"
+            )
 
 
 @main.command()
 def info() -> None:
-    """Show installation method and version info for ai-rules tools.
+    """Show installation method and version info for ai-agent-rules tools.
 
     Displays how each tool was installed (PyPI or GitHub)
     along with current versions and update availability.
@@ -1984,7 +2017,7 @@ def info() -> None:
     console.print(table)
 
     if has_updates:
-        console.print("\n[dim]Run 'ai-rules upgrade' to install updates.[/dim]")
+        console.print("\n[dim]Run 'ai-agent-rules upgrade' to install updates.[/dim]")
 
 
 @main.command()
@@ -2173,7 +2206,7 @@ def diff(agents: str | None) -> None:
         console.print("[green]No differences found - all symlinks are correct![/green]")
     else:
         console.print(
-            "[yellow]💡 Run 'ai-rules install' to fix these differences[/yellow]"
+            "[yellow]💡 Run 'ai-agent-rules install' to fix these differences[/yellow]"
         )
 
 
@@ -2208,7 +2241,7 @@ def exclude_add(pattern: str) -> None:
     data["exclude_symlinks"].append(pattern)
     Config.save_user_config(data)
 
-    user_config_path = Path.home() / ".ai-rules-config.yaml"
+    user_config_path = get_user_config_path()
     console.print(f"[green]✓[/green] Added exclusion pattern: {pattern}")
     console.print(f"[dim]Config updated: {user_config_path}[/dim]")
 
@@ -2223,7 +2256,7 @@ def exclude_remove(pattern: str) -> None:
 
     console = Console()
 
-    user_config_path = Path.home() / ".ai-rules-config.yaml"
+    user_config_path = get_user_config_path()
 
     if not user_config_path.exists():
         console.print("[red]No user config found[/red]")
@@ -2299,7 +2332,7 @@ def override_set(key: str, value: str) -> None:
 
     console = Console()
 
-    user_config_path = Path.home() / ".ai-rules-config.yaml"
+    user_config_path = get_user_config_path()
     config_dir = get_config_dir()
 
     parts = key.split(".", 1)
@@ -2395,7 +2428,7 @@ def override_set(key: str, value: str) -> None:
     console.print(f"[green]✓[/green] Set override: {agent}.{setting} = {parsed_value}")
     console.print(f"[dim]Config updated: {user_config_path}[/dim]")
     console.print(
-        "\n[yellow]💡 Run 'ai-rules install --rebuild-cache' to apply changes[/yellow]"
+        "\n[yellow]💡 Run 'ai-agent-rules install --rebuild-cache' to apply changes[/yellow]"
     )
 
 
@@ -2413,7 +2446,7 @@ def override_unset(key: str) -> None:
 
     console = Console()
 
-    user_config_path = Path.home() / ".ai-rules-config.yaml"
+    user_config_path = get_user_config_path()
 
     if not user_config_path.exists():
         console.print("[red]No user config found[/red]")
@@ -2469,7 +2502,7 @@ def override_unset(key: str) -> None:
     console.print(f"[green]✓[/green] Removed override: {key}")
     console.print(f"[dim]Config updated: {user_config_path}[/dim]")
     console.print(
-        "\n[yellow]💡 Run 'ai-rules install --rebuild-cache' to apply changes[/yellow]"
+        "\n[yellow]💡 Run 'ai-agent-rules install --rebuild-cache' to apply changes[/yellow]"
     )
 
 
@@ -2500,7 +2533,7 @@ def override_list() -> None:
 
 @main.group()
 def config() -> None:
-    """Manage ai-rules configuration."""
+    """Manage ai-agent-rules configuration."""
     pass
 
 
@@ -2519,7 +2552,7 @@ def config_show(merged: bool, agent: str | None) -> None:
 
     config_dir = get_config_dir()
     cfg = Config.load()
-    user_config_path = Path.home() / ".ai-rules-config.yaml"
+    user_config_path = get_user_config_path()
 
     if merged:
         console.print("[bold]Merged Settings:[/bold]\n")
@@ -2616,7 +2649,7 @@ def config_edit() -> None:
     import os
     import subprocess
 
-    user_config_path = Path.home() / ".ai-rules-config.yaml"
+    user_config_path = get_user_config_path()
     editor = os.environ.get("EDITOR", "vi")
 
     if not user_config_path.exists():
@@ -2813,10 +2846,12 @@ def config_init() -> None:
 
     console = Console()
 
-    user_config_path = Path.home() / ".ai-rules-config.yaml"
+    user_config_path = get_user_config_path()
 
-    console.print("[bold cyan]Welcome to ai-rules configuration wizard![/bold cyan]\n")
-    console.print("This will help you set up your .ai-rules-config.yaml file.")
+    console.print(
+        "[bold cyan]Welcome to ai-agent-rules configuration wizard![/bold cyan]\n"
+    )
+    console.print("This will help you set up your .ai-agent-rules-config.yaml file.")
     console.print(f"Config will be created at: [dim]{user_config_path}[/dim]\n")
 
     if user_config_path.exists():
@@ -2842,10 +2877,14 @@ def config_init() -> None:
 
         console.print(f"\n[green]✓[/green] Configuration saved to {user_config_path}")
         console.print("\n[bold]Next steps:[/bold]")
-        console.print("  • Run [cyan]ai-rules install[/cyan] to apply these settings")
-        console.print("  • Run [cyan]ai-rules config show[/cyan] to view your config")
         console.print(
-            "  • Run [cyan]ai-rules config show --merged[/cyan] to see merged settings"
+            "  • Run [cyan]ai-agent-rules install[/cyan] to apply these settings"
+        )
+        console.print(
+            "  • Run [cyan]ai-agent-rules config show[/cyan] to view your config"
+        )
+        console.print(
+            "  • Run [cyan]ai-agent-rules config show --merged[/cyan] to see merged settings"
         )
     else:
         console.print("[dim]Configuration not saved[/dim]")
@@ -2970,7 +3009,7 @@ def _detect_profile_override_conflicts(
 
     Args:
         profile: The profile being installed
-        user_config: User config dict from ~/.ai-rules-config.yaml
+        user_config: User config dict from ~/.ai-agent-rules-config.yaml
 
     Returns:
         List of (agent, key, value) tuples for settings that conflict
@@ -3091,7 +3130,7 @@ def completions_bash() -> None:
         console.print(
             "\n[dim]To install: Add the above to your ~/.bashrc or run:[/dim]"
         )
-        console.print("[dim]  ai-rules completions install[/dim]")
+        console.print("[dim]  ai-agent-rules completions install[/dim]")
     except Exception as e:
         console.print(f"[red]Error generating completion script:[/red] {e}")
         sys.exit(1)
@@ -3110,7 +3149,7 @@ def completions_zsh() -> None:
         script = generate_completion_script("zsh")
         console.print(script)
         console.print("\n[dim]To install: Add the above to your ~/.zshrc or run:[/dim]")
-        console.print("[dim]  ai-rules completions install[/dim]")
+        console.print("[dim]  ai-agent-rules completions install[/dim]")
     except Exception as e:
         console.print(f"[red]Error generating completion script:[/red] {e}")
         sys.exit(1)
@@ -3188,6 +3227,38 @@ def completions_uninstall(shell: str | None) -> None:
         sys.exit(1)
 
 
+@completions.command(name="update")
+@click.option(
+    "--shell",
+    type=click.Choice(_SUPPORTED_SHELLS, case_sensitive=False),
+    help="Shell type (auto-detected if not specified)",
+)
+def completions_update(shell: str | None) -> None:
+    """Re-generate completion block (fixes PATH shadowing issues)."""
+    from rich.console import Console
+
+    from ai_rules.completions import detect_shell, update_completion
+
+    console = Console()
+
+    if shell is None:
+        shell = detect_shell()
+        if shell is None:
+            console.print(
+                "[red]Error:[/red] Could not detect shell. Use --shell to specify."
+            )
+            sys.exit(1)
+        console.print(f"[dim]Detected shell:[/dim] {shell}")
+
+    success, message = update_completion(shell, dry_run=False)
+
+    if success:
+        console.print(f"[green]✓[/green] {message}")
+    else:
+        console.print(f"[red]Error:[/red] {message}")
+        sys.exit(1)
+
+
 @completions.command(name="status")
 def completions_status() -> None:
     """Show shell completion installation status."""
@@ -3233,7 +3304,7 @@ def completions_status() -> None:
         table.add_row(shell_name, status, config_str)
 
     console.print(table)
-    console.print("\n[dim]To install: ai-rules completions install[/dim]")
+    console.print("\n[dim]To install: ai-agent-rules completions install[/dim]")
 
 
 if __name__ == "__main__":

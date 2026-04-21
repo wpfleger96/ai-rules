@@ -78,7 +78,7 @@ def test_install_mcps_fresh(manager, mock_home, test_repo):
         data = json.load(f)
         assert "mcpServers" in data
         assert "test-mcp" in data["mcpServers"]
-        assert data["mcpServers"]["test-mcp"]["_managedBy"] == "ai-rules"
+        assert data["mcpServers"]["test-mcp"]["_managedBy"] == "ai-agent-rules"
 
 
 def test_install_mcps_update(manager, mock_home, test_repo):
@@ -202,7 +202,7 @@ def test_atomic_write_backup(manager, mock_home, test_repo):
 
     manager.install_mcps(test_repo, config, force=True)
 
-    backup_files = list(manager.CLAUDE_JSON.parent.glob("*.ai-rules-backup.*"))
+    backup_files = list(manager.CLAUDE_JSON.parent.glob("*.ai-agent-rules-backup.*"))
     assert len(backup_files) == 1
 
     with open(backup_files[0]) as f:
@@ -280,7 +280,7 @@ def test_install_removes_mcps_no_longer_in_repo(manager, mock_home, test_repo):
     with open(manager.CLAUDE_JSON) as f:
         data = json.load(f)
         assert "test-mcp" in data["mcpServers"]
-        assert data["mcpServers"]["test-mcp"]["_managedBy"] == "ai-rules"
+        assert data["mcpServers"]["test-mcp"]["_managedBy"] == "ai-agent-rules"
 
     mcps_file = test_repo / "claude" / "mcps.json"
     mcps_file.write_text("{}")
@@ -386,7 +386,7 @@ def test_goose_install_and_uninstall(mock_home, test_repo):
         data = yaml.safe_load(f)
 
     assert "recall" in data["extensions"]
-    assert data["extensions"]["recall"]["_managed_by"] == "ai-rules"
+    assert data["extensions"]["recall"]["_managed_by"] == "ai-agent-rules"
     assert data["extensions"]["recall"]["cmd"] == "uvx"
 
     result, message = mgr.uninstall_mcps()
@@ -474,7 +474,7 @@ def test_codex_install_and_uninstall(mock_home, test_repo):
 
     mcp_servers = dict(doc["mcp_servers"])  # type: ignore[arg-type]
     assert "recall" in mcp_servers
-    managed_section = doc["_ai_rules_managed"]
+    managed_section = doc["_ai_agent_rules_managed"]
     managed_names = list(managed_section["names"])  # type: ignore[index,arg-type]
     assert "recall" in managed_names
 
@@ -484,7 +484,7 @@ def test_codex_install_and_uninstall(mock_home, test_repo):
         doc = tomlkit.load(f)
     mcp_servers_after = dict(doc.get("mcp_servers", {}))
     assert "recall" not in mcp_servers_after
-    managed_after = doc.get("_ai_rules_managed", {})
+    managed_after = doc.get("_ai_agent_rules_managed", {})
     names_after = list(managed_after.get("names", []))
     assert "recall" not in names_after
 
@@ -563,7 +563,7 @@ def test_gemini_install_and_uninstall(mock_home, test_repo):
         data = json.load(f)
 
     assert "recall" in data["mcpServers"]
-    assert data["mcpServers"]["recall"]["_managedBy"] == "ai-rules"
+    assert data["mcpServers"]["recall"]["_managedBy"] == "ai-agent-rules"
     assert data["mcpServers"]["recall"]["timeout"] == 30000
     assert data["mcpServers"]["recall"]["trust"] is False
 
@@ -649,7 +649,7 @@ def test_amp_install_and_uninstall(mock_home, test_repo):
         data = json.load(f)
 
     assert "recall" in data["amp.mcpServers"]
-    assert data["amp.mcpServers"]["recall"]["_managedBy"] == "ai-rules"
+    assert data["amp.mcpServers"]["recall"]["_managedBy"] == "ai-agent-rules"
     assert data["amp.mcpServers"]["recall"]["command"] == "uvx"
 
     result, message = mgr.uninstall_mcps()

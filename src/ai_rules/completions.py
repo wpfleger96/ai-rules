@@ -1,12 +1,19 @@
 """Shell completion installation and management."""
 
 import os
+import re
 
 from dataclasses import dataclass
 from pathlib import Path
 
-COMPLETION_MARKER_START = "# ai-rules shell completion"
-COMPLETION_MARKER_END = "# End ai-rules shell completion"
+COMPLETION_MARKER_START = "# ai-agent-rules shell completion"
+COMPLETION_MARKER_END = "# End ai-agent-rules shell completion"
+
+_LEGACY_MARKER_START = "# ai-rules shell completion"
+_LEGACY_MARKER_END = "# End ai-rules shell completion"
+
+CANONICAL_CMD = "ai-agent-rules"
+ALIAS_CMD = "ai-rules"
 
 
 @dataclass
@@ -72,6 +79,11 @@ def find_config_file(shell: str) -> Path | None:
     return candidates[0] if candidates else None
 
 
+def _has_any_marker(content: str) -> bool:
+    """Check if content contains any completion marker (current or legacy)."""
+    return COMPLETION_MARKER_START in content or _LEGACY_MARKER_START in content
+
+
 def is_completion_installed(config_path: Path) -> bool:
     """Check if completion is already installed in config file.
 
@@ -79,17 +91,36 @@ def is_completion_installed(config_path: Path) -> bool:
         config_path: Path to shell config file
 
     Returns:
-        True if completion marker found in file
+        True if any completion marker (current or legacy) found in file
     """
     if not config_path.exists():
         return False
 
     content = config_path.read_text()
-    return COMPLETION_MARKER_START in content
+    return _has_any_marker(content)
+
+
+def is_legacy_completion_block(config_path: Path) -> bool:
+    """Check if the installed completion block uses the legacy format.
+
+    Legacy format: old markers or missing `command -v` guard.
+    """
+    if not config_path.exists():
+        return False
+
+    content = config_path.read_text()
+    if _LEGACY_MARKER_START in content:
+        return True
+    if COMPLETION_MARKER_START in content and "command -v" not in content:
+        return True
+    return False
 
 
 def generate_completion_script(shell: str) -> str:
-    """Generate completion script using Click's shell_completion module.
+    """Generate completion script with shell-native aliasing.
+
+    Uses ai-agent-rules (unshadowed by Hermit) as the canonical binary,
+    then aliases the completion function to ai-rules via compdef/complete.
 
     Args:
         shell: Shell name ('bash' or 'zsh')
@@ -106,11 +137,21 @@ def generate_completion_script(shell: str) -> str:
     if comp_cls is None:
         raise ValueError(f"Unsupported shell: {shell}")
 
-    prog_name = "ai-rules"
-    env_var = f"_{prog_name.upper().replace('-', '_')}_COMPLETE"
+    env_var = f"_{CANONICAL_CMD.upper().replace('-', '_')}_COMPLETE"
 
-    return f"""{COMPLETION_MARKER_START}
-eval "$({env_var}={shell}_source {prog_name})"
+    if shell == "zsh":
+        return f"""{COMPLETION_MARKER_START}
+if command -v {CANONICAL_CMD} >/dev/null 2>&1; then
+  eval "$({env_var}=zsh_source {CANONICAL_CMD})"
+  compdef _ai_agent_rules_completion {ALIAS_CMD}
+fi
+{COMPLETION_MARKER_END}"""
+    else:
+        return f"""{COMPLETION_MARKER_START}
+if command -v {CANONICAL_CMD} >/dev/null 2>&1; then
+  eval "$({env_var}=bash_source {CANONICAL_CMD})"
+  complete -o nosort -F _ai_agent_rules_completion {ALIAS_CMD}
+fi
 {COMPLETION_MARKER_END}"""
 
 
@@ -137,6 +178,8 @@ def install_completion(shell: str, dry_run: bool = False) -> tuple[bool, str]:
         )
 
     if is_completion_installed(config_path):
+        if is_legacy_completion_block(config_path):
+            return update_completion(shell, dry_run=dry_run)
         return True, f"Completion already installed in {config_path}"
 
     script = generate_completion_script(shell)
@@ -155,8 +198,37 @@ def install_completion(shell: str, dry_run: bool = False) -> tuple[bool, str]:
         return False, f"Failed to write to {config_path}: {e}"
 
 
+def update_completion(shell: str, dry_run: bool = False) -> tuple[bool, str]:
+    """Replace existing completion block with a freshly generated one."""
+    config_path = find_config_file(shell)
+    if config_path is None:
+        return False, f"No {shell} config file found"
+    if not is_completion_installed(config_path):
+        return install_completion(shell, dry_run=dry_run)
+
+    new_script = generate_completion_script(shell)
+    if dry_run:
+        return True, f"Would update completion in {config_path}"
+
+    content = config_path.read_text()
+
+    start_re = (
+        re.escape(COMPLETION_MARKER_START) + "|" + re.escape(_LEGACY_MARKER_START)
+    )
+    end_re = re.escape(COMPLETION_MARKER_END) + "|" + re.escape(_LEGACY_MARKER_END)
+    pattern = f"({start_re}).*?({end_re})"
+    new_content, n = re.subn(pattern, new_script, content, flags=re.DOTALL)
+    if n == 0:
+        return False, f"Could not find completion block in {config_path}"
+    config_path.write_text(new_content)
+    return (
+        True,
+        f"Completion updated in {config_path}. Restart your shell or run: source {config_path}",
+    )
+
+
 def uninstall_completion(config_path: Path) -> tuple[bool, str]:
-    """Remove completion block from shell config file.
+    """Remove all completion blocks (current and legacy) from shell config file.
 
     Args:
         config_path: Path to shell config file
@@ -172,23 +244,18 @@ def uninstall_completion(config_path: Path) -> tuple[bool, str]:
 
     try:
         content = config_path.read_text()
-        lines = content.split("\n")
 
-        start_idx = None
-        end_idx = None
-        for i, line in enumerate(lines):
-            if COMPLETION_MARKER_START in line:
-                start_idx = i
-            elif COMPLETION_MARKER_END in line:
-                end_idx = i
-                break
+        start_re = (
+            re.escape(COMPLETION_MARKER_START) + "|" + re.escape(_LEGACY_MARKER_START)
+        )
+        end_re = re.escape(COMPLETION_MARKER_END) + "|" + re.escape(_LEGACY_MARKER_END)
+        pattern = f"({start_re}).*?({end_re})"
+        new_content = re.sub(pattern, "", content, flags=re.DOTALL)
 
-        if start_idx is not None and end_idx is not None:
-            new_lines = lines[:start_idx] + lines[end_idx + 1 :]
-            new_content = "\n".join(new_lines)
-            config_path.write_text(new_content)
-            return True, f"Completion removed from {config_path}"
-        else:
-            return False, f"Could not find completion block markers in {config_path}"
+        # Clean up extra blank lines left behind
+        new_content = re.sub(r"\n{3,}", "\n\n", new_content)
+
+        config_path.write_text(new_content)
+        return True, f"Completion removed from {config_path}"
     except Exception as e:
         return False, f"Failed to modify {config_path}: {e}"

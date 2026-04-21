@@ -7,10 +7,10 @@ Instructions for AI coding agents working on this repository.
 | Aspect | Value |
 |--------|-------|
 | **PyPI package** | `ai-agent-rules` |
-| **CLI command** | `ai-rules` (preferred) or `ai-agent-rules` |
+| **CLI command** | `ai-agent-rules` (canonical) or `ai-rules` (alias) |
 | **Python module** | `ai_rules` |
 
-The name `ai-rules` was taken on PyPI, so the package is published as `ai-agent-rules`. Both CLI entry points work, but use `ai-rules` in docs and examples (shorter).
+The name `ai-rules` was taken on PyPI, so the package is published as `ai-agent-rules`. Both CLI entry points work. Use `ai-agent-rules` as the canonical name; `ai-rules` is kept as a convenience alias.
 
 **Supported agents:** Claude Code, Goose, Shared (AGENTS.md)
 
@@ -21,26 +21,26 @@ just                          # Lint, format, and type check
 just test                     # Run tests
 just test-unit                # Run unit tests only
 just test-integration         # Run integration tests only
-uv run ai-rules <cmd>         # Run CLI
+uv run ai-agent-rules <cmd>         # Run CLI
 
 # GitHub installation
-uv run ai-rules setup --github  # Install from GitHub instead of PyPI
+uv run ai-agent-rules setup --github  # Install from GitHub instead of PyPI
 
 # Key CLI commands
-uv run ai-rules install        # Install symlinks
-uv run ai-rules status         # Check symlink status (shows diffs)
-uv run ai-rules info           # Show installation method and version info
-uv run ai-rules upgrade        # Upgrade to latest (shows changelogs)
-uv run ai-rules validate       # Validate config files
-uv run ai-rules diff           # Show diffs between repo and installed
+uv run ai-agent-rules install        # Install symlinks
+uv run ai-agent-rules status         # Check symlink status (shows diffs)
+uv run ai-agent-rules info           # Show installation method and version info
+uv run ai-agent-rules upgrade        # Upgrade to latest (shows changelogs)
+uv run ai-agent-rules validate       # Validate config files
+uv run ai-agent-rules diff           # Show diffs between repo and installed
 
 # Subcommands
-uv run ai-rules config show    # Show current config
-uv run ai-rules config edit    # Edit user config in $EDITOR
-uv run ai-rules override list  # List settings overrides
-uv run ai-rules completions install  # Install shell completions
-uv run ai-rules profile list   # List available profiles
-uv run ai-rules profile switch <name>  # Switch to different profile
+uv run ai-agent-rules config show    # Show current config
+uv run ai-agent-rules config edit    # Edit user config in $EDITOR
+uv run ai-agent-rules override list  # List settings overrides
+uv run ai-agent-rules completions install  # Install shell completions
+uv run ai-agent-rules profile list   # List available profiles
+uv run ai-agent-rules profile switch <name>  # Switch to different profile
 ```
 
 ## Tech Stack
@@ -102,19 +102,19 @@ All AI tools inherit from `Agent` (`agents/base.py`). To add a new tool:
 3. Register in `cli.py::get_agents()`
 
 ### Config System
-- User config: `~/.ai-rules-config.yaml`
-- **State file**: `~/.ai-rules/state.yaml` (tracks active profile, last install time)
+- User config: `~/.ai-agent-rules-config.yaml`
+- **State file**: `~/.ai-agent-rules/state.yaml` (tracks active profile, last install time)
 - **Profiles**: Named collections of overrides (default, work) with inheritance
   - Built-in: `config/profiles/{default,work}.yaml`
-  - User: `~/.ai-rules/profiles/*.yaml`
+  - User: `~/.ai-agent-rules/profiles/*.yaml`
   - Inheritance via `extends:` key (e.g., work extends default)
   - Commands: `profile list`, `profile show`, `profile current`, `profile switch`
 - `settings_overrides` for machine-specific agent settings
 - Cache-based override merging for settings.json files (Claude, Goose)
   - **Critical**: Preserves Claude-managed fields (`enabledPlugins`) during cache rebuild
 - **Plugin management**: Declarative plugin installs from profiles (`plugins`, `marketplaces` keys)
-  - Auto-uninstalls orphaned plugins (previously managed by ai-rules, removed from config)
-  - Tracks managed plugins in `~/.claude/plugins/ai-rules-managed.json`
+  - Auto-uninstalls orphaned plugins (previously managed by ai-agent-rules, removed from config)
+  - Tracks managed plugins in `~/.claude/plugins/ai-agent-rules-managed.json`
   - Warns about manually-installed plugins not in config (doesn't auto-remove)
 - Agent-specific hints (CLAUDE.md, .goosehints) use `@~/AGENTS.md` to reference main file (token-saving)
 
@@ -152,8 +152,8 @@ uv run pytest -m state          # State management tests only
    - `uv tool` → uv config (UV_DEFAULT_INDEX/UV_INDEX_URL)
    - Solution: Pass explicit `--index-url` to pip, `--default-index` to uv
 
-4. **Local development vs installed tool** - **CRITICAL**: Always use `uv run ai-rules` when developing locally:
-   - **Local dev (from repo)**: `uv run ai-rules <command>` → runs YOUR local code changes directly
+4. **Local development vs installed tool** - **CRITICAL**: Always use `uv run ai-agent-rules` when developing locally:
+   - **Local dev (from repo)**: `uv run ai-agent-rules <command>` → runs YOUR local code changes directly
    - **Installed tool (any directory)**: `ai-rules <command>` → runs installed version from `~/.local/share/uv/tools/`
    - Running `ai-rules` without `uv run` will NOT reflect your local changes
    - **NEVER use editable install** (`uv pip install -e .`) - risks conflicts with installed version, unnecessary complexity
@@ -167,10 +167,10 @@ uv run pytest -m state          # State management tests only
    - Useful for pre-release features before PyPI publish
 
 7. **Preserved fields in settings.json** - `enabledPlugins`, `hooks` managed by Claude Code or user:
-   - ai-rules preserves these fields during cache rebuilds
+   - ai-agent-rules preserves these fields during cache rebuilds
    - Defined in `PRESERVED_FIELDS` constant (config.py, formerly `CLAUDE_MANAGED_FIELDS`)
-   - Tracking file: `~/.claude/ai-rules-managed-fields.json` (tracks ai-rules contributions)
-   - Cleanup: When ai-rules removes a hook from source, it's removed from user settings
+   - Tracking file: `~/.claude/ai-agent-rules-managed-fields.json` (tracks ai-agent-rules contributions)
+   - Cleanup: When ai-agent-rules removes a hook from source, it's removed from user settings
    - User hooks preserved (e.g., custom UserPromptSubmit hooks won't be removed)
 
 8. **Upgrade shows changelogs** - `upgrade` command fetches CHANGELOG.md from GitHub:

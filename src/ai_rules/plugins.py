@@ -54,7 +54,18 @@ class PluginManager:
     KNOWN_MARKETPLACES_PATH = (
         Path.home() / ".claude" / "plugins" / "known_marketplaces.json"
     )
-    MANAGED_PLUGINS_PATH = Path.home() / ".claude" / "plugins" / "ai-rules-managed.json"
+    _MANAGED_PLUGINS_FILE = "ai-agent-rules-managed.json"
+    _LEGACY_MANAGED_PLUGINS_FILE = "ai-rules-managed.json"
+
+    @property
+    def MANAGED_PLUGINS_PATH(self) -> Path:
+        plugins_dir = Path.home() / ".claude" / "plugins"
+        new_path = plugins_dir / self._MANAGED_PLUGINS_FILE
+        old_path = plugins_dir / self._LEGACY_MANAGED_PLUGINS_FILE
+        if not new_path.exists() and old_path.exists():
+            old_path.rename(new_path)
+        return new_path
+
     SETTINGS_PATH = Path.home() / ".claude" / "settings.json"
     CLI_TIMEOUT = 30
 

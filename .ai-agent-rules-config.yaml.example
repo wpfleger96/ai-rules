@@ -1,8 +1,8 @@
 # Example AI Rules configuration file
 #
-# Place this file at: ~/.ai-rules-config.yaml
+# Place this file at: ~/.ai-agent-rules-config.yaml
 #
-# Quick setup: Run `ai-rules config init` for an interactive wizard
+# Quick setup: Run `ai-agent-rulesconfig init` for an interactive wizard
 
 version: 1
 
@@ -13,9 +13,9 @@ version: 1
 # Supports glob patterns: *.json, **/*.yaml, etc.
 #
 # CLI commands:
-#   ai-rules exclude add "~/.claude/*.log"
-#   ai-rules exclude remove "~/.claude/settings.json"
-#   ai-rules exclude list
+#   ai-agent-rulesexclude add "~/.claude/*.log"
+#   ai-agent-rulesexclude remove "~/.claude/settings.json"
+#   ai-agent-rulesexclude list
 exclude_symlinks:
   # Exact path exclusions
   # - "~/.config/goose/config.yaml"
@@ -35,17 +35,17 @@ exclude_symlinks:
 # How it works:
 #   1. Base settings from config/claude/settings.json (git-tracked)
 #   2. Merged with overrides below (local only, not in git)
-#   3. Result cached in ~/.ai-rules/cache/claude/settings.json
+#   3. Result cached in ~/.ai-agent-rules/cache/claude/settings.json
 #   4. Symlinked to ~/.claude/settings.json
 #
 # Use case: Different model access on work vs personal laptop
 #
 # CLI commands:
-#   ai-rules override set claude.model "claude-sonnet-4-5-20250929"
-#   ai-rules override set claude.hooks.SubagentStop[0].hooks[0].command "script.py"
-#   ai-rules override unset claude.model
-#   ai-rules override list
-#   ai-rules config show --merged
+#   ai-agent-rulesoverride set claude.model "claude-sonnet-4-5-20250929"
+#   ai-agent-rulesoverride set claude.hooks.SubagentStop[0].hooks[0].command "script.py"
+#   ai-agent-rulesoverride unset claude.model
+#   ai-agent-rulesoverride list
+#   ai-agent-rulesconfig show --merged
 #
 # Array notation:
 #   Use [0], [1], etc. for array indices in nested structures
@@ -55,7 +55,7 @@ exclude_symlinks:
 #   Commands validate paths against base settings and provide suggestions
 #   Invalid paths are rejected with helpful error messages
 #
-# After changing overrides: ai-rules install --rebuild-cache
+# After changing overrides: ai-agent-rulesinstall --rebuild-cache
 settings_overrides:
   # Simple overrides
   # claude:
