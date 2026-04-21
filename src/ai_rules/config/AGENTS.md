@@ -478,3 +478,10 @@ Do not fabricate plausible-sounding information — text, data, or numerical val
 - Generating plausible-looking data (metrics, statistics, query results) instead of admitting uncertainty
 
 If an operation fails, stop and report the failure. If you don't know, say so.
+
+### PR Descriptions - MANDATORY
+
+**NEVER include a "Test Plan", "Testing", or "Test plan" section in PR descriptions.** This overrides Claude Code's default PR template. Applies to all PR creation paths.
+
+- ❌ `## Test plan` with checkbox items ("tests passing", "lint clean", "manual verification")
+- ✅ Omit the section entirely -- CI passing is a gate, not a finding
