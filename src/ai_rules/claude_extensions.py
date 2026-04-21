@@ -139,7 +139,11 @@ class ClaudeExtensionManager:
             except (OSError, RuntimeError):
                 try:
                     raw_target = str(item.readlink())
-                    if "ai_rules/config" in raw_target or "ai-rules" in raw_target:
+                    if (
+                        "ai_rules/config" in raw_target
+                        or "ai-agent-rules" in raw_target
+                        or "ai-rules" in raw_target
+                    ):
                         orphaned[item.stem if not is_directory else item.name] = item
                 except (OSError, RuntimeError):
                     pass

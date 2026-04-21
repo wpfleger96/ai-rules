@@ -35,6 +35,8 @@ __all__ = [
     "CONFIG_PARSE_ERRORS",
     "ManagedFieldsTracker",
     "dump_config_file",
+    "get_managed_fields_path",
+    "get_user_config_path",
     "load_config_file",
     "navigate_path",
     "parse_setting_path",
@@ -65,7 +67,53 @@ AGENT_SKILLS_DIRS = {
     "goose": Path("~/.config/goose/skills"),
 }
 
-MANAGED_FIELDS_PATH = Path.home() / ".claude" / "ai-rules-managed-fields.json"
+_CONFIG_FILE_NAME = ".ai-agent-rules-config.yaml"
+_LEGACY_CONFIG_FILE_NAME = ".ai-rules-config.yaml"
+
+_MANAGED_FIELDS_FILE = "ai-agent-rules-managed-fields.json"
+_LEGACY_MANAGED_FIELDS_FILE = "ai-rules-managed-fields.json"
+
+
+def get_user_config_path() -> Path:
+    """Get the user config file path, migrating from legacy path if needed."""
+    import sys
+
+    home = Path.home()
+    new_path = home / _CONFIG_FILE_NAME
+    old_path = home / _LEGACY_CONFIG_FILE_NAME
+
+    if new_path.exists():
+        if old_path.exists():
+            old_size = old_path.stat().st_size
+            new_size = new_path.stat().st_size
+            if new_size == 0 and old_size > 0:
+                shutil.copy2(old_path, new_path)
+                old_path.rename(old_path.with_suffix(".yaml.migrated"))
+            else:
+                print(
+                    f"Warning: Found config at both {old_path} and {new_path}. Using {new_path}.",
+                    file=sys.stderr,
+                )
+        return new_path
+
+    if old_path.exists():
+        old_path.rename(new_path)
+        return new_path
+
+    return new_path
+
+
+def get_managed_fields_path() -> Path:
+    """Get the managed fields tracking file path, migrating from legacy if needed."""
+    claude_dir = Path.home() / ".claude"
+    new_path = claude_dir / _MANAGED_FIELDS_FILE
+    old_path = claude_dir / _LEGACY_MANAGED_FIELDS_FILE
+
+    if not new_path.exists() and old_path.exists():
+        old_path.rename(new_path)
+
+    return new_path
+
 
 CONFIG_PARSE_ERRORS = (
     json.JSONDecodeError,
@@ -325,18 +373,20 @@ def validate_override_path(
 
 
 class ManagedFieldsTracker:
-    """Track ai-rules contributions to preserved fields.
+    """Track ai-agent-rules contributions to preserved fields.
 
-    Prevents stale entries when ai-rules removes something from source config
+    Prevents stale entries when ai-agent-rules removes something from source config
     while preserving user-added entries.
     """
 
-    def __init__(self, path: Path = MANAGED_FIELDS_PATH):
+    def __init__(self, path: Path | None = None):
+        if path is None:
+            path = get_managed_fields_path()
         self.path = path
         self._data: dict[str, Any] = {}
 
     def load(self) -> dict[str, Any]:
-        """Load tracked ai-rules contributions."""
+        """Load tracked ai-agent-rules contributions."""
         if not self.path.exists():
             return {"version": 1}
 
@@ -348,7 +398,7 @@ class ManagedFieldsTracker:
             return {"version": 1}
 
     def save(self, contributions: dict[str, Any] | None = None) -> None:
-        """Save ai-rules contributions."""
+        """Save ai-agent-rules contributions."""
         if contributions is not None:
             self._data = contributions
 
@@ -362,13 +412,13 @@ class ManagedFieldsTracker:
             pass
 
     def get_field_contributions(self, field: str) -> Any:
-        """Get ai-rules contributions for a specific field."""
+        """Get ai-agent-rules contributions for a specific field."""
         if not self._data:
             self.load()
         return self._data.get(field)
 
     def set_field_contributions(self, field: str, value: Any) -> None:
-        """Update ai-rules contributions for a specific field."""
+        """Update ai-agent-rules contributions for a specific field."""
         if not self._data:
             self.load()
         if value is None:
@@ -382,12 +432,12 @@ class ManagedFieldsTracker:
         source_settings: dict[str, Any],
         preserved_fields: list[str],
     ) -> dict[str, Any]:
-        """Remove stale ai-rules contributions from existing settings.
+        """Remove stale ai-agent-rules contributions from existing settings.
 
         For each preserved field:
-        1. Get what ai-rules previously contributed (from tracking file)
-        2. Get what ai-rules currently contributes (from source settings)
-        3. Find entries in existing that match stale ai-rules contributions
+        1. Get what ai-agent-rules previously contributed (from tracking file)
+        2. Get what ai-agent-rules currently contributes (from source settings)
+        3. Find entries in existing that match stale ai-agent-rules contributions
         4. Remove those stale entries, keep everything else
 
         Returns cleaned existing_settings.
@@ -422,7 +472,7 @@ class ManagedFieldsTracker:
         """Remove stale ai-rules hook contributions.
 
         For each event type (UserPromptSubmit, PreCompact, etc.):
-        1. Get tracked commands ai-rules added
+        1. Get tracked commands ai-agent-rules added
         2. Get current commands in source config
         3. For each tracked command not in source, remove from existing
         4. Keep all user-added hooks
@@ -469,7 +519,7 @@ class ManagedFieldsTracker:
 
 
 class Config:
-    """Configuration for ai-rules tool."""
+    """Configuration for ai-agent-rules tool."""
 
     def __init__(
         self,
@@ -515,11 +565,11 @@ class Config:
 
     @classmethod
     def load(cls, profile: str | None = None) -> Config:
-        """Load configuration from profile and ~/.ai-rules-config.yaml.
+        """Load configuration from profile and ~/.ai-agent-rules-config.yaml.
 
         Merge order (lowest to highest priority):
         1. Profile overrides (if profile specified, defaults to active profile or "default")
-        2. Local overrides from ~/.ai-rules-config.yaml
+        2. Local overrides from ~/.ai-agent-rules-config.yaml
 
         Args:
             profile: Optional profile name to load (default: active profile or "default")
@@ -552,7 +602,7 @@ class Config:
         plugins = copy.deepcopy(profile_data.plugins)
         marketplaces = copy.deepcopy(profile_data.marketplaces)
 
-        user_config_path = Path.home() / ".ai-rules-config.yaml"
+        user_config_path = get_user_config_path()
         if user_config_path.exists():
             with open(user_config_path) as f:
                 user_data = yaml.safe_load(f) or {}
@@ -606,7 +656,9 @@ class Config:
     @staticmethod
     def get_cache_dir() -> Path:
         """Get the cache directory for merged settings."""
-        cache_dir = Path.home() / ".ai-rules" / "cache"
+        from ai_rules.state import get_state_dir
+
+        cache_dir = get_state_dir() / "cache"
         cache_dir.mkdir(parents=True, exist_ok=True)
         return cache_dir
 
@@ -685,7 +737,7 @@ class Config:
         Returns:
             Dictionary with user config data, or empty dict with version if file doesn't exist
         """
-        user_config_path = Path.home() / ".ai-rules-config.yaml"
+        user_config_path = get_user_config_path()
 
         if user_config_path.exists():
             with open(user_config_path) as f:
@@ -699,7 +751,7 @@ class Config:
         Args:
             data: Configuration dictionary to save
         """
-        user_config_path = Path.home() / ".ai-rules-config.yaml"
+        user_config_path = get_user_config_path()
         user_config_path.parent.mkdir(parents=True, exist_ok=True)
 
         with open(user_config_path, "w") as f:

@@ -32,9 +32,9 @@ dependencies = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/willpfleger/ai-rules"
-Repository = "https://github.com/willpfleger/ai-rules"
-Issues = "https://github.com/willpfleger/ai-rules/issues"
+Homepage = "https://github.com/wpfleger96/ai-agent-rules"
+Repository = "https://github.com/wpfleger96/ai-agent-rules"
+Issues = "https://github.com/wpfleger96/ai-agent-rules/issues"
 
 [project.scripts]
 ai-rules = "ai_rules.cli:main"

@@ -1,4 +1,4 @@
-"""State management for ai-rules."""
+"""State management for ai-agent-rules."""
 
 from datetime import UTC, datetime
 from pathlib import Path
@@ -6,10 +6,28 @@ from typing import Any
 
 import yaml
 
+_STATE_DIR_NAME = ".ai-agent-rules"
+_LEGACY_STATE_DIR_NAME = ".ai-rules"
+
+
+def get_state_dir() -> Path:
+    """Get the state directory, migrating from legacy path if needed."""
+    home = Path.home()
+    new_dir = home / _STATE_DIR_NAME
+    if new_dir.exists():
+        return new_dir
+
+    old_dir = home / _LEGACY_STATE_DIR_NAME
+    if old_dir.exists():
+        old_dir.rename(new_dir)
+        return new_dir
+
+    return new_dir
+
 
 def _get_state_file() -> Path:
     """Get the state file path."""
-    return Path.home() / ".ai-rules" / "state.yaml"
+    return get_state_dir() / "state.yaml"
 
 
 def get_state() -> dict[str, Any]:

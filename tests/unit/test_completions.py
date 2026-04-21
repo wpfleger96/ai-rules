@@ -5,6 +5,8 @@ from unittest.mock import patch
 import pytest
 
 from ai_rules.completions import (
+    _LEGACY_MARKER_END,
+    _LEGACY_MARKER_START,
     COMPLETION_MARKER_END,
     COMPLETION_MARKER_START,
     detect_shell,
@@ -13,7 +15,9 @@ from ai_rules.completions import (
     get_shell_config_candidates,
     install_completion,
     is_completion_installed,
+    is_legacy_completion_block,
     uninstall_completion,
+    update_completion,
 )
 
 
@@ -128,7 +132,7 @@ class TestIsCompletionInstalled:
 
         assert is_completion_installed(config_file) is False
 
-    def test_installed(self, tmp_path):
+    def test_installed_current_markers(self, tmp_path):
         config_file = tmp_path / ".bashrc"
         config_file.write_text(
             f"# Some config\n{COMPLETION_MARKER_START}\neval something\n{COMPLETION_MARKER_END}\n"
@@ -136,9 +140,52 @@ class TestIsCompletionInstalled:
 
         assert is_completion_installed(config_file) is True
 
+    def test_installed_legacy_markers(self, tmp_path):
+        config_file = tmp_path / ".bashrc"
+        config_file.write_text(
+            f"# Some config\n{_LEGACY_MARKER_START}\neval something\n{_LEGACY_MARKER_END}\n"
+        )
+
+        assert is_completion_installed(config_file) is True
+
     def test_file_not_exists(self, tmp_path):
         config_file = tmp_path / ".bashrc"
         assert is_completion_installed(config_file) is False
+
+
+@pytest.mark.unit
+@pytest.mark.completions
+class TestIsLegacyCompletionBlock:
+    """Test detecting legacy completion blocks."""
+
+    def test_legacy_markers(self, tmp_path):
+        config_file = tmp_path / ".zshrc"
+        config_file.write_text(
+            f'{_LEGACY_MARKER_START}\neval "$(_AI_RULES_COMPLETE=zsh_source ai-rules)"\n{_LEGACY_MARKER_END}\n'
+        )
+        assert is_legacy_completion_block(config_file) is True
+
+    def test_current_markers_without_command_v(self, tmp_path):
+        config_file = tmp_path / ".zshrc"
+        config_file.write_text(
+            f'{COMPLETION_MARKER_START}\neval "$(_AI_AGENT_RULES_COMPLETE=zsh_source ai-agent-rules)"\n{COMPLETION_MARKER_END}\n'
+        )
+        assert is_legacy_completion_block(config_file) is True
+
+    def test_current_format_not_legacy(self, tmp_path):
+        config_file = tmp_path / ".zshrc"
+        script = generate_completion_script("zsh")
+        config_file.write_text(script)
+        assert is_legacy_completion_block(config_file) is False
+
+    def test_file_not_exists(self, tmp_path):
+        config_file = tmp_path / ".zshrc"
+        assert is_legacy_completion_block(config_file) is False
+
+    def test_no_markers_at_all(self, tmp_path):
+        config_file = tmp_path / ".zshrc"
+        config_file.write_text("# just a normal zshrc\n")
+        assert is_legacy_completion_block(config_file) is False
 
 
 @pytest.mark.unit
@@ -151,18 +198,28 @@ class TestGenerateCompletionScript:
 
         assert COMPLETION_MARKER_START in script
         assert COMPLETION_MARKER_END in script
-        assert "_AI_RULES_COMPLETE=bash_source ai-rules" in script
+        assert "command -v ai-agent-rules" in script
+        assert "_AI_AGENT_RULES_COMPLETE=bash_source ai-agent-rules" in script
+        assert "complete -o nosort -F _ai_agent_rules_completion ai-rules" in script
 
     def test_generates_zsh_script(self):
         script = generate_completion_script("zsh")
 
         assert COMPLETION_MARKER_START in script
         assert COMPLETION_MARKER_END in script
-        assert "_AI_RULES_COMPLETE=zsh_source ai-rules" in script
+        assert "command -v ai-agent-rules" in script
+        assert "_AI_AGENT_RULES_COMPLETE=zsh_source ai-agent-rules" in script
+        assert "compdef _ai_agent_rules_completion ai-rules" in script
 
     def test_unsupported_shell_raises_error(self):
         with pytest.raises(ValueError, match="Unsupported shell"):
             generate_completion_script("ksh")
+
+    def test_contains_if_guard(self):
+        for shell in ("bash", "zsh"):
+            script = generate_completion_script(shell)
+            assert "if command -v ai-agent-rules >/dev/null 2>&1; then" in script
+            assert "fi" in script
 
 
 @pytest.mark.unit
@@ -183,7 +240,7 @@ class TestInstallCompletion:
             assert "Completion installed" in message
             content = bashrc.read_text()
             assert COMPLETION_MARKER_START in content
-            assert "_AI_RULES_COMPLETE=bash_source ai-rules" in content
+            assert "_AI_AGENT_RULES_COMPLETE=bash_source ai-agent-rules" in content
 
     def test_install_dry_run(self, tmp_path):
         home = tmp_path / "home"
@@ -203,15 +260,32 @@ class TestInstallCompletion:
         home = tmp_path / "home"
         home.mkdir()
         bashrc = home / ".bashrc"
-        bashrc.write_text(
-            f"# bashrc\n{COMPLETION_MARKER_START}\neval something\n{COMPLETION_MARKER_END}\n"
-        )
+        script = generate_completion_script("bash")
+        bashrc.write_text(f"# bashrc\n{script}\n")
 
         with patch("ai_rules.completions.Path.home", return_value=home):
             success, message = install_completion("bash", dry_run=False)
 
             assert success is True
             assert "already installed" in message
+
+    def test_install_upgrades_legacy_block(self, tmp_path):
+        home = tmp_path / "home"
+        home.mkdir()
+        bashrc = home / ".bashrc"
+        bashrc.write_text(
+            f'# bashrc\n{_LEGACY_MARKER_START}\neval "$(_AI_RULES_COMPLETE=bash_source ai-rules)"\n{_LEGACY_MARKER_END}\n'
+        )
+
+        with patch("ai_rules.completions.Path.home", return_value=home):
+            success, message = install_completion("bash", dry_run=False)
+
+            assert success is True
+            assert "updated" in message.lower()
+            content = bashrc.read_text()
+            assert _LEGACY_MARKER_START not in content
+            assert COMPLETION_MARKER_START in content
+            assert "command -v ai-agent-rules" in content
 
     def test_install_no_config_file(self, tmp_path):
         home = tmp_path / "home"
@@ -232,14 +306,85 @@ class TestInstallCompletion:
 
 @pytest.mark.unit
 @pytest.mark.completions
+class TestUpdateCompletion:
+    """Test completion update (in-place replacement)."""
+
+    def test_update_replaces_legacy_block(self, tmp_path):
+        home = tmp_path / "home"
+        home.mkdir()
+        zshrc = home / ".zshrc"
+        zshrc.write_text(
+            f'# before\n{_LEGACY_MARKER_START}\neval "$(_AI_RULES_COMPLETE=zsh_source ai-rules)"\n{_LEGACY_MARKER_END}\n# after\n'
+        )
+
+        with patch("ai_rules.completions.Path.home", return_value=home):
+            success, message = update_completion("zsh")
+
+        assert success is True
+        content = zshrc.read_text()
+        assert "# before\n" in content
+        assert "# after\n" in content
+        assert _LEGACY_MARKER_START not in content
+        assert COMPLETION_MARKER_START in content
+        assert "command -v ai-agent-rules" in content
+        assert "compdef _ai_agent_rules_completion ai-rules" in content
+
+    def test_update_replaces_current_block(self, tmp_path):
+        home = tmp_path / "home"
+        home.mkdir()
+        zshrc = home / ".zshrc"
+        old_script = f'{COMPLETION_MARKER_START}\neval "$(_AI_AGENT_RULES_COMPLETE=zsh_source ai-agent-rules)"\n{COMPLETION_MARKER_END}'
+        zshrc.write_text(f"# before\n{old_script}\n# after\n")
+
+        with patch("ai_rules.completions.Path.home", return_value=home):
+            success, message = update_completion("zsh")
+
+        assert success is True
+        content = zshrc.read_text()
+        assert "# before\n" in content
+        assert "# after\n" in content
+        assert "command -v ai-agent-rules" in content
+
+    def test_update_installs_when_no_block(self, tmp_path):
+        home = tmp_path / "home"
+        home.mkdir()
+        zshrc = home / ".zshrc"
+        zshrc.write_text("# zshrc\n")
+
+        with patch("ai_rules.completions.Path.home", return_value=home):
+            success, message = update_completion("zsh")
+
+        assert success is True
+        assert "installed" in message.lower()
+        content = zshrc.read_text()
+        assert COMPLETION_MARKER_START in content
+
+    def test_update_dry_run(self, tmp_path):
+        home = tmp_path / "home"
+        home.mkdir()
+        zshrc = home / ".zshrc"
+        zshrc.write_text(
+            f"# zshrc\n{_LEGACY_MARKER_START}\neval old\n{_LEGACY_MARKER_END}\n"
+        )
+
+        with patch("ai_rules.completions.Path.home", return_value=home):
+            success, message = update_completion("zsh", dry_run=True)
+
+        assert success is True
+        assert "Would update" in message
+        content = zshrc.read_text()
+        assert _LEGACY_MARKER_START in content
+
+
+@pytest.mark.unit
+@pytest.mark.completions
 class TestUninstallCompletion:
     """Test completion uninstallation."""
 
-    def test_uninstall(self, tmp_path):
+    def test_uninstall_current_markers(self, tmp_path):
         config_file = tmp_path / ".bashrc"
-        config_file.write_text(
-            f"# before\n{COMPLETION_MARKER_START}\neval something\n{COMPLETION_MARKER_END}\n# after\n"
-        )
+        script = generate_completion_script("bash")
+        config_file.write_text(f"# before\n{script}\n# after\n")
 
         success, message = uninstall_completion(config_file)
 
@@ -247,8 +392,39 @@ class TestUninstallCompletion:
         assert "Completion removed" in message
         content = config_file.read_text()
         assert COMPLETION_MARKER_START not in content
-        assert "# before\n" in content
-        assert "# after\n" in content
+        assert "# before" in content
+        assert "# after" in content
+
+    def test_uninstall_legacy_markers(self, tmp_path):
+        config_file = tmp_path / ".bashrc"
+        config_file.write_text(
+            f"# before\n{_LEGACY_MARKER_START}\neval old\n{_LEGACY_MARKER_END}\n# after\n"
+        )
+
+        success, message = uninstall_completion(config_file)
+
+        assert success is True
+        assert "Completion removed" in message
+        content = config_file.read_text()
+        assert _LEGACY_MARKER_START not in content
+        assert "# before" in content
+        assert "# after" in content
+
+    def test_uninstall_both_blocks(self, tmp_path):
+        config_file = tmp_path / ".bashrc"
+        config_file.write_text(
+            f"# before\n{_LEGACY_MARKER_START}\neval old\n{_LEGACY_MARKER_END}\n"
+            f"{COMPLETION_MARKER_START}\neval new\n{COMPLETION_MARKER_END}\n# after\n"
+        )
+
+        success, message = uninstall_completion(config_file)
+
+        assert success is True
+        content = config_file.read_text()
+        assert _LEGACY_MARKER_START not in content
+        assert COMPLETION_MARKER_START not in content
+        assert "# before" in content
+        assert "# after" in content
 
     def test_uninstall_not_installed(self, tmp_path):
         config_file = tmp_path / ".bashrc"

@@ -18,10 +18,10 @@ def create_backup_path(target: Path) -> Path:
         target: The file to backup
 
     Returns:
-        Path with timestamp appended (e.g., file.md.ai-rules-backup.20250104-143022)
+        Path with timestamp appended (e.g., file.md.ai-agent-rules-backup.20250104-143022)
     """
     timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")
-    return Path(f"{target}.ai-rules-backup.{timestamp}")
+    return Path(f"{target}.ai-agent-rules-backup.{timestamp}")
 
 
 class SymlinkResult(Enum):

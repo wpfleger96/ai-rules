@@ -389,9 +389,9 @@ def perform_tool_upgrade(tool: ToolSpec) -> tuple[bool, str, bool]:
 
 UPDATABLE_TOOLS: list[ToolSpec] = [
     ToolSpec(
-        tool_id="ai-rules",
+        tool_id="ai-agent-rules",
         package_name="ai-agent-rules",
-        display_name="ai-rules",
+        display_name="ai-agent-rules",
         get_version=lambda: get_tool_version("ai-agent-rules"),
         is_installed=lambda: True,  # Always installed (it's us)
         github_repo=GITHUB_REPO,
@@ -434,13 +434,19 @@ def check_tool_updates(tool: ToolSpec, timeout: int = 30) -> UpdateInfo | None:
         )
 
 
+_TOOL_ID_ALIASES: dict[str, str] = {
+    "ai-rules": "ai-agent-rules",
+}
+
+
 def get_tool_by_id(tool_id: str) -> ToolSpec | None:
-    """Look up tool spec by ID.
+    """Look up tool spec by ID, with alias support.
 
     Args:
-        tool_id: Tool identifier (e.g., "ai-rules", "statusline")
+        tool_id: Tool identifier (e.g., "ai-agent-rules", "ai-rules", "statusline")
 
     Returns:
         ToolSpec if found, None otherwise
     """
-    return next((t for t in UPDATABLE_TOOLS if t.tool_id == tool_id), None)
+    canonical = _TOOL_ID_ALIASES.get(tool_id, tool_id)
+    return next((t for t in UPDATABLE_TOOLS if t.tool_id == canonical), None)

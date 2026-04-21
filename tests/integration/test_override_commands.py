@@ -11,7 +11,7 @@ class TestOverrideSetCommand:
     def test_override_set_creates_config_if_missing(
         self, runner, tmp_path, monkeypatch
     ):
-        config_path = tmp_path / ".ai-rules-config.yaml"
+        config_path = tmp_path / ".ai-agent-rules-config.yaml"
         monkeypatch.setenv("HOME", str(tmp_path))
 
         result = runner.invoke(
@@ -27,7 +27,7 @@ class TestOverrideSetCommand:
         assert data["settings_overrides"]["claude"]["model"] == "claude-3-opus"
 
     def test_override_set_with_json_value(self, runner, tmp_path, monkeypatch):
-        config_path = tmp_path / ".ai-rules-config.yaml"
+        config_path = tmp_path / ".ai-agent-rules-config.yaml"
         monkeypatch.setenv("HOME", str(tmp_path))
 
         result = runner.invoke(
@@ -45,7 +45,7 @@ class TestOverrideSetCommand:
         )
 
     def test_override_set_with_string_value(self, runner, tmp_path, monkeypatch):
-        config_path = tmp_path / ".ai-rules-config.yaml"
+        config_path = tmp_path / ".ai-agent-rules-config.yaml"
         monkeypatch.setenv("HOME", str(tmp_path))
 
         result = runner.invoke(
@@ -60,7 +60,7 @@ class TestOverrideSetCommand:
         assert data["settings_overrides"]["claude"]["model"] == "my-model-name"
 
     def test_override_set_with_nested_key(self, runner, tmp_path, monkeypatch):
-        config_path = tmp_path / ".ai-rules-config.yaml"
+        config_path = tmp_path / ".ai-agent-rules-config.yaml"
         monkeypatch.setenv("HOME", str(tmp_path))
 
         result = runner.invoke(
@@ -86,7 +86,7 @@ class TestOverrideSetCommand:
         )
 
     def test_override_set_updates_existing_value(self, runner, tmp_path, monkeypatch):
-        config_path = tmp_path / ".ai-rules-config.yaml"
+        config_path = tmp_path / ".ai-agent-rules-config.yaml"
         monkeypatch.setenv("HOME", str(tmp_path))
 
         existing_data = {
@@ -106,7 +106,7 @@ class TestOverrideSetCommand:
         assert data["settings_overrides"]["claude"]["model"] == "new-model"
 
     def test_override_set_supports_multiple_agents(self, runner, tmp_path, monkeypatch):
-        config_path = tmp_path / ".ai-rules-config.yaml"
+        config_path = tmp_path / ".ai-agent-rules-config.yaml"
         monkeypatch.setenv("HOME", str(tmp_path))
 
         runner.invoke(main, ["override", "set", "claude.model", "claude-model"])
@@ -127,7 +127,7 @@ class TestOverrideUnsetCommand:
     """Tests for the override unset command."""
 
     def test_override_unset_removes_setting(self, runner, tmp_path, monkeypatch):
-        config_path = tmp_path / ".ai-rules-config.yaml"
+        config_path = tmp_path / ".ai-agent-rules-config.yaml"
         monkeypatch.setenv("HOME", str(tmp_path))
 
         existing_data = {
@@ -148,7 +148,7 @@ class TestOverrideUnsetCommand:
         assert data["settings_overrides"]["claude"]["timeout"] == 30
 
     def test_override_unset_removes_nested_setting(self, runner, tmp_path, monkeypatch):
-        config_path = tmp_path / ".ai-rules-config.yaml"
+        config_path = tmp_path / ".ai-agent-rules-config.yaml"
         monkeypatch.setenv("HOME", str(tmp_path))
 
         existing_data = {
@@ -173,7 +173,7 @@ class TestOverrideUnsetCommand:
         assert data["settings_overrides"]["claude"]["api"]["key"] == "secret"
 
     def test_override_unset_cleans_up_empty_dicts(self, runner, tmp_path, monkeypatch):
-        config_path = tmp_path / ".ai-rules-config.yaml"
+        config_path = tmp_path / ".ai-agent-rules-config.yaml"
         monkeypatch.setenv("HOME", str(tmp_path))
 
         existing_data = {
@@ -197,7 +197,7 @@ class TestOverrideUnsetCommand:
     def test_override_unset_removes_agent_when_empty(
         self, runner, tmp_path, monkeypatch
     ):
-        config_path = tmp_path / ".ai-rules-config.yaml"
+        config_path = tmp_path / ".ai-agent-rules-config.yaml"
         monkeypatch.setenv("HOME", str(tmp_path))
 
         existing_data = {
@@ -229,7 +229,7 @@ class TestOverrideUnsetCommand:
     def test_override_unset_fails_on_nonexistent_override(
         self, runner, tmp_path, monkeypatch
     ):
-        config_path = tmp_path / ".ai-rules-config.yaml"
+        config_path = tmp_path / ".ai-agent-rules-config.yaml"
         monkeypatch.setenv("HOME", str(tmp_path))
 
         existing_data = {
@@ -249,7 +249,7 @@ class TestOverrideListCommand:
     """Tests for the override list command."""
 
     def test_override_list_shows_overrides(self, runner, tmp_path, monkeypatch):
-        config_path = tmp_path / ".ai-rules-config.yaml"
+        config_path = tmp_path / ".ai-agent-rules-config.yaml"
         monkeypatch.setenv("HOME", str(tmp_path))
 
         existing_data = {
@@ -274,7 +274,7 @@ class TestOverrideListCommand:
         assert "goose:" in result.output
 
     def test_override_list_shows_empty_message(self, runner, tmp_path, monkeypatch):
-        config_path = tmp_path / ".ai-rules-config.yaml"
+        config_path = tmp_path / ".ai-agent-rules-config.yaml"
         monkeypatch.setenv("HOME", str(tmp_path))
 
         existing_data = {"version": 1}

@@ -62,7 +62,7 @@ class TestInstallFlow:
         create_symlink(target_path, source, force=True, dry_run=False)
 
         assert target_path.is_symlink()
-        backup_files = list(claude_dir.glob("CLAUDE.md.ai-rules-backup.*"))
+        backup_files = list(claude_dir.glob("CLAUDE.md.ai-agent-rules-backup.*"))
         assert len(backup_files) == 1
         assert backup_files[0].read_text() == "existing content"
 

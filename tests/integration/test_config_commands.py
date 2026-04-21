@@ -9,7 +9,7 @@ class TestConfigInitCommand:
     """Tests for the config init command."""
 
     def test_config_init_creates_basic_config(self, runner, tmp_path, monkeypatch):
-        config_path = tmp_path / ".ai-rules-config.yaml"
+        config_path = tmp_path / ".ai-agent-rules-config.yaml"
         monkeypatch.setenv("HOME", str(tmp_path))
 
         inputs = [
@@ -37,7 +37,7 @@ class TestConfigInitCommand:
         assert "exclude_symlinks" not in data or len(data["exclude_symlinks"]) == 0
 
     def test_config_init_with_exclusions(self, runner, tmp_path, monkeypatch):
-        config_path = tmp_path / ".ai-rules-config.yaml"
+        config_path = tmp_path / ".ai-agent-rules-config.yaml"
         monkeypatch.setenv("HOME", str(tmp_path))
 
         inputs = [
@@ -67,7 +67,7 @@ class TestConfigInitCommand:
         assert "~/.custom/pattern.txt" in data["exclude_symlinks"]
 
     def test_config_init_with_settings_overrides(self, runner, tmp_path, monkeypatch):
-        config_path = tmp_path / ".ai-rules-config.yaml"
+        config_path = tmp_path / ".ai-agent-rules-config.yaml"
         monkeypatch.setenv("HOME", str(tmp_path))
 
         inputs = [
@@ -104,7 +104,7 @@ class TestConfigInitCommand:
     def test_config_init_cancels_on_overwrite_decline(
         self, runner, tmp_path, monkeypatch
     ):
-        config_path = tmp_path / ".ai-rules-config.yaml"
+        config_path = tmp_path / ".ai-agent-rules-config.yaml"
         monkeypatch.setenv("HOME", str(tmp_path))
 
         with open(config_path, "w") as f:
@@ -120,7 +120,7 @@ class TestConfigInitCommand:
     def test_config_init_overwrites_existing_config(
         self, runner, tmp_path, monkeypatch
     ):
-        config_path = tmp_path / ".ai-rules-config.yaml"
+        config_path = tmp_path / ".ai-agent-rules-config.yaml"
         monkeypatch.setenv("HOME", str(tmp_path))
 
         with open(config_path, "w") as f:
@@ -151,7 +151,7 @@ class TestConfigInitCommand:
         assert data["version"] == 1
 
     def test_config_init_cancels_on_save_decline(self, runner, tmp_path, monkeypatch):
-        config_path = tmp_path / ".ai-rules-config.yaml"
+        config_path = tmp_path / ".ai-agent-rules-config.yaml"
         monkeypatch.setenv("HOME", str(tmp_path))
 
         inputs = [
@@ -179,7 +179,7 @@ class TestConfigShowCommand:
     """Tests for the config show command."""
 
     def test_config_show_displays_user_config(self, runner, tmp_path, monkeypatch):
-        config_path = tmp_path / ".ai-rules-config.yaml"
+        config_path = tmp_path / ".ai-agent-rules-config.yaml"
         monkeypatch.setenv("HOME", str(tmp_path))
 
         config_data = {
