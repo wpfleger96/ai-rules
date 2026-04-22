@@ -135,6 +135,9 @@ class TestConfigFileStructuralInvariants:
     def test_codex_has_reasoning_effort(self, codex_config):
         assert codex_config["model_reasoning_effort"] == "xhigh"
 
+    def test_codex_has_plan_mode_reasoning_effort(self, codex_config):
+        assert codex_config["plan_mode_reasoning_effort"] == "xhigh"
+
     def test_codex_has_reasoning_summary(self, codex_config):
         assert codex_config["model_reasoning_summary"] == "detailed"
 
