@@ -1,7 +1,17 @@
 {
   "amp.anthropic.thinking.enabled": true,
+  "amp.anthropic.interleavedThinking.enabled": true,
+  "amp.anthropic.effort": "max",
   "amp.showCosts": true,
   "amp.git.commit.coauthor.enabled": false,
   "amp.git.commit.ampThread.enabled": false,
-  "amp.agent.deepReasoningEffort": "xhigh"
+  "amp.notifications.enabled": true,
+  "amp.notifications.system.enabled": true,
+  "amp.permissions": [
+    {"tool": "Bash", "action": "reject", "matches": {"cmd": ["rm -rf *", "rm -rf*", "rm -r *"]}},
+    {"tool": "Bash", "action": "reject", "matches": {"cmd": ["git push --force*", "git push -f *"]}},
+    {"tool": "Bash", "action": "reject", "matches": {"cmd": ["git reset --hard*"]}},
+    {"tool": "Bash", "action": "reject", "matches": {"cmd": ["git stash drop*"]}},
+    {"tool": "Bash", "action": "reject", "matches": {"cmd": ["gh pr merge*"]}}
+  ]
 }

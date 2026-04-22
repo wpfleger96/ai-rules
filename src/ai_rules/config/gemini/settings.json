@@ -5,7 +5,40 @@
   "tools": {
     "shell": {
       "enableInteractiveShell": false
+    },
+    "allowed": [
+      "run_shell_command(awk)",
+      "run_shell_command(cat)",
+      "run_shell_command(df)",
+      "run_shell_command(diff)",
+      "run_shell_command(echo)",
+      "run_shell_command(env)",
+      "run_shell_command(file)",
+      "run_shell_command(find)",
+      "run_shell_command(grep)",
+      "run_shell_command(head)",
+      "run_shell_command(jq)",
+      "run_shell_command(ls)",
+      "run_shell_command(readlink)",
+      "run_shell_command(rg)",
+      "run_shell_command(sort)",
+      "run_shell_command(stat)",
+      "run_shell_command(tail)",
+      "run_shell_command(tr)",
+      "run_shell_command(tree)",
+      "run_shell_command(wc)",
+      "run_shell_command(yq)",
+      "run_shell_command(zcat)"
+    ]
+  },
+  "general": {
+    "defaultApprovalMode": "auto_edit",
+    "sessionRetention": {
+      "enabled": false
     }
+  },
+  "ui": {
+    "inlineThinkingMode": "full"
   },
   "ide": {
     "hasSeenNudge": true

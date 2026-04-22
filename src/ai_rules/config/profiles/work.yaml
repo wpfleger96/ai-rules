@@ -8,6 +8,10 @@ settings_overrides:
       CLAUDE_CODE_SUBAGENT_MODEL: "claude-sonnet-4-6[1m]"
       ANTHROPIC_DEFAULT_OPUS_MODEL: "claude-opus-4-6[1m]"
     model: opus
+  codex:
+    service_tier: "fast"
+    features:
+      fast_mode: true
   gemini:
     model:
       name: "gemini-3.1-pro-preview"
@@ -16,5 +20,6 @@ settings_overrides:
         selectedType: "gemini-api-key"
     ui:
       useFullWidth: true
-exclude_symlinks: []
+exclude_symlinks:
+  - ~/.config/goose/config.yaml
 mcp_overrides: {}

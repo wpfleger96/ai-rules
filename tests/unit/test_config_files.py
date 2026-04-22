@@ -78,6 +78,28 @@ class TestConfigFileStructuralInvariants:
                 f"Amp setting key {key!r} missing amp. prefix"
             )
 
+    def test_amp_has_anthropic_effort_max(self, amp_config):
+        assert amp_config["amp.anthropic.effort"] == "max"
+
+    def test_amp_has_interleaved_thinking(self, amp_config):
+        assert amp_config["amp.anthropic.interleavedThinking.enabled"] is True
+
+    def test_amp_has_notifications_enabled(self, amp_config):
+        assert amp_config["amp.notifications.enabled"] is True
+        assert amp_config["amp.notifications.system.enabled"] is True
+
+    def test_amp_has_permissions_deny_rules(self, amp_config):
+        permissions = amp_config["amp.permissions"]
+        assert isinstance(permissions, list)
+        assert len(permissions) > 0
+        reject_cmds = []
+        for rule in permissions:
+            if rule.get("action") == "reject":
+                reject_cmds.extend(rule["matches"]["cmd"])
+        assert any("rm -rf" in cmd for cmd in reject_cmds)
+        assert any("git push --force" in cmd for cmd in reject_cmds)
+        assert any("gh pr merge" in cmd for cmd in reject_cmds)
+
     def test_claude_has_env_and_permissions(self, claude_config):
         assert isinstance(claude_config["env"], dict)
         assert isinstance(claude_config["permissions"], dict)
@@ -107,13 +129,55 @@ class TestConfigFileStructuralInvariants:
         assert "model" in codex_config
         assert "approval_policy" in codex_config
 
-    def test_codex_approval_policy_is_valid_value(self, codex_config):
-        assert codex_config["approval_policy"] in {
-            "on-request",
-            "never",
-            "always",
-            "auto",
-        }
+    def test_codex_approval_policy_is_untrusted(self, codex_config):
+        assert codex_config["approval_policy"] == "untrusted"
+
+    def test_codex_has_reasoning_effort(self, codex_config):
+        assert codex_config["model_reasoning_effort"] == "xhigh"
+
+    def test_codex_has_reasoning_summary(self, codex_config):
+        assert codex_config["model_reasoning_summary"] == "detailed"
+
+    def test_codex_has_commit_attribution_empty(self, codex_config):
+        assert codex_config["commit_attribution"] == ""
+
+    def test_codex_has_history_persistence(self, codex_config):
+        assert codex_config["history"]["persistence"] == "save-all"
+
+    def test_codex_has_analytics_disabled(self, codex_config):
+        assert codex_config["analytics"]["enabled"] is False
+
+    def test_gemini_has_approval_mode(self, gemini_config):
+        assert gemini_config["general"]["defaultApprovalMode"] == "auto_edit"
+
+    def test_gemini_has_session_retention_disabled(self, gemini_config):
+        assert gemini_config["general"]["sessionRetention"]["enabled"] is False
+
+    def test_gemini_has_tools_allowed_list(self, gemini_config):
+        allowed = gemini_config["tools"]["allowed"]
+        assert isinstance(allowed, list)
+        assert len(allowed) > 0
+        assert all(a.startswith("run_shell_command(") for a in allowed)
+
+    def test_gemini_tools_allowed_excludes_mutable_commands(self, gemini_config):
+        allowed = gemini_config["tools"]["allowed"]
+        dangerous = [
+            "run_shell_command(git)",
+            "run_shell_command(gh)",
+            "run_shell_command(docker)",
+            "run_shell_command(rm)",
+            "run_shell_command(curl)",
+            "run_shell_command(npm)",
+            "run_shell_command(pip)",
+        ]
+        for cmd in dangerous:
+            assert cmd not in allowed
+
+    def test_gemini_has_inline_thinking_full(self, gemini_config):
+        assert gemini_config["ui"]["inlineThinkingMode"] == "full"
+
+    def test_goose_telemetry_disabled(self, goose_config):
+        assert goose_config["GOOSE_TELEMETRY_ENABLED"] is False
 
     def test_goose_has_extensions_dict(self, goose_config):
         assert isinstance(goose_config["extensions"], dict)
@@ -147,3 +211,16 @@ class TestProfileFileSyntax:
         profile = loader.load_profile("work")
         assert "claude" in profile.settings_overrides
         assert "gemini" in profile.settings_overrides
+
+    def test_work_profile_excludes_goose_config(self):
+        loader = ProfileLoader()
+        profile = loader.load_profile("work")
+        assert "~/.config/goose/config.yaml" in profile.exclude_symlinks
+
+    def test_work_profile_has_codex_fast_mode(self):
+        loader = ProfileLoader()
+        profile = loader.load_profile("work")
+        assert "codex" in profile.settings_overrides
+        codex = profile.settings_overrides["codex"]
+        assert codex.get("service_tier") == "fast"
+        assert codex.get("features", {}).get("fast_mode") is True

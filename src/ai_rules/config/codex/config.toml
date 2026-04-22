@@ -1,2 +1,11 @@
 model = "gpt-5.4"
-approval_policy = "on-request"
+approval_policy = "untrusted"
+model_reasoning_effort = "xhigh"
+model_reasoning_summary = "detailed"
+commit_attribution = ""
+
+[history]
+persistence = "save-all"
+
+[analytics]
+enabled = false
