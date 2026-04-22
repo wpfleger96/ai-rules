@@ -152,6 +152,35 @@ def load_config_file(path: Path, config_format: str) -> dict[str, Any]:
     raise ValueError(f"Unsupported config format: {config_format}")
 
 
+def _validate_value_for_format(value: Any, config_format: str, path: str) -> None:
+    """Recursively validate a config value for format compatibility."""
+    if value is None and config_format == "toml":
+        raise ValueError(
+            f"Cannot write null value at '{path}' to TOML. "
+            "Use 'override unset' to remove the key, or set an explicit value."
+        )
+    if isinstance(value, dict):
+        _validate_for_format(value, config_format, path)
+    elif isinstance(value, list):
+        for i, item in enumerate(value):
+            _validate_value_for_format(item, config_format, f"{path}[{i}]")
+
+
+def _validate_for_format(
+    data: dict[str, Any], config_format: str, path: str = ""
+) -> None:
+    """Validate config values are compatible with the target serialization format."""
+    for key, value in data.items():
+        if config_format == "toml" and not isinstance(key, str):
+            raise ValueError(
+                f"TOML requires string keys, but '{path}' contains "
+                f"key {key!r} of type {type(key).__name__}. "
+                "Check your YAML config for unquoted numeric or boolean keys."
+            )
+        current = f"{path}.{key}" if path else key
+        _validate_value_for_format(value, config_format, current)
+
+
 def dump_config_file(path: Path, data: dict[str, Any], config_format: str) -> None:
     """Write a config file based on format.
 
@@ -161,9 +190,10 @@ def dump_config_file(path: Path, data: dict[str, Any], config_format: str) -> No
         config_format: One of 'json', 'yaml', 'toml'
 
     Raises:
-        ValueError: If config_format is unsupported
+        ValueError: If config_format is unsupported or data contains incompatible values
         OSError, tomli_w errors: on write errors
     """
+    _validate_for_format(data, config_format)
     if config_format == "toml":
         with open(path, "wb") as f:
             tomli_w.dump(data, f)

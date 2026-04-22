@@ -159,7 +159,13 @@ class Agent(ABC):
                         tracker.set_field_contributions(field, None)
                 tracker.save()
 
-            dump_config_file(cache_path, merged, config_format)
+            try:
+                dump_config_file(cache_path, merged, config_format)
+            except ValueError as exc:
+                import logging
+
+                logging.getLogger(__name__).error("%s: %s", self.name, exc)
+                raise
 
         return cache_path
 
@@ -269,6 +275,13 @@ class Agent(ABC):
                 expected_copy, default_flow_style=False, sort_keys=False
             )
         elif config_format == "toml":
+            from ai_rules.config import _validate_for_format
+
+            try:
+                _validate_for_format(current_copy, "toml")
+                _validate_for_format(expected_copy, "toml")
+            except ValueError as exc:
+                return f"[red]Config contains invalid values:[/red] {exc}"
             current_text = tomli_w.dumps(current_copy)
             expected_text = tomli_w.dumps(expected_copy)
         else:

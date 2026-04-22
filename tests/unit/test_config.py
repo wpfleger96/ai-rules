@@ -988,6 +988,90 @@ class TestTomlSupport:
 
 @pytest.mark.unit
 @pytest.mark.config
+class TestDumpConfigValidation:
+    """Test format-aware validation in dump_config_file."""
+
+    def test_dump_toml_rejects_none_value(self, tmp_path):
+        from ai_rules.config import dump_config_file
+
+        with pytest.raises(ValueError, match="Cannot write null value at 'model'"):
+            dump_config_file(tmp_path / "out.toml", {"model": None}, "toml")
+
+    def test_dump_toml_rejects_nested_none_value(self, tmp_path):
+        from ai_rules.config import dump_config_file
+
+        with pytest.raises(ValueError, match="Cannot write null value at 'tui.theme'"):
+            dump_config_file(tmp_path / "out.toml", {"tui": {"theme": None}}, "toml")
+
+    def test_dump_toml_rejects_none_in_list(self, tmp_path):
+        from ai_rules.config import dump_config_file
+
+        with pytest.raises(
+            ValueError, match=r"Cannot write null value at 'items\[1\]'"
+        ):
+            dump_config_file(tmp_path / "out.toml", {"items": ["ok", None]}, "toml")
+
+    def test_dump_json_allows_none_value(self, tmp_path):
+        import json
+
+        from ai_rules.config import dump_config_file
+
+        out = tmp_path / "out.json"
+        dump_config_file(out, {"model": None}, "json")
+
+        data = json.loads(out.read_text())
+        assert data["model"] is None
+
+    def test_dump_yaml_allows_none_value(self, tmp_path):
+        from ai_rules.config import dump_config_file
+
+        out = tmp_path / "out.yaml"
+        dump_config_file(out, {"model": None}, "yaml")
+
+        data = yaml.safe_load(out.read_text())
+        assert data["model"] is None
+
+    def test_dump_toml_rejects_none_in_nested_list(self, tmp_path):
+        from ai_rules.config import dump_config_file
+
+        with pytest.raises(ValueError, match="Cannot write null value"):
+            dump_config_file(tmp_path / "out.toml", {"matrix": [[1, None]]}, "toml")
+
+    def test_dump_toml_rejects_non_string_key(self, tmp_path):
+        from ai_rules.config import dump_config_file
+
+        with pytest.raises(ValueError, match="TOML requires string keys"):
+            dump_config_file(tmp_path / "out.toml", {1: "value"}, "toml")  # type: ignore[dict-item]
+
+
+@pytest.mark.unit
+@pytest.mark.config
+class TestDeepMergeSafety:
+    """Test that deep_merge doesn't share mutable objects between result and inputs."""
+
+    def test_deep_merge_does_not_share_mutable_override_values(self):
+        from ai_rules.utils import deep_merge
+
+        override = {"items": ["a", "b"]}
+        result = deep_merge({}, override)
+
+        result["items"].append("c")
+
+        assert override["items"] == ["a", "b"]
+
+    def test_deep_merge_does_not_share_new_key_values(self):
+        from ai_rules.utils import deep_merge
+
+        override = {"new_key": {"nested": [1, 2]}}
+        result = deep_merge({}, override)
+
+        result["new_key"]["nested"].append(3)
+
+        assert override["new_key"]["nested"] == [1, 2]
+
+
+@pytest.mark.unit
+@pytest.mark.config
 class TestMergeSettingsAgentShapes:
     def test_claude_env_override_preserves_base_keys(self):
         config = Config(

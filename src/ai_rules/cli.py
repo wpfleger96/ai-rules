@@ -1069,7 +1069,13 @@ def install(
         for agent in all_agents:
             base_path = agent._base_settings_path
             if base_path.exists():
-                agent.build_merged_settings(force_rebuild=rebuild_cache)
+                try:
+                    agent.build_merged_settings(force_rebuild=rebuild_cache)
+                except ValueError as exc:
+                    console.print(
+                        f"[red]Error building {agent.name} config:[/red] {exc}"
+                    )
+                    sys.exit(1)
 
     if not dry_run:
         old_symlinks = detect_old_config_symlinks()
@@ -2302,6 +2308,115 @@ def override() -> None:
     pass
 
 
+def _override_set_scalar(
+    agent: str,
+    path_components: list[str | int],
+    parsed_value: Any,
+    data: dict[str, Any],
+    console: Any,
+) -> None:
+    """Set an override value at a path with no array indices."""
+    current = data["settings_overrides"][agent]
+    for i, component in enumerate(path_components[:-1]):
+        if component not in current:
+            next_component = (
+                path_components[i + 1] if i + 1 < len(path_components) else None
+            )
+            if isinstance(next_component, int):
+                current[component] = []
+            else:
+                current[component] = {}
+        current = current[component]
+    current[path_components[-1]] = parsed_value
+
+
+def _override_set_with_array_index(
+    agent: str,
+    setting: str,
+    path_components: list[str | int],
+    parsed_value: Any,
+    data: dict[str, Any],
+    console: Any,
+) -> None:
+    """Set an override at an array-indexed path using read-modify-write.
+
+    Loads the current effective merged settings, deep-copies the target
+    list, applies the modification, and stores the complete list so that
+    wholesale list replacement in deep_merge produces the correct result.
+    """
+    import copy
+
+    from ai_rules.config import (
+        AGENT_FORMATS,
+        FORMAT_CONFIG_FILES,
+        Config,
+        load_config_file,
+    )
+
+    dict_prefix: list[str] = []
+    for c in path_components:
+        if isinstance(c, int):
+            break
+        dict_prefix.append(c)
+    array_suffix = path_components[len(dict_prefix) :]
+
+    cfg = Config.load()
+    config_dir = get_config_dir()
+    agent_format = AGENT_FORMATS.get(agent)
+    if not agent_format:
+        console.print(f"[red]Error:[/red] Unknown agent format for '{agent}'")
+        sys.exit(1)
+
+    config_file = FORMAT_CONFIG_FILES.get(agent_format, "settings.json")
+    base_path = config_dir / agent / config_file
+    if base_path.exists():
+        base_settings = load_config_file(base_path, agent_format)
+        merged = cfg.merge_settings(agent, base_settings)
+    else:
+        merged = {}
+
+    target_list: list[Any] = []
+    node: Any = merged
+    for key in dict_prefix:
+        if isinstance(node, dict) and key in node:
+            node = node[key]
+        else:
+            node = None
+            break
+    if isinstance(node, list):
+        target_list = copy.deepcopy(node)
+
+    current: Any = target_list
+    for i, component in enumerate(array_suffix[:-1]):
+        if isinstance(component, int):
+            while len(current) <= component:
+                current.append({})
+            current = current[component]
+        else:
+            if not isinstance(current, dict) or component not in current:
+                if isinstance(current, dict):
+                    next_c = array_suffix[i + 1] if i + 1 < len(array_suffix) else None
+                    current[component] = [] if isinstance(next_c, int) else {}
+                current = current[component]
+            else:
+                current = current[component]
+
+    final = array_suffix[-1]
+    if isinstance(final, int):
+        while len(current) <= final:
+            current.append(None)
+        current[final] = parsed_value
+    else:
+        current[final] = parsed_value
+
+    dest = data["settings_overrides"][agent]
+    for key in dict_prefix[:-1]:
+        if key not in dest:
+            dest[key] = {}
+        dest = dest[key]
+    dest[dict_prefix[-1]] = target_list
+
+
 @override.command("set")
 @click.argument("key")
 @click.argument("value")
@@ -2381,47 +2496,14 @@ def override_set(key: str, value: str) -> None:
         console.print(f"[red]Error:[/red] {e}")
         sys.exit(1)
 
-    current = data["settings_overrides"][agent]
-    for i, component in enumerate(path_components[:-1]):
-        if isinstance(component, int):
-            if not isinstance(current, list):
-                console.print(
-                    f"[red]Error:[/red] Expected array at path component {i}, "
-                    f"but found {type(current).__name__}"
-                )
-                sys.exit(1)
+    has_array_index = any(isinstance(c, int) for c in path_components)
 
-            while len(current) <= component:
-                current.append({})
-
-            current = current[component]
-        else:
-            if component not in current:
-                next_component = (
-                    path_components[i + 1] if i + 1 < len(path_components) else None
-                )
-                if isinstance(next_component, int):
-                    current[component] = []
-                else:
-                    current[component] = {}
-
-            current = current[component]
-
-    final_component = path_components[-1]
-    if isinstance(final_component, int):
-        if not isinstance(current, list):
-            console.print(
-                f"[red]Error:[/red] Expected array for final component, "
-                f"but found {type(current).__name__}"
-            )
-            sys.exit(1)
-
-        while len(current) <= final_component:
-            current.append(None)
-
-        current[final_component] = parsed_value
+    if has_array_index:
+        _override_set_with_array_index(
+            agent, setting, path_components, parsed_value, data, console
+        )
     else:
-        current[final_component] = parsed_value
+        _override_set_scalar(agent, path_components, parsed_value, data, console)
 
     Config.save_user_config(data)
 

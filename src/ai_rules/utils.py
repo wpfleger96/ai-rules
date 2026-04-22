@@ -12,16 +12,16 @@ def deep_merge(base: dict[str, Any], override: dict[str, Any]) -> dict[str, Any]
     Nested dicts are merged recursively. Lists are replaced wholesale by the
     override value (not merged element-by-element).
 
-    Uses deep copy to prevent mutation of the base dictionary.
+    Uses deep copy to prevent mutation of either input dictionary.
     """
     result = copy.deepcopy(base)
     for key, value in override.items():
         if key not in result:
-            result[key] = value
+            result[key] = copy.deepcopy(value)
         elif isinstance(result[key], dict) and isinstance(value, dict):
             result[key] = deep_merge(result[key], value)
         else:
-            result[key] = value
+            result[key] = copy.deepcopy(value)
     return result
 
 

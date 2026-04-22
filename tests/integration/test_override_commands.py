@@ -289,3 +289,79 @@ class TestOverrideListCommand:
 
         assert result.exit_code == 0
         assert "No settings overrides" in result.output
+
+
+class TestOverrideInstallValidation:
+    """Test that invalid overrides are caught at install time."""
+
+    def test_codex_null_override_fails_on_install(self, runner, tmp_path, monkeypatch):
+        home = tmp_path / "home"
+        home.mkdir()
+        monkeypatch.setenv("HOME", str(home))
+        monkeypatch.setattr("pathlib.Path.home", staticmethod(lambda: home))
+
+        config_dir = tmp_path / "config"
+        codex_dir = config_dir / "codex"
+        codex_dir.mkdir(parents=True)
+        (codex_dir / "config.toml").write_text('model = "gpt-5.4"\n')
+
+        monkeypatch.setattr("ai_rules.cli.get_config_dir", lambda: config_dir)
+
+        (home / ".ai-agent-rules-config.yaml").write_text(
+            "version: 1\nsettings_overrides:\n  codex:\n    model: null\n"
+        )
+
+        result = runner.invoke(main, ["install", "--rebuild-cache"])
+
+        assert result.exit_code == 1
+        assert "null" in result.output.lower()
+
+
+class TestOverrideSetArrayIndex:
+    """Test that override set with array indices preserves other elements."""
+
+    def test_override_set_array_index_preserves_other_elements(
+        self, runner, tmp_path, monkeypatch
+    ):
+        home = tmp_path / "home"
+        home.mkdir()
+        monkeypatch.setenv("HOME", str(home))
+        monkeypatch.setattr("pathlib.Path.home", staticmethod(lambda: home))
+
+        config_dir = tmp_path / "config"
+        claude_dir = config_dir / "claude"
+        claude_dir.mkdir(parents=True)
+        import json
+
+        base_settings = {
+            "hooks": {
+                "SubagentStop": [
+                    {"command": "run-tests.sh", "type": "command"},
+                    {"command": "lint.sh", "type": "command"},
+                    {"command": "notify.sh", "type": "command"},
+                ]
+            }
+        }
+        (claude_dir / "settings.json").write_text(json.dumps(base_settings))
+
+        monkeypatch.setattr("ai_rules.cli.get_config_dir", lambda: config_dir)
+
+        result = runner.invoke(
+            main,
+            ["override", "set", "claude.hooks.SubagentStop[1].command", "new-lint.sh"],
+        )
+
+        assert result.exit_code == 0
+
+        import yaml
+
+        config_path = home / ".ai-agent-rules-config.yaml"
+        with open(config_path) as f:
+            data = yaml.safe_load(f)
+
+        stored_list = data["settings_overrides"]["claude"]["hooks"]["SubagentStop"]
+
+        assert len(stored_list) == 3
+        assert stored_list[0]["command"] == "run-tests.sh"
+        assert stored_list[1]["command"] == "new-lint.sh"
+        assert stored_list[2]["command"] == "notify.sh"
