@@ -2,7 +2,7 @@
 #
 # Place this file at: ~/.ai-agent-rules-config.yaml
 #
-# Quick setup: Run `ai-agent-rulesconfig init` for an interactive wizard
+# Quick setup: Run `ai-agent-rules config init` for an interactive wizard
 
 version: 1
 
@@ -13,9 +13,9 @@ version: 1
 # Supports glob patterns: *.json, **/*.yaml, etc.
 #
 # CLI commands:
-#   ai-agent-rulesexclude add "~/.claude/*.log"
-#   ai-agent-rulesexclude remove "~/.claude/settings.json"
-#   ai-agent-rulesexclude list
+#   ai-agent-rules exclude add "~/.claude/*.log"
+#   ai-agent-rules exclude remove "~/.claude/settings.json"
+#   ai-agent-rules exclude list
 exclude_symlinks:
   # Exact path exclusions
   # - "~/.config/goose/config.yaml"
@@ -41,11 +41,11 @@ exclude_symlinks:
 # Use case: Different model access on work vs personal laptop
 #
 # CLI commands:
-#   ai-agent-rulesoverride set claude.model "claude-sonnet-4-5-20250929"
-#   ai-agent-rulesoverride set claude.hooks.SubagentStop[0].hooks[0].command "script.py"
-#   ai-agent-rulesoverride unset claude.model
-#   ai-agent-rulesoverride list
-#   ai-agent-rulesconfig show --merged
+#   ai-agent-rules override set claude.model "claude-sonnet-4-5-20250929"
+#   ai-agent-rules override set claude.hooks.SubagentStop[0].hooks[0].command "script.py"
+#   ai-agent-rules override unset claude.model
+#   ai-agent-rules override list
+#   ai-agent-rules config show --merged
 #
 # Array notation:
 #   Use [0], [1], etc. for array indices in nested structures
@@ -55,7 +55,7 @@ exclude_symlinks:
 #   Commands validate paths against base settings and provide suggestions
 #   Invalid paths are rejected with helpful error messages
 #
-# After changing overrides: ai-agent-rulesinstall --rebuild-cache
+# After changing overrides: ai-agent-rules install --rebuild-cache
 settings_overrides:
   # Simple overrides
   # claude:

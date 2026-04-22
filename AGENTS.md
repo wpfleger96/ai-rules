@@ -12,7 +12,7 @@ Instructions for AI coding agents working on this repository.
 
 The name `ai-rules` was taken on PyPI, so the package is published as `ai-agent-rules`. Both CLI entry points work. Use `ai-agent-rules` as the canonical name; `ai-rules` is kept as a convenience alias.
 
-**Supported agents:** Claude Code, Goose, Shared (AGENTS.md)
+**Supported agents:** Claude Code, Goose, Gemini CLI, Codex CLI, Amp, Shared (AGENTS.md, skills)
 
 ## Quick Commands
 
@@ -70,8 +70,11 @@ src/ai_rules/
 ├── completions.py      # Shell completion management
 ├── agents/
 │   ├── base.py         # Abstract Agent base class
+│   ├── amp.py          # Amp agent (ampcode.com)
 │   ├── claude.py       # ClaudeAgent (settings, MCPs, extensions)
-│   ├── goose.py        # GooseAgent (config, hints)
+│   ├── codex.py        # CodexAgent (config.toml, MCPs)
+│   ├── gemini.py       # GeminiAgent (settings, MCPs)
+│   ├── goose.py        # GooseAgent (config, hints, MCPs)
 │   └── shared.py       # SharedAgent (AGENTS.md, shared skills)
 ├── bootstrap/          # GitHub install utilities
 │   ├── installer.py    # Tool installation (PyPI and GitHub)
@@ -80,13 +83,18 @@ src/ai_rules/
 └── config/             # Source configs (bundled in package)
     ├── AGENTS.md       # Shared behavioral rules
     ├── chat_agent_hints.md  # Chat agent hints
+    ├── mcps.json       # Shared MCP server definitions
+    ├── amp/            # Amp configs (AGENTS.md, settings.json)
     ├── claude/         # Claude Code configs (CLAUDE.md, settings.json, mcps.json)
+    ├── codex/          # Codex configs (config.toml)
+    ├── gemini/         # Gemini configs (GEMINI.md, settings.json)
     ├── goose/          # Goose configs (.goosehints, config.yaml)
-    ├── skills/         # **SHARED** skills (symlinked to both Claude & Goose)
-    │   ├── agents-md/, code-reviewer/, continue-crash/, dev-docs/
-    │   ├── doc-writer/, pr-creator/, prompt-critique/
+    ├── skills/         # **SHARED** skills (symlinked to Claude, Goose, Codex, Amp)
+    │   ├── agents-md/, code-reviewer/, continue-crash/, crossfire/
+    │   ├── dev-docs/, doc-writer/, pr-creator/, prompt-critique/
     │   ├── prompt-engineer/, test-writer/
-    └── profiles/       # Built-in profiles (default.yaml, work.yaml)
+    ├── profiles/       # Built-in profiles (default.yaml, personal.yaml, work.yaml)
+    └── sprout/         # Multi-agent Sprout coordinator prompts
 tests/
 ├── fixtures/           # Test fixture files
 ├── unit/               # No filesystem side effects
@@ -104,14 +112,18 @@ All AI tools inherit from `Agent` (`agents/base.py`). To add a new tool:
 ### Config System
 - User config: `~/.ai-agent-rules-config.yaml`
 - **State file**: `~/.ai-agent-rules/state.yaml` (tracks active profile, last install time)
-- **Profiles**: Named collections of overrides (default, work) with inheritance
-  - Built-in: `config/profiles/{default,work}.yaml`
+- **Profiles**: Named collections of overrides (default, personal, work) with inheritance
+  - Built-in: `config/profiles/{default,personal,work}.yaml`
   - User: `~/.ai-agent-rules/profiles/*.yaml`
   - Inheritance via `extends:` key (e.g., work extends default)
   - Commands: `profile list`, `profile show`, `profile current`, `profile switch`
 - `settings_overrides` for machine-specific agent settings
-- Cache-based override merging for settings.json files (Claude, Goose)
-  - **Critical**: Preserves Claude-managed fields (`enabledPlugins`) during cache rebuild
+- Cache-based override merging for all agents with preserved fields
+  - **Critical**: Preserves agent-managed fields during cache rebuild:
+    - Claude: `enabledPlugins`, `hooks`
+    - Codex: `projects`
+    - Gemini: `ide`
+    - Goose: `extensions`
 - **Plugin management**: Declarative plugin installs from profiles (`plugins`, `marketplaces` keys)
   - Auto-uninstalls orphaned plugins (previously managed by ai-agent-rules, removed from config)
   - Tracks managed plugins in `~/.claude/plugins/ai-agent-rules-managed.json`
@@ -168,7 +180,7 @@ uv run pytest -m state          # State management tests only
 
 7. **Preserved fields in settings.json** - `enabledPlugins`, `hooks` managed by Claude Code or user:
    - ai-agent-rules preserves these fields during cache rebuilds
-   - Defined in `PRESERVED_FIELDS` constant (config.py, formerly `CLAUDE_MANAGED_FIELDS`)
+   - Defined in the `preserved_fields` property of each agent class (e.g., `claude.py`, `codex.py`)
    - Tracking file: `~/.claude/ai-agent-rules-managed-fields.json` (tracks ai-agent-rules contributions)
    - Cleanup: When ai-agent-rules removes a hook from source, it's removed from user settings
    - User hooks preserved (e.g., custom UserPromptSubmit hooks won't be removed)
@@ -179,10 +191,14 @@ uv run pytest -m state          # State management tests only
    - Fails silently on network errors (still proceeds with upgrade)
    - Auto-forces install (no double prompt)
 
+9. **Gemini skill directory** - Gemini discovers skills from `~/.agents/skills/` (the Codex directory) via a built-in alias:
+   - Do NOT add a `~/.gemini/skills/` directory — it causes "Skill conflict detected" warnings in headless invocations
+   - This is why `AGENT_SKILLS_DIRS` in `config.py` intentionally excludes Gemini
+
 ## Skills
 
-**Skills:** Explore `config/skills/*/SKILL.md` for available skills (9 total: agents-md, code-reviewer, continue-crash, dev-docs, doc-writer, pr-creator, prompt-critique, prompt-engineer, test-writer).
-- **SHARED between Claude Code and Goose** - symlinked to both `~/.claude/skills/` and `~/.config/goose/skills/`
+**Skills:** Explore `config/skills/*/SKILL.md` for available skills (10 total: agents-md, code-reviewer, continue-crash, crossfire, dev-docs, doc-writer, pr-creator, prompt-critique, prompt-engineer, test-writer).
+- **SHARED across agents** - symlinked to `~/.claude/skills/`, `~/.config/goose/skills/`, `~/.config/agents/skills/` (Amp), `~/.agents/skills/` (Codex)
 - Managed by SharedAgent (displays under "Shared:" in status)
 - To add a skill: Create subdir in `config/skills/` with `SKILL.md`
 
@@ -198,9 +214,9 @@ uv run pytest -m state          # State management tests only
 | Symlink behavior | `symlinks.py` (create_symlink, remove_symlink) |
 | Shell completions | `completions.py`, `cli.py::completions()` |
 | New agent | `agents/base.py`, `agents/<new>.py`, `cli.py::get_agents()` |
-| Plugin management | `plugins.py`, `config.py` (PRESERVED_FIELDS) |
-| MCP management | `mcp.py`, `agents/claude.py` |
+| Plugin management | `plugins.py`, each `agents/*.py` defines `preserved_fields` |
+| MCP management | `mcp.py` (MCPManager base + subclasses: Claude, Goose, Codex, Gemini, Amp) |
 | Skills management | `skills.py` (SkillManager), `agents/shared.py` |
-| Preserved fields tracking | `config.py` (ManagedFieldsTracker, PRESERVED_FIELDS) |
+| Preserved fields tracking | `config.py` (ManagedFieldsTracker), each `agents/*.py` defines `preserved_fields` |
 | Upgrade checking | `bootstrap/updater.py`, `bootstrap/installer.py` |
 | GitHub install support | `bootstrap/installer.py` (GITHUB_REPO_URL) |
