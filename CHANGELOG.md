@@ -1,6 +1,39 @@
 # CHANGELOG
 
 
+## v0.38.0 (2026-04-22)
+
+### Bug Fixes
+
+- Validate config values at serialization boundary
+  ([`8bcc081`](https://github.com/wpfleger96/ai-agent-rules/commit/8bcc0817ee7ffc8d6b2f602f973c751008baaf5d))
+
+Override values were never validated for format compatibility — None from any entry point (CLI,
+  manual YAML edit, profile, config wizard) would silently flow through until tomli_w crashed with
+  an uncaught TypeError during TOML serialization. Validation now runs inside dump_config_file() so
+  all five entry points are covered by a single check, with a clear error message naming the
+  offending key path.
+
+- **codex**: Set plan mode reasoning effort in managed config
+  ([`7bbce52`](https://github.com/wpfleger96/ai-agent-rules/commit/7bbce52a25ce03d74d01bcbee0b8d97ed84e3066))
+
+Codex treats plan mode reasoning effort separately from the default model reasoning effort. Add the
+  missing managed config key so Plan mode uses the same xhigh default shipped by ai-agent-rules.
+
+### Features
+
+- **codex**: Add managed status line with correct list override semantics
+  ([`1682fd4`](https://github.com/wpfleger96/ai-agent-rules/commit/1682fd4ffeb5527f4bee213ef2139ed8ffdbd322))
+
+Codex added native footer customization via [tui].status_line in config.toml. This adds a bundled
+  default that aligns with our Claude status line using only Codex's built-in footer items.
+
+Fixed deep_merge to replace lists wholesale instead of merging element-by-element with trailing base
+  elements preserved — the old behavior silently kept stale items when a shorter override list was
+  intended to fully replace the base. This eliminates the need for any per-field replacement
+  infrastructure.
+
+
 ## v0.37.0 (2026-04-22)
 
 ### Features
