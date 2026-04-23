@@ -137,5 +137,6 @@
   },
   "alwaysThinkingEnabled": true,
   "showThinkingSummaries": true,
-  "skipDangerousModePermissionPrompt": true
+  "skipDangerousModePermissionPrompt": true,
+  "viewMode": "verbose"
 }
