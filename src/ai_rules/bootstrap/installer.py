@@ -35,6 +35,7 @@ def make_github_install_url(repo: str) -> str:
 
 
 UV_NOT_FOUND_ERROR = "uv not found in PATH. Install from https://docs.astral.sh/uv/"
+BASIC_MEMORY_GITHUB_REPO = "basicmachines-co/basic-memory"
 
 
 def _validate_package_name(package_name: str) -> bool:
@@ -390,6 +391,147 @@ def ensure_statusline_installed(
             dry_run=dry_run,
         )
         if success:
+            return "installed", message if dry_run else None
+        else:
+            return "failed", None
+    except Exception:
+        return "failed", None
+
+
+def _run_basic_memory_setup(verbose: bool = False) -> None:
+    """Run the idempotent basic-memory setup script (git init, GitHub remote).
+
+    Reads basic_memory config from ~/.ai-rules-config.yaml and passes
+    as env vars to the setup script.
+    """
+    setup_script = (
+        Path(__file__).parent.parent
+        / "config"
+        / "claude"
+        / "hooks"
+        / "basic-memory-setup.sh"
+    )
+    if not setup_script.exists():
+        return
+
+    env = dict(os.environ)
+    try:
+        import yaml
+
+        user_config_path = Path.home() / ".ai-rules-config.yaml"
+        if user_config_path.exists():
+            with open(user_config_path) as f:
+                user_config = yaml.safe_load(f) or {}
+            bm_config = user_config.get("basic_memory", {})
+            if bm_config.get("repo"):
+                env["BASIC_MEMORY_WIKI_REPO"] = bm_config["repo"]
+            if bm_config.get("path"):
+                env["BASIC_MEMORY_HOME"] = str(Path(bm_config["path"]).expanduser())
+    except Exception:
+        pass
+
+    try:
+        subprocess.run(
+            ["bash", str(setup_script)],
+            timeout=60,
+            capture_output=not verbose,
+            env=env,
+        )
+    except (subprocess.TimeoutExpired, Exception):
+        pass
+
+
+def _is_basic_memory_configured(config: object) -> bool:
+    """Check if basic-memory is configured in the merged MCP config.
+
+    Checks both profile mcp_overrides and the base mcps.json file.
+    """
+    if hasattr(config, "mcp_overrides") and "basic-memory" in config.mcp_overrides:
+        return True
+
+    try:
+        import importlib.resources
+
+        config_pkg = importlib.resources.files("ai_rules") / "config"
+        for mcps_path in [
+            config_pkg / "mcps.json",
+            config_pkg / "claude" / "mcps.json",
+        ]:
+            traversable = mcps_path
+            if hasattr(traversable, "is_file") and traversable.is_file():
+                import json
+
+                data = json.loads(traversable.read_text())
+                if "basic-memory" in data:
+                    return True
+    except Exception:
+        pass
+
+    return False
+
+
+def ensure_basic_memory_installed(
+    dry_run: bool = False,
+    from_github: bool = False,
+    config: object | None = None,
+) -> tuple[str, str | None]:
+    """Install or upgrade basic-memory if needed. Runs setup script after. Fails open.
+
+    Args:
+        dry_run: If True, show what would be done without executing
+        from_github: Install from GitHub instead of PyPI
+        config: Config object; if provided and basic-memory is not configured, skip
+
+    Returns:
+        Tuple of (status, message) where status is:
+        "already_installed", "installed", "upgraded", "upgrade_available", "failed", or "skipped"
+    """
+    if config is not None and not _is_basic_memory_configured(config):
+        return "skipped", None
+    if is_command_available("basic-memory"):
+        try:
+            from ai_rules.bootstrap.updater import (
+                check_tool_updates,
+                get_tool_by_id,
+                perform_tool_upgrade,
+            )
+
+            bm_tool = get_tool_by_id("basic-memory")
+            if bm_tool:
+                update_info = check_tool_updates(bm_tool, timeout=10)
+                if update_info and update_info.has_update:
+                    if dry_run:
+                        return (
+                            "upgrade_available",
+                            f"Would upgrade basic-memory {update_info.current_version} → {update_info.latest_version}",
+                        )
+                    success, msg, _ = perform_tool_upgrade(bm_tool)
+                    if success:
+                        if not dry_run:
+                            _run_basic_memory_setup()
+                        return (
+                            "upgraded",
+                            f"{update_info.current_version} → {update_info.latest_version}",
+                        )
+        except Exception:
+            pass
+        if not dry_run:
+            _run_basic_memory_setup()
+        return "already_installed", None
+
+    try:
+        success, message = install_tool(
+            "basic-memory",
+            from_github=from_github,
+            github_url=make_github_install_url(BASIC_MEMORY_GITHUB_REPO)
+            if from_github
+            else None,
+            force=False,
+            dry_run=dry_run,
+        )
+        if success:
+            if not dry_run:
+                _run_basic_memory_setup(verbose=True)
             return "installed", message if dry_run else None
         else:
             return "failed", None
