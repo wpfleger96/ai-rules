@@ -3,8 +3,6 @@ name: crossfire
 description: Get multi-model perspectives (Codex + Gemini) on any work product. Use at any development stage — planning, design, implementation, testing — to catch blind spots the primary agent might miss.
 allowed-tools: AskUserQuestion, Bash, Glob, Grep, Read
 model: sonnet
-metadata:
-  trigger-keywords: "crossfire, second opinion, blind spots, cross-model review, multi-model review"
 ---
 
 ## Context

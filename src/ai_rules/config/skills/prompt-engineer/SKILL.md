@@ -1,9 +1,6 @@
 ---
 name: prompt-engineer
 description: "Provides expert guidance for writing and optimizing prompts for large language models. Use this skill when: (1) user mentions \"prompt\", \"prompting\", or \"prompt engineering\", (2) user requests to write, create, improve, optimize, or review any prompt, (3) user is creating or updating AGENTS.md, CLAUDE.md, .claude/commands/*.md, or .claude/skills/*/SKILL.md files, (4) user is writing system prompts, custom instructions, or LLM agent configurations."
-metadata:
-  trigger-keywords: "prompt, prompting, prompt engineering, system prompt, agents.md, claude.md, skill, slash command, agent configuration, custom instruction, llm instruction"
-  trigger-patterns: "(write|create|improve|optimize|review).*prompt, (update|create|modify).*(agents\\.md|claude\\.md), (write|create|build).*(skill|command), prompt.*(quality|effectiveness|technique)"
 ---
 
 # Prompt Engineering Skill

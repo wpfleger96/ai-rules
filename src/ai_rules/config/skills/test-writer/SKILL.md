@@ -1,9 +1,6 @@
 ---
 name: test-writer
 description: "This skill should be used when the user asks to 'write tests', 'add tests', 'create tests', 'update tests', 'improve tests', 'review tests', 'what should I test', 'how to test this', 'testing strategy', 'test approach', 'which tests to write', 'test coverage', 'verify the code', 'ensure test coverage', 'prevent regression', or after implementing features to add or update tests. Also triggers on mentions of pytest, jest, vitest, unittest, mocha, TDD, BDD, coverage, mocking, fixtures, test-driven development, or testing frameworks."
-metadata:
-  trigger-keywords: "test, testing, unit test, integration test, test coverage, pytest, unittest, jest, vitest, mocha, mock, fixture, test case, TDD, BDD, test driven, spec, regression test, test strategy, what to test, how to test"
-  trigger-patterns: "(write|create|add|improve|review|update).*test, test.*(coverage|case|suite|file|strategy), (unit|integration|e2e).*test, add.*(spec|test).*for, (what|which|how).*(test|coverage), after.*(implement|code|feature).*(test|coverage)"
 ---
 
 # Test Writing Skill
