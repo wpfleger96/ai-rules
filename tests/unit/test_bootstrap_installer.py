@@ -3,11 +3,14 @@
 import subprocess
 import sys
 
+from unittest.mock import MagicMock
+
 import pytest
 
 from ai_rules.bootstrap.installer import (
     UV_NOT_FOUND_ERROR,
     ToolSource,
+    get_effective_install_source,
     get_tool_config_dir,
     get_tool_source,
     install_tool,
@@ -280,3 +283,104 @@ class TestGetToolSource:
         monkeypatch.setenv("XDG_DATA_HOME", str(tmp_path))
         result = get_tool_source("nonexistent-package")
         assert result is None
+
+
+@pytest.mark.unit
+@pytest.mark.bootstrap
+class TestInstallToolGithub:
+    """Tests for install_tool with from_github=True."""
+
+    def test_install_from_github_requires_github_url(self, monkeypatch):
+        monkeypatch.setattr(
+            "ai_rules.bootstrap.installer.is_command_available", lambda cmd: True
+        )
+        with pytest.raises(ValueError, match="github_url is required"):
+            install_tool("some-package", from_github=True)
+
+    def test_install_from_github_with_url(self, monkeypatch):
+        captured = []
+
+        def mock_run(cmd, **kwargs):
+            captured.append(cmd)
+
+            class Result:
+                returncode = 0
+                stderr = ""
+                stdout = ""
+
+            return Result()
+
+        monkeypatch.setattr(
+            "ai_rules.bootstrap.installer.is_command_available", lambda cmd: True
+        )
+        monkeypatch.setattr("subprocess.run", mock_run)
+        success, _ = install_tool(
+            "some-package",
+            from_github=True,
+            github_url="git+ssh://git@github.com/owner/repo.git",
+        )
+        assert success is True
+        assert "git+ssh://git@github.com/owner/repo.git" in captured[0]
+
+    def test_install_from_github_dry_run(self, monkeypatch):
+        monkeypatch.setattr(
+            "ai_rules.bootstrap.installer.is_command_available", lambda cmd: True
+        )
+        success, message = install_tool(
+            "some-package",
+            from_github=True,
+            github_url="git+ssh://git@github.com/owner/repo.git",
+            dry_run=True,
+        )
+        assert success is True
+        assert "git+ssh://git@github.com/owner/repo.git" in message
+
+
+@pytest.mark.unit
+@pytest.mark.bootstrap
+class TestGetEffectiveInstallSource:
+    """Tests for get_effective_install_source resolver."""
+
+    def test_cli_flag_always_wins(self, monkeypatch):
+        """CLI --github flag overrides everything — no config lookup needed."""
+        # No mocking needed: cli_github_flag=True returns True immediately
+        assert get_effective_install_source("statusline", cli_github_flag=True) is True
+
+    def test_config_github_wins_without_cli_flag(self, monkeypatch):
+        """Persisted 'github' config wins when CLI flag is False."""
+        from ai_rules.config import Config
+
+        mock_config = MagicMock()
+        mock_config.get_tool_install_source.return_value = "github"
+        monkeypatch.setattr(Config, "load", lambda *a, **kw: mock_config)
+        assert get_effective_install_source("statusline", cli_github_flag=False) is True
+
+    def test_config_pypi_beats_default(self, monkeypatch):
+        """Persisted 'pypi' config returns False even without CLI flag."""
+        from ai_rules.config import Config
+
+        mock_config = MagicMock()
+        mock_config.get_tool_install_source.return_value = "pypi"
+        monkeypatch.setattr(Config, "load", lambda *a, **kw: mock_config)
+        assert (
+            get_effective_install_source("statusline", cli_github_flag=False) is False
+        )
+
+    def test_defaults_to_pypi_when_nothing_configured(self, monkeypatch):
+        """Falls back to False (PyPI) when no config and no CLI flag."""
+        from ai_rules.config import Config
+
+        mock_config = MagicMock()
+        mock_config.get_tool_install_source.return_value = None
+        monkeypatch.setattr(Config, "load", lambda *a, **kw: mock_config)
+        assert get_effective_install_source("statusline") is False
+
+    def test_config_load_failure_falls_back_to_pypi(self, monkeypatch):
+        """Config load failure is silently ignored and defaults to PyPI."""
+        from ai_rules.config import Config
+
+        def _raise(*args, **kwargs):
+            raise RuntimeError("config broke")
+
+        monkeypatch.setattr(Config, "load", _raise)
+        assert get_effective_install_source("statusline") is False

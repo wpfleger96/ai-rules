@@ -560,6 +560,7 @@ class Config:
         profile_name: str | None = None,
         plugins: list[dict[str, str]] | None = None,
         marketplaces: list[dict[str, str]] | None = None,
+        managed_tools: dict[str, Any] | None = None,
     ):
         self.exclude_symlinks = set(exclude_symlinks or [])
         self.settings_overrides = settings_overrides or {}
@@ -567,6 +568,7 @@ class Config:
         self.profile_name = profile_name
         self.plugins = plugins or []
         self.marketplaces = marketplaces or []
+        self.managed_tools = managed_tools or {}
 
     def get_plugin_configs(self) -> list[PluginConfig]:
         """Convert plugin dicts to PluginConfig objects."""
@@ -632,6 +634,7 @@ class Config:
         mcp_overrides = copy.deepcopy(profile_data.mcp_overrides)
         plugins = copy.deepcopy(profile_data.plugins)
         marketplaces = copy.deepcopy(profile_data.marketplaces)
+        managed_tools = copy.deepcopy(profile_data.managed_tools)
 
         user_config_path = get_user_config_path()
         if user_config_path.exists():
@@ -661,6 +664,10 @@ class Config:
                     marketplaces_by_name[marketplace["name"]] = marketplace
                 marketplaces = list(marketplaces_by_name.values())
 
+            user_managed_tools = user_data.get("managed_tools", {})
+            if user_managed_tools:
+                managed_tools = deep_merge(managed_tools, user_managed_tools)
+
         return cls(
             exclude_symlinks=exclude_symlinks,
             settings_overrides=settings_overrides,
@@ -668,7 +675,58 @@ class Config:
             profile_name=profile_name,
             plugins=plugins,
             marketplaces=marketplaces,
+            managed_tools=managed_tools,
         )
+
+    def get_tool_install_source(self, tool_id: str) -> str | None:
+        """Return configured install source for a managed tool.
+
+        Args:
+            tool_id: Tool identifier (e.g., "statusline", "ai-agent-rules")
+
+        Returns:
+            'pypi', 'github', or None if not configured
+        """
+        sources: dict[str, Any] = self.managed_tools.get("install_sources", {})
+        value = sources.get(tool_id)
+        return str(value) if value is not None else None
+
+    @staticmethod
+    def get_tool_install_source_from_user_config(tool_id: str) -> str | None:
+        """Read install source preference directly from user config (no profile merge).
+
+        Used by the 'tool source' command to show what's pinned in user config
+        vs. what comes from the profile.
+        """
+        user_data = Config.load_user_config()
+        sources: dict[str, Any] = user_data.get("managed_tools", {}).get(
+            "install_sources", {}
+        )
+        value = sources.get(tool_id)
+        return str(value) if value is not None else None
+
+    @staticmethod
+    def set_tool_install_source(tool_id: str, source: str | None) -> None:
+        """Persist install source preference for a tool in the user config.
+
+        Args:
+            tool_id: Tool identifier (e.g., "statusline", "ai-agent-rules")
+            source: 'pypi', 'github', or None to clear the preference
+        """
+        data = Config.load_user_config()
+        managed = data.setdefault("managed_tools", {})
+        sources = managed.setdefault("install_sources", {})
+        if source is None:
+            sources.pop(tool_id, None)
+            if not sources:
+                managed.pop("install_sources", None)
+            if not managed:
+                data.pop("managed_tools", None)
+        else:
+            sources[tool_id] = source
+        Config.save_user_config(data)
+        # Invalidate lru_cache so next Config.load() picks up the new value
+        Config._load_cached.cache_clear()
 
     def is_excluded(self, symlink_target: str) -> bool:
         """Check if a symlink target is globally excluded.

@@ -35,8 +35,6 @@ def make_github_install_url(repo: str) -> str:
 
 
 UV_NOT_FOUND_ERROR = "uv not found in PATH. Install from https://docs.astral.sh/uv/"
-GITHUB_REPO = "wpfleger96/ai-agent-rules"
-STATUSLINE_GITHUB_REPO = "wpfleger96/claude-code-status-line"
 
 
 def _validate_package_name(package_name: str) -> bool:
@@ -147,7 +145,9 @@ def install_tool(
         return False, UV_NOT_FOUND_ERROR
 
     if from_github:
-        source = github_url if github_url else make_github_install_url(GITHUB_REPO)
+        if not github_url:
+            raise ValueError("github_url is required when from_github=True")
+        source = github_url
     else:
         source = package_name
     cmd = ["uv", "tool", "install", source]
@@ -261,38 +261,110 @@ def get_tool_version(tool_name: str) -> str | None:
         return None
 
 
+def get_effective_install_source(tool_id: str, cli_github_flag: bool = False) -> bool:
+    """Resolve whether a tool should use GitHub install.
+
+    Priority (highest first):
+    1. cli_github_flag — explicit session override (--github flag)
+    2. Merged config (user config > active profile) managed_tools.install_sources
+    3. Default: False (PyPI)
+
+    Args:
+        tool_id: Tool identifier (e.g., "statusline", "ai-agent-rules")
+        cli_github_flag: True if --github was passed on the CLI
+
+    Returns:
+        True for GitHub, False for PyPI
+    """
+    if cli_github_flag:
+        return True
+    try:
+        from ai_rules.config import Config
+
+        config = Config.load()
+        source = config.get_tool_install_source(tool_id)
+        if source == "github":
+            return True
+        if source == "pypi":
+            return False
+    except Exception as e:
+        import logging
+
+        logging.getLogger(__name__).debug(
+            f"Config load failed in install source resolver: {e}"
+        )
+    return False
+
+
 def ensure_statusline_installed(
-    dry_run: bool = False, from_github: bool = False
+    dry_run: bool = False,
+    from_github: bool = False,
+    allow_source_switch: bool = False,
 ) -> tuple[str, str | None]:
     """Install or upgrade claude-code-statusline if needed. Fails open.
 
     Args:
         dry_run: If True, show what would be done without executing
         from_github: Install from GitHub instead of PyPI
+        allow_source_switch: If True and the installed source differs from desired,
+            uninstall and reinstall from the correct source (only setup should pass True)
 
     Returns:
-        Tuple of (status, message) where status is:
-        "already_installed", "installed", "upgraded", "upgrade_available", "failed", or "skipped"
-        Message is only provided in dry_run mode or when upgraded
+        Tuple of (status, message) where status is one of:
+        "already_installed", "installed", "upgraded", "upgrade_available",
+        "source_switched", "source_switch_needed", "failed"
+        Message is only provided in dry_run mode or when upgraded/switched
     """
+    try:
+        from ai_rules.tools.statusline import StatuslineTool
+
+        statusline_spec = StatuslineTool.INSTALL_SPEC
+    except Exception:
+        statusline_spec = None
+
     if is_command_available("claude-statusline"):
+        if allow_source_switch and statusline_spec:
+            current_source = get_tool_source(statusline_spec.package_name)
+            desired_source = ToolSource.GITHUB if from_github else ToolSource.PYPI
+            if current_source is not None and current_source != desired_source:
+                if dry_run:
+                    return (
+                        "source_switch_needed",
+                        f"Would switch statusline from {current_source.name} to {desired_source.name}",
+                    )
+                uninstall_success, _ = uninstall_tool(statusline_spec.package_name)
+                if uninstall_success:
+                    github_url = (
+                        statusline_spec.github_install_url if from_github else None
+                    )
+                    success, _ = install_tool(
+                        statusline_spec.package_name,
+                        from_github=from_github,
+                        github_url=github_url,
+                        force=True,
+                    )
+                    if success:
+                        return (
+                            "source_switched",
+                            f"{current_source.name} → {desired_source.name}",
+                        )
+                return "failed", None
+
         try:
             from ai_rules.bootstrap.updater import (
                 check_tool_updates,
                 perform_tool_upgrade,
             )
-            from ai_rules.tools.statusline import StatuslineTool
 
-            statusline_tool = StatuslineTool.INSTALL_SPEC
-            if statusline_tool:
-                update_info = check_tool_updates(statusline_tool, timeout=10)
+            if statusline_spec:
+                update_info = check_tool_updates(statusline_spec, timeout=10)
                 if update_info and update_info.has_update:
                     if dry_run:
                         return (
                             "upgrade_available",
                             f"Would upgrade statusline {update_info.current_version} → {update_info.latest_version}",
                         )
-                    success, msg, _ = perform_tool_upgrade(statusline_tool)
+                    success, msg, _ = perform_tool_upgrade(statusline_spec)
                     if success:
                         return (
                             "upgraded",
@@ -303,12 +375,17 @@ def ensure_statusline_installed(
         return "already_installed", None
 
     try:
+        github_url = (
+            statusline_spec.github_install_url
+            if (from_github and statusline_spec)
+            else None
+        )
         success, message = install_tool(
-            "claude-code-statusline",
+            statusline_spec.package_name
+            if statusline_spec
+            else "claude-code-statusline",
             from_github=from_github,
-            github_url=make_github_install_url(STATUSLINE_GITHUB_REPO)
-            if from_github
-            else None,
+            github_url=github_url,
             force=False,
             dry_run=dry_run,
         )

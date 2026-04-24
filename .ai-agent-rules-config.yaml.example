@@ -74,3 +74,32 @@ settings_overrides:
   #
   # goose:
   #   provider: "anthropic"
+
+# ============================================================================
+# MANAGED TOOLS
+# ============================================================================
+# Per-tool install source preferences (machine-local override for profile defaults)
+#
+# This allows each machine to control whether a managed tool is installed
+# from PyPI or directly from GitHub. The primary use case is working around
+# a corporate PyPI mirror (e.g., Artifactory) that lags behind upstream,
+# so you can get the latest version immediately after a GitHub release.
+#
+# Preferred approach: set this in your profile (e.g., work.yaml):
+#   managed_tools:
+#     install_sources:
+#       ai-agent-rules: github
+#       statusline: github
+#
+# This user config section overrides the profile setting on a specific machine.
+#
+# CLI commands:
+#   ai-agent-rules tool source                          # show all preferences
+#   ai-agent-rules tool source statusline github       # set preference
+#   ai-agent-rules tool source statusline reset        # clear preference
+#
+# After changing: run 'ai-agent-rules setup' to switch installed source
+managed_tools:
+  # install_sources:
+  #   ai-agent-rules: github  # "pypi" | "github"
+  #   statusline: github

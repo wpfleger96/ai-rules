@@ -441,10 +441,12 @@ def version_callback(ctx: click.Context, param: click.Parameter, value: bool) ->
     console.print(f"ai-agent-rules, version {__version__}")
 
     try:
-        from ai_rules.bootstrap import get_tool_version, is_command_available
+        from ai_rules.bootstrap import is_command_available
 
         if is_command_available("claude-statusline"):
-            statusline_version = get_tool_version("claude-code-statusline")
+            from ai_rules.tools.statusline import StatuslineTool
+
+            statusline_version = StatuslineTool.INSTALL_SPEC.get_version()
             if statusline_version:
                 console.print(f"statusline, version {statusline_version}")
             else:
@@ -741,6 +743,7 @@ def setup(
 
     from ai_rules.bootstrap import (
         ensure_statusline_installed,
+        get_effective_install_source,
         get_tool_config_dir,
         install_tool,
     )
@@ -755,8 +758,11 @@ def setup(
     console.print("[bold cyan]Step 1/3: Install ai-agent-rules system-wide[/bold cyan]")
     console.print("This allows you to run 'ai-agent-rules' from any directory.\n")
 
+    statusline_from_github = get_effective_install_source(
+        "statusline", cli_github_flag=github
+    )
     statusline_result, statusline_message = ensure_statusline_installed(
-        dry_run=dry_run, from_github=github
+        dry_run=dry_run, from_github=statusline_from_github, allow_source_switch=True
     )
     if statusline_result == "installed":
         if dry_run and statusline_message:
@@ -769,6 +775,13 @@ def setup(
         )
     elif statusline_result == "upgrade_available":
         console.print(f"[dim]{statusline_message}[/dim]")
+    elif statusline_result == "source_switched":
+        console.print(
+            f"[green]✓[/green] Switched claude-statusline source ({statusline_message})"
+        )
+    elif statusline_result == "source_switch_needed":
+        if dry_run and statusline_message:
+            console.print(f"[dim]{statusline_message}[/dim]")
     elif statusline_result == "failed":
         console.print(
             "[yellow]⚠[/yellow] Failed to install claude-statusline (continuing anyway)"
@@ -780,12 +793,15 @@ def setup(
     if ai_rules_tool and ai_rules_tool.is_installed():
         from ai_rules.bootstrap import ToolSource, get_tool_source, uninstall_tool
 
+        ai_rules_from_github = get_effective_install_source(
+            "ai-agent-rules", cli_github_flag=github
+        )
         current_source = get_tool_source(ai_rules_tool.package_name)
-        desired_source = ToolSource.GITHUB if github else ToolSource.PYPI
+        desired_source = ToolSource.GITHUB if ai_rules_from_github else ToolSource.PYPI
         needs_source_switch = current_source != desired_source
 
         if needs_source_switch:
-            source_name = "GitHub" if github else "PyPI"
+            source_name = "GitHub" if ai_rules_from_github else "PyPI"
             if dry_run:
                 console.print(
                     f"[dim]Would switch ai-agent-rules from {current_source.name if current_source else 'unknown'} to {source_name}[/dim]"
@@ -800,8 +816,16 @@ def setup(
                 else:
                     uninstall_success, _ = uninstall_tool(ai_rules_tool.package_name)
                     if uninstall_success:
+                        github_url = (
+                            ai_rules_tool.github_install_url
+                            if ai_rules_from_github
+                            else None
+                        )
                         success, message = install_tool(
-                            "ai-agent-rules", from_github=github, force=True
+                            ai_rules_tool.package_name,
+                            from_github=ai_rules_from_github,
+                            github_url=github_url,
+                            force=True,
                         )
                         if success:
                             console.print(
@@ -859,8 +883,21 @@ def setup(
                 return
 
         try:
+            ai_rules_from_github = get_effective_install_source(
+                "ai-agent-rules", cli_github_flag=github
+            )
+            ai_rules_tool_spec = get_tool_by_id("ai-agent-rules")
+            github_url = (
+                ai_rules_tool_spec.github_install_url
+                if (ai_rules_from_github and ai_rules_tool_spec)
+                else None
+            )
             success, message = install_tool(
-                "ai-agent-rules", from_github=github, force=yes, dry_run=dry_run
+                "ai-agent-rules",
+                from_github=ai_rules_from_github,
+                github_url=github_url,
+                force=yes,
+                dry_run=dry_run,
             )
 
             if dry_run:
@@ -1008,12 +1045,18 @@ def install(
     from rich.console import Console
     from rich.prompt import Confirm
 
-    from ai_rules.bootstrap import ensure_statusline_installed
+    from ai_rules.bootstrap import (
+        ensure_statusline_installed,
+        get_effective_install_source,
+    )
     from ai_rules.config import Config
 
     console = Console()
 
-    statusline_result, statusline_message = ensure_statusline_installed(dry_run=dry_run)
+    statusline_result, statusline_message = ensure_statusline_installed(
+        dry_run=dry_run,
+        from_github=get_effective_install_source("statusline"),
+    )
     if statusline_result == "installed":
         if dry_run and statusline_message:
             console.print(f"[dim]{statusline_message}[/dim]\n")
@@ -1801,7 +1844,9 @@ def list_agents_cmd() -> None:
 def upgrade(
     check: bool, force: bool, yes: bool, skip_install: bool, only: str | None
 ) -> None:
-    """Upgrade ai-agent-rules and related tools to the latest versions from PyPI.
+    """Upgrade ai-agent-rules and related tools to the latest versions.
+
+    Each tool upgrades from its configured install source (PyPI or GitHub).
 
     Examples:
         ai-agent-rules upgrade                    # Check and install all updates
@@ -1814,6 +1859,7 @@ def upgrade(
 
     from ai_rules.bootstrap import (
         check_tool_updates,
+        get_effective_install_source,
         get_updatable_tools,
         perform_tool_upgrade,
     )
@@ -1837,12 +1883,13 @@ def upgrade(
     if missing_tools and not check:
         if yes or Confirm.ask("\nReinstall missing tools?", default=True):
             for tool in missing_tools:
-                from_github = tool.github_install_url is not None
+                from_github = get_effective_install_source(tool.tool_id)
+                github_url = tool.github_install_url if from_github else None
                 with console.status(f"Installing {tool.display_name}..."):
                     success, msg = install_tool(
                         tool.package_name,
                         from_github=from_github,
-                        github_url=tool.github_install_url,
+                        github_url=github_url,
                     )
                 if success:
                     console.print(f"[green]✓[/green] {tool.display_name} reinstalled")
@@ -2017,12 +2064,19 @@ def info() -> None:
     from rich.table import Table
 
     from ai_rules.bootstrap import (
+        ToolSource,
         check_tool_updates,
         get_tool_source,
         get_updatable_tools,
     )
+    from ai_rules.config import Config
 
     console = Console()
+
+    try:
+        config = Config.load()
+    except Exception:
+        config = None
 
     table = Table(title="AI Rules Installation Info", show_header=True)
     table.add_column("Tool", style="cyan")
@@ -2040,7 +2094,24 @@ def info() -> None:
             continue
 
         source = get_tool_source(tool.package_name)
-        source_display = source.name.lower() if source else "[dim]unknown[/dim]"
+        configured = config.get_tool_install_source(tool.tool_id) if config else None
+
+        if source:
+            source_str = source.name.lower()
+            configured_source = (
+                ToolSource.GITHUB
+                if configured == "github"
+                else (ToolSource.PYPI if configured == "pypi" else None)
+            )
+            if configured_source is not None and configured_source != source:
+                # Drift: config says one thing, receipt says another
+                source_display = f"{source_str} [yellow](config: {configured} — run 'setup' to switch)[/yellow]"
+            elif configured is not None:
+                source_display = f"{source_str} [dim](config)[/dim]"
+            else:
+                source_display = source_str
+        else:
+            source_display = "[dim]unknown[/dim]"
 
         version = tool.get_version()
         version_display = version if version else "[dim]unknown[/dim]"
@@ -3090,6 +3161,28 @@ def profile_show(name: str, resolved: bool) -> None:
                     console.print(f"  [cyan]{mcp}:[/cyan]")
                     for key, value in sorted(overrides.items()):
                         console.print(f"    {key}: {value}")
+
+            if profile.managed_tools:
+                console.print("\n[bold]Managed Tools:[/bold]")
+                import yaml as _yaml
+
+                console.print(
+                    _yaml.dump(profile.managed_tools, default_flow_style=False).rstrip()
+                )
+
+            if profile.plugins:
+                console.print("\n[bold]Plugins:[/bold]")
+                for plugin in profile.plugins:
+                    console.print(
+                        f"  - {plugin.get('name', '?')} (marketplace: {plugin.get('marketplace', '?')})"
+                    )
+
+            if profile.marketplaces:
+                console.print("\n[bold]Marketplaces:[/bold]")
+                for marketplace in profile.marketplaces:
+                    console.print(
+                        f"  - {marketplace.get('name', '?')} (source: {marketplace.get('source', '?')})"
+                    )
         else:
             import yaml
 
@@ -3424,6 +3517,116 @@ def completions_status() -> None:
 
     console.print(table)
     console.print("\n[dim]To install: ai-agent-rules completions install[/dim]")
+
+
+@main.group()
+def tool() -> None:
+    """Manage tool install source preferences."""
+    pass
+
+
+@tool.command("source")
+@click.argument("tool_id", required=False)
+@click.argument(
+    "source_value",
+    required=False,
+    type=click.Choice(["pypi", "github", "reset"]),
+)
+def tool_source(tool_id: str | None, source_value: str | None) -> None:
+    """Get or set the persistent install source for a managed tool.
+
+    Without arguments, lists all configured source preferences.
+
+    TOOL_ID can be one of: ai-agent-rules, ai-rules, statusline
+
+    SOURCE_VALUE can be: pypi, github, or reset (to clear the preference)
+
+    Examples:
+        ai-agent-rules tool source
+        ai-agent-rules tool source statusline github
+        ai-agent-rules tool source statusline reset
+    """
+    from rich.console import Console
+    from rich.table import Table
+
+    from ai_rules.bootstrap.updater import _TOOL_ID_ALIASES, get_updatable_tools
+    from ai_rules.config import Config
+
+    console = Console()
+
+    if tool_id is None:
+        # List all configured preferences
+        tools = get_updatable_tools()
+        table = Table(title="Tool Install Source Preferences", show_header=True)
+        table.add_column("Tool", style="cyan")
+        table.add_column("User Config")
+        table.add_column("Effective (from profile/config)")
+
+        for spec in tools:
+            user_pref = Config.get_tool_install_source_from_user_config(spec.tool_id)
+            try:
+                effective_pref = Config.load().get_tool_install_source(spec.tool_id)
+            except Exception:
+                effective_pref = None
+            table.add_row(
+                spec.tool_id,
+                user_pref or "[dim](not set)[/dim]",
+                effective_pref or "[dim](default: pypi)[/dim]",
+            )
+        console.print(table)
+        console.print(
+            "\n[dim]Run 'ai-agent-rules setup' after changing to switch the installed source.[/dim]"
+        )
+        return
+
+    # Normalize alias (ai-rules → ai-agent-rules)
+    canonical_id = _TOOL_ID_ALIASES.get(tool_id, tool_id)
+    tools = get_updatable_tools()
+    valid_ids = {t.tool_id for t in tools}
+    if canonical_id not in valid_ids:
+        console.print(
+            f"[red]Error:[/red] Unknown tool '{tool_id}'. Valid tools: {', '.join(sorted(valid_ids))}"
+        )
+        sys.exit(1)
+
+    if source_value is None:
+        # Show current preference for this tool
+        user_pref = Config.get_tool_install_source_from_user_config(canonical_id)
+        try:
+            effective_pref = Config.load().get_tool_install_source(canonical_id)
+        except Exception:
+            effective_pref = None
+        if user_pref:
+            console.print(
+                f"[cyan]{canonical_id}[/cyan] user config: [bold]{user_pref}[/bold]"
+            )
+        else:
+            console.print(
+                f"[cyan]{canonical_id}[/cyan] user config: [dim](not set)[/dim]"
+            )
+        if effective_pref:
+            console.print(
+                f"[cyan]{canonical_id}[/cyan] effective (profile/config): [bold]{effective_pref}[/bold]"
+            )
+        else:
+            console.print(
+                f"[cyan]{canonical_id}[/cyan] effective: [dim](default: pypi)[/dim]"
+            )
+        return
+
+    if source_value == "reset":
+        Config.set_tool_install_source(canonical_id, None)
+        console.print(
+            f"[green]✓[/green] Cleared install source preference for [cyan]{canonical_id}[/cyan]"
+        )
+    else:
+        Config.set_tool_install_source(canonical_id, source_value)
+        console.print(
+            f"[green]✓[/green] Set [cyan]{canonical_id}[/cyan] install source to [bold]{source_value}[/bold]"
+        )
+        console.print(
+            "[dim]Run 'ai-agent-rules setup' to switch the installed source if needed.[/dim]"
+        )
 
 
 if __name__ == "__main__":

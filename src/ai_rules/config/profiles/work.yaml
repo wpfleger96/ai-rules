@@ -1,6 +1,10 @@
 name: work
 description: Work laptop with extended context models
 extends: personal
+managed_tools:
+  install_sources:
+    ai-agent-rules: github
+    statusline: github
 settings_overrides:
   claude:
     env:

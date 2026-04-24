@@ -22,6 +22,7 @@ class Profile:
     mcp_overrides: dict[str, dict[str, Any]] = field(default_factory=dict)
     plugins: list[dict[str, str]] = field(default_factory=list)
     marketplaces: list[dict[str, str]] = field(default_factory=list)
+    managed_tools: dict[str, Any] = field(default_factory=dict)
 
 
 class ProfileError(Exception):
@@ -125,6 +126,7 @@ class ProfileLoader:
             mcp_overrides=data.get("mcp_overrides", {}),
             plugins=data.get("plugins", []),
             marketplaces=data.get("marketplaces", []),
+            managed_tools=data.get("managed_tools", {}),
         )
 
         if profile.extends:
@@ -177,6 +179,10 @@ class ProfileLoader:
                     raise ProfileError(
                         f"Profile '{profile_name}': marketplaces[{i}] must have 'name' and 'source' keys"
                     )
+        if "managed_tools" in data and not isinstance(data["managed_tools"], dict):
+            raise ProfileError(
+                f"Profile '{profile_name}': managed_tools must be a dict"
+            )
 
     def _merge_profiles(self, parent: Profile, child: Profile) -> Profile:
         """Merge parent profile into child, with child taking precedence."""
@@ -200,6 +206,8 @@ class ProfileLoader:
             marketplaces_by_name[marketplace["name"]] = marketplace
         merged_marketplaces = list(marketplaces_by_name.values())
 
+        merged_managed_tools = deep_merge(parent.managed_tools, child.managed_tools)
+
         return Profile(
             name=child.name,
             description=child.description,
@@ -209,6 +217,7 @@ class ProfileLoader:
             mcp_overrides=merged_mcp,
             plugins=merged_plugins,
             marketplaces=merged_marketplaces,
+            managed_tools=merged_managed_tools,
         )
 
     def get_profile_info(self, name: str) -> dict[str, Any]:

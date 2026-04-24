@@ -400,3 +400,78 @@ settings_overrides:
         dev = profile.settings_overrides["goose"]["extensions"]["developer"]
         assert dev["timeout"] == 300
         assert dev["enabled"] is False
+
+
+@pytest.mark.unit
+class TestManagedToolsInheritance:
+    """Tests for managed_tools field in profiles."""
+
+    def test_managed_tools_loaded_from_profile(self, profiles_dir):
+        (profiles_dir / "work.yaml").write_text("""\
+name: work
+managed_tools:
+  install_sources:
+    ai-agent-rules: github
+    statusline: github
+""")
+        loader = ProfileLoader(profiles_dir=profiles_dir)
+        profile = loader.load_profile("work")
+
+        assert profile.managed_tools == {
+            "install_sources": {"ai-agent-rules": "github", "statusline": "github"}
+        }
+
+    def test_managed_tools_deep_merged_across_inheritance(self, profiles_dir):
+        (profiles_dir / "base.yaml").write_text("""\
+name: base
+managed_tools:
+  install_sources:
+    ai-agent-rules: github
+""")
+        (profiles_dir / "child.yaml").write_text("""\
+name: child
+extends: base
+managed_tools:
+  install_sources:
+    statusline: github
+""")
+        loader = ProfileLoader(profiles_dir=profiles_dir)
+        profile = loader.load_profile("child")
+
+        # Both tools present after deep merge
+        assert profile.managed_tools["install_sources"]["ai-agent-rules"] == "github"
+        assert profile.managed_tools["install_sources"]["statusline"] == "github"
+
+    def test_child_overrides_parent_managed_tools_value(self, profiles_dir):
+        (profiles_dir / "base.yaml").write_text("""\
+name: base
+managed_tools:
+  install_sources:
+    statusline: github
+""")
+        (profiles_dir / "child.yaml").write_text("""\
+name: child
+extends: base
+managed_tools:
+  install_sources:
+    statusline: pypi
+""")
+        loader = ProfileLoader(profiles_dir=profiles_dir)
+        profile = loader.load_profile("child")
+
+        assert profile.managed_tools["install_sources"]["statusline"] == "pypi"
+
+    def test_profile_without_managed_tools_has_empty_dict(self, profiles_dir):
+        (profiles_dir / "simple.yaml").write_text("name: simple\n")
+        loader = ProfileLoader(profiles_dir=profiles_dir)
+        profile = loader.load_profile("simple")
+        assert profile.managed_tools == {}
+
+    def test_invalid_managed_tools_type_raises_error(self, profiles_dir):
+        (profiles_dir / "bad.yaml").write_text("""\
+name: bad
+managed_tools: "should be a dict"
+""")
+        loader = ProfileLoader(profiles_dir=profiles_dir)
+        with pytest.raises(Exception, match="managed_tools must be a dict"):
+            loader.load_profile("bad")

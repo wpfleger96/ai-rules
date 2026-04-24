@@ -11,7 +11,6 @@ from collections.abc import Callable
 from dataclasses import dataclass
 
 from .installer import (
-    GITHUB_REPO,
     UV_NOT_FOUND_ERROR,
     ToolSource,
     _validate_package_name,
@@ -21,6 +20,8 @@ from .installer import (
     make_github_install_url,
 )
 from .version import is_newer
+
+_SELF_GITHUB_REPO = "wpfleger96/ai-agent-rules"
 
 logger = logging.getLogger(__name__)
 
@@ -392,7 +393,7 @@ _SELF_SPEC = ToolSpec(
     display_name="ai-agent-rules",
     get_version=lambda: get_tool_version("ai-agent-rules"),
     is_installed=lambda: True,
-    github_repo=GITHUB_REPO,
+    github_repo=_SELF_GITHUB_REPO,
 )
 
 

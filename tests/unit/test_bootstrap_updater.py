@@ -4,7 +4,7 @@ import subprocess
 
 import pytest
 
-from ai_rules.bootstrap.installer import UV_NOT_FOUND_ERROR
+from ai_rules.bootstrap.installer import UV_NOT_FOUND_ERROR, ToolSource
 from ai_rules.bootstrap.updater import (
     ToolSpec,
     check_index_updates,
@@ -297,7 +297,7 @@ class TestPerformToolUpgrade:
             "ai_rules.bootstrap.updater.is_command_available", lambda cmd: True
         )
         monkeypatch.setattr(
-            "ai_rules.bootstrap.updater.get_tool_source", lambda pkg: "pypi"
+            "ai_rules.bootstrap.updater.get_tool_source", lambda pkg: ToolSource.PYPI
         )
 
         def mock_run(*args, **kwargs):

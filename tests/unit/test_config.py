@@ -1181,3 +1181,83 @@ class TestMergeSettingsAgentShapes:
         result = config.merge_settings("claude", base)
 
         assert result == base
+
+
+@pytest.mark.unit
+@pytest.mark.config
+class TestManagedToolsConfig:
+    """Tests for managed_tools field in Config."""
+
+    def _make_home(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
+        home = tmp_path / "home"
+        home.mkdir()
+        monkeypatch.setenv("HOME", str(home))
+        monkeypatch.setattr(Path, "home", staticmethod(lambda: home))
+        Config._load_cached.cache_clear()
+        return home
+
+    def test_get_tool_install_source_returns_configured_value(self):
+        config = Config(managed_tools={"install_sources": {"statusline": "github"}})
+        assert config.get_tool_install_source("statusline") == "github"
+
+    def test_get_tool_install_source_returns_none_when_unset(self):
+        config = Config(managed_tools={})
+        assert config.get_tool_install_source("statusline") is None
+
+    def test_managed_tools_loaded_from_user_config(self, tmp_path, monkeypatch):
+        home = self._make_home(tmp_path, monkeypatch)
+        (home / ".ai-agent-rules-config.yaml").write_text(
+            "version: 1\nmanaged_tools:\n  install_sources:\n    statusline: github\n"
+        )
+        config = Config.load()
+        assert config.get_tool_install_source("statusline") == "github"
+
+    def test_user_config_managed_tools_overrides_profile(self, tmp_path, monkeypatch):
+        """User config managed_tools wins over profile managed_tools."""
+        home = self._make_home(tmp_path, monkeypatch)
+        # User config says pypi, profile would say github (but profile isn't loaded in this path)
+        (home / ".ai-agent-rules-config.yaml").write_text(
+            "version: 1\nmanaged_tools:\n  install_sources:\n    statusline: pypi\n"
+        )
+        config = Config.load()
+        assert config.get_tool_install_source("statusline") == "pypi"
+
+    def test_set_tool_install_source_persists_to_user_config(
+        self, tmp_path, monkeypatch
+    ):
+        self._make_home(tmp_path, monkeypatch)
+        Config.set_tool_install_source("statusline", "github")
+        user_data = Config.load_user_config()
+        assert user_data["managed_tools"]["install_sources"]["statusline"] == "github"
+
+    def test_set_tool_install_source_none_clears_preference(
+        self, tmp_path, monkeypatch
+    ):
+        self._make_home(tmp_path, monkeypatch)
+        Config.set_tool_install_source("statusline", "github")
+        Config.set_tool_install_source("statusline", None)
+        user_data = Config.load_user_config()
+        assert "managed_tools" not in user_data
+
+    def test_get_tool_install_source_from_user_config_ignores_profile(
+        self, tmp_path, monkeypatch
+    ):
+        home = self._make_home(tmp_path, monkeypatch)
+        (home / ".ai-agent-rules-config.yaml").write_text(
+            "version: 1\nmanaged_tools:\n  install_sources:\n    statusline: github\n"
+        )
+        assert Config.get_tool_install_source_from_user_config("statusline") == "github"
+
+    def test_set_tool_install_source_clears_lru_cache(self, tmp_path, monkeypatch):
+        """set_tool_install_source must clear _load_cached so next load reads new value."""
+        self._make_home(tmp_path, monkeypatch)
+        # Prime the cache with no preference
+        config_before = Config.load()
+        assert config_before.get_tool_install_source("statusline") is None
+
+        # Write a new preference — this should clear the cache
+        Config.set_tool_install_source("statusline", "github")
+
+        # Next load should reflect the new value
+        config_after = Config.load()
+        assert config_after.get_tool_install_source("statusline") == "github"
