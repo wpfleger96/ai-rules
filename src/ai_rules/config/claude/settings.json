@@ -136,6 +136,7 @@
     "command": "claude-statusline"
   },
   "viewMode": "verbose",
+  "showClearContextOnPlanAccept": true,
   "alwaysThinkingEnabled": true,
   "showThinkingSummaries": true,
   "skipDangerousModePermissionPrompt": true,
