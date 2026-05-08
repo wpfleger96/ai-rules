@@ -140,6 +140,44 @@ def test_completions_component_honors_skip_completions(
 
 
 @pytest.mark.unit
+def test_settings_component_removes_dangling_symlink_when_excluded(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    cache_dir = tmp_path / "cache" / "goose"
+    cache_dir.mkdir(parents=True)
+    cached_config = cache_dir / "config.yaml"
+    cached_config.write_text("cached")
+
+    settings_dir = tmp_path / "settings"
+    settings_dir.mkdir()
+    settings_symlink = settings_dir / "config.yaml"
+    settings_symlink.symlink_to(cached_config)
+
+    assert settings_symlink.is_symlink()
+
+    class ExcludedTarget:
+        target_id = "goose"
+        name = "Goose"
+        needs_cache = False
+        is_settings_file_excluded = True
+        settings_symlink_target = settings_symlink
+        _base_settings_path = Path("/nonexistent/settings.yaml")
+
+    monkeypatch.setattr(Config, "get_cache_dir", lambda self: tmp_path / "cache")
+    monkeypatch.setattr(Config, "cleanup_orphaned_cache", lambda self, targets: [])
+
+    ctx = make_context(
+        tmp_path,
+        all_targets=(ExcludedTarget(),),
+        selected_targets=(ExcludedTarget(),),
+    )
+    SettingsComponent().install(ctx)
+
+    assert not settings_symlink.exists()
+    assert not settings_symlink.is_symlink()
+
+
+@pytest.mark.unit
 def test_claude_plugin_component_treats_missing_claude_cli_as_nonfatal(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:

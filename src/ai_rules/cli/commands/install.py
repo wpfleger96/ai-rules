@@ -3,15 +3,28 @@ from __future__ import annotations
 import sys
 
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 import click
 
 import ai_rules.cli as cli_facade
 
+if TYPE_CHECKING:
+    from click.shell_completion import CompletionItem
+
 from ai_rules.cli.groups.profile import (
     _detect_profile_override_conflicts,
     _handle_profile_conflicts,
 )
+
+
+def _complete_components(
+    ctx: click.Context, param: click.Parameter, incomplete: str
+) -> list[CompletionItem]:
+    from ai_rules.cli.components import INSTALL_COMPONENTS
+
+    ids = tuple(c.component_id for c in INSTALL_COMPONENTS if c.filterable)
+    return cli_facade.complete_components(ctx, param, incomplete, component_ids=ids)
 
 
 @click.command()
@@ -31,7 +44,7 @@ from ai_rules.cli.groups.profile import (
     "--only",
     "component_filter",
     help="Comma-separated list of components to target (default: all)",
-    shell_complete=cli_facade.complete_components,
+    shell_complete=_complete_components,
 )
 @click.option(
     "--skip-completions",

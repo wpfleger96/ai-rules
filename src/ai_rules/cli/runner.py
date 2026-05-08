@@ -13,6 +13,31 @@ from ai_rules.cli.context import (
 )
 
 
+@dataclass
+class _RunAccumulator:
+    ok: bool = True
+    changed: bool = False
+    aborted: bool = False
+    counts: dict[str, int] = field(default_factory=dict)
+    results: list[tuple[str, ComponentResult]] = field(default_factory=list)
+
+    def fold(self, component: Component, result: ComponentResult) -> None:
+        self.results.append((component.label, result))
+        self.ok = self.ok and result.ok
+        self.changed = self.changed or result.changed
+        for key, value in result.counts.items():
+            self.counts[key] = self.counts.get(key, 0) + value
+
+    def to_result(self) -> ComponentRunResult:
+        return ComponentRunResult(
+            ok=self.ok,
+            changed=self.changed,
+            aborted=self.aborted,
+            counts=self.counts,
+            results=tuple(self.results),
+        )
+
+
 @dataclass(frozen=True)
 class ComponentRunResult:
     ok: bool = True
@@ -49,35 +74,20 @@ def run_components(
     operation: LifecycleOperation,
     ctx: CliContext,
 ) -> ComponentRunResult:
-    ok = True
-    changed = False
-    aborted = False
-    counts: dict[str, int] = {}
-    results: list[tuple[str, ComponentResult]] = []
+    acc = _RunAccumulator()
 
     for component in components:
         if _should_skip(component, ctx):
             continue
 
         result = _run_component(component, operation, ctx)
-        results.append((component.label, result))
-
-        ok = ok and result.ok
-        changed = changed or result.changed
-        for key, value in result.counts.items():
-            counts[key] = counts.get(key, 0) + value
+        acc.fold(component, result)
 
         if result.abort:
-            aborted = True
+            acc.aborted = True
             break
 
-    return ComponentRunResult(
-        ok=ok,
-        changed=changed,
-        aborted=aborted,
-        counts=counts,
-        results=tuple(results),
-    )
+    return acc.to_result()
 
 
 def run_install(
@@ -85,29 +95,15 @@ def run_install(
     semantic: Iterable[Component],
     ctx: CliContext,
 ) -> ComponentRunResult:
-    ok = True
-    changed = False
-    aborted = False
-    counts: dict[str, int] = {}
-    results: list[tuple[str, ComponentResult]] = []
+    acc = _RunAccumulator()
 
     for component in infrastructure:
         result = component.install(ctx)
-        results.append((component.label, result))
-
-        ok = ok and result.ok
-        changed = changed or result.changed
-        for key, value in result.counts.items():
-            counts[key] = counts.get(key, 0) + value
+        acc.fold(component, result)
 
         if result.abort or not result.ok:
-            return ComponentRunResult(
-                ok=ok,
-                changed=changed,
-                aborted=True,
-                counts=counts,
-                results=tuple(results),
-            )
+            acc.aborted = True
+            return acc.to_result()
 
     if not ctx.yes and not ctx.dry_run:
         from rich.prompt import Confirm
@@ -118,44 +114,23 @@ def run_install(
         )
 
         if not check_first_run(list(ctx.selected_targets), ctx.yes):
-            return ComponentRunResult(
-                ok=ok,
-                changed=changed,
-                aborted=True,
-                counts=counts,
-                results=tuple(results),
-            )
+            acc.aborted = True
+            return acc.to_result()
 
         if _display_pending_changes(ctx):
             if not Confirm.ask("Apply these changes?"):
-                return ComponentRunResult(
-                    ok=ok,
-                    changed=changed,
-                    aborted=True,
-                    counts=counts,
-                    results=tuple(results),
-                )
+                acc.aborted = True
+                return acc.to_result()
 
     for component in semantic:
         if _should_skip(component, ctx):
             continue
 
         result = component.install(ctx)
-        results.append((component.label, result))
-
-        ok = ok and result.ok
-        changed = changed or result.changed
-        for key, value in result.counts.items():
-            counts[key] = counts.get(key, 0) + value
+        acc.fold(component, result)
 
         if result.abort:
-            aborted = True
+            acc.aborted = True
             break
 
-    return ComponentRunResult(
-        ok=ok,
-        changed=changed,
-        aborted=aborted,
-        counts=counts,
-        results=tuple(results),
-    )
+    return acc.to_result()

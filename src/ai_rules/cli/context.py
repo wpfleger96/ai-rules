@@ -2,10 +2,10 @@
 
 from __future__ import annotations
 
-from abc import ABC, abstractmethod
+from abc import ABC
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Literal
+from typing import ClassVar, Literal
 
 from rich.console import Console
 
@@ -58,9 +58,7 @@ class Component(ABC):
     label: str
     filterable: bool = True
 
-    @property
-    @abstractmethod
-    def component_id(self) -> str: ...
+    component_id: ClassVar[str]
 
     def install(self, ctx: CliContext) -> ComponentResult:
         return ComponentResult()

@@ -13,23 +13,12 @@ from ai_rules.cli.components.skills import SkillsComponent
 from ai_rules.cli.components.source_files import SourceFilesComponent
 from ai_rules.cli.context import Component
 
-COMPONENT_IDS: tuple[str, ...] = (
-    "config",
-    "skills",
-    "settings",
-    "mcps",
-    "plugins",
-    "extensions",
-    "completions",
-    "tools",
-    "source-files",
-)
-
 INSTALL_COMPONENTS: tuple[Component, ...] = (
     SettingsComponent(),
     OptionalToolsComponent(),
     ConfigComponent(),
     SkillsComponent(),
+    ClaudeExtensionsComponent(),
     MCPComponent(),
     ClaudePluginComponent(),
     CompletionsComponent(),
@@ -58,6 +47,7 @@ DIFF_COMPONENTS: tuple[Component, ...] = (
 UNINSTALL_COMPONENTS: tuple[Component, ...] = (
     ConfigComponent(),
     SkillsComponent(),
+    ClaudeExtensionsComponent(),
     MCPComponent(),
 )
 

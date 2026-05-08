@@ -165,14 +165,19 @@ def select_components(
 
 
 def complete_components(
-    ctx: click.Context, param: click.Parameter, incomplete: str
+    ctx: click.Context,
+    param: click.Parameter,
+    incomplete: str,
+    *,
+    component_ids: tuple[str, ...] | None = None,
 ) -> list[CompletionItem]:
     """Shell completion callback for --only flag."""
     from click.shell_completion import CompletionItem
 
+    ids = component_ids if component_ids is not None else KNOWN_COMPONENT_IDS
     return [
         CompletionItem(component_id)
-        for component_id in KNOWN_COMPONENT_IDS
+        for component_id in ids
         if component_id.startswith(incomplete)
     ]
 

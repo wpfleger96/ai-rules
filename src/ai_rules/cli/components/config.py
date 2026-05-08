@@ -9,6 +9,11 @@ from ai_rules.cli.context import CliContext, Component, ComponentResult
 SPECIALIZED_PATH_PARTS = ("/agents/", "/commands/", "/skills/", "/hooks/")
 
 
+def _is_specialized_path(target: Path) -> bool:
+    target_str = str(target)
+    return any(part in target_str for part in SPECIALIZED_PATH_PARTS)
+
+
 def _display_symlink_status(
     status_code: str,
     target: Path,
@@ -73,6 +78,7 @@ class ConfigComponent(Component):
         from ai_rules.symlinks import SymlinkResult, create_symlink
 
         created = updated = skipped = excluded = errors = 0
+        effective_force = ctx.yes or not ctx.dry_run
 
         for agent in ctx.selected_targets:
             ctx.console.print(f"\n[bold]{agent.name}[/bold]")
@@ -83,7 +89,7 @@ class ConfigComponent(Component):
             config_symlinks = [
                 (tgt, src)
                 for tgt, src in filtered_symlinks
-                if not any(part in str(tgt) for part in SPECIALIZED_PATH_PARTS)
+                if not _is_specialized_path(tgt)
             ]
             excluded_count += len(filtered_symlinks) - len(config_symlinks)
 
@@ -94,7 +100,6 @@ class ConfigComponent(Component):
                 excluded += excluded_count
 
             for target, source in config_symlinks:
-                effective_force = ctx.yes or not ctx.dry_run
                 result, message = create_symlink(
                     target, source, effective_force, ctx.dry_run
                 )
@@ -152,8 +157,7 @@ class ConfigComponent(Component):
             ]
 
             for tgt, source in filtered_symlinks:
-                target_str = str(tgt)
-                if any(part in target_str for part in SPECIALIZED_PATH_PARTS):
+                if _is_specialized_path(tgt):
                     continue
 
                 status_code, message = check_symlink(tgt, source)
@@ -179,7 +183,7 @@ class ConfigComponent(Component):
             target_diffs: list[tuple[Path, Path, str, str, str | None]] = []
 
             for tgt, source in target.get_filtered_symlinks():
-                if any(part in str(tgt) for part in SPECIALIZED_PATH_PARTS):
+                if _is_specialized_path(tgt):
                     continue
                 target_path = tgt.expanduser()
                 status_code, message = check_symlink(target_path, source)
@@ -280,7 +284,7 @@ class ConfigComponent(Component):
             ctx.console.print(f"\n[bold]{target.name}[/bold]")
 
             for tgt, _source in target.get_filtered_symlinks():
-                if any(part in str(tgt) for part in SPECIALIZED_PATH_PARTS):
+                if _is_specialized_path(tgt):
                     continue
                 success, message = remove_symlink(tgt, ctx.yes)
 

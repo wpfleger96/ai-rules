@@ -14,23 +14,35 @@ from ai_rules.cli.runner import run_components
 from ai_rules.config import Config
 
 
-class FakeComponent(Component):
-    component_id = "fake"
-    filterable = True
+class _TrackingComponent(Component):
+    """Base for fake components that record call counts."""
 
-    def __init__(self, label: str, cid: str, result: ComponentResult | None = None):
-        self.label = label
-        self.component_id = cid
-        self._result = result or ComponentResult()
-        self.calls = 0
+    calls: int
 
-    def install(self, ctx: CliContext) -> ComponentResult:
-        self.calls += 1
-        return self._result
 
-    def status(self, ctx: CliContext) -> ComponentResult:
-        self.calls += 1
-        return self._result
+def FakeComponent(
+    label: str, cid: str, result: ComponentResult | None = None
+) -> _TrackingComponent:
+    """Factory that creates a filterable Component subclass with the given component_id."""
+
+    class _Fake(_TrackingComponent):
+        component_id = cid
+        filterable = True
+
+        def __init__(self) -> None:
+            self.label = label
+            self._result = result or ComponentResult()
+            self.calls = 0
+
+        def install(self, ctx: CliContext) -> ComponentResult:
+            self.calls += 1
+            return self._result
+
+        def status(self, ctx: CliContext) -> ComponentResult:
+            self.calls += 1
+            return self._result
+
+    return _Fake()
 
 
 class InfraComponent(Component):
@@ -144,3 +156,16 @@ def test_complete_components_filters_by_prefix() -> None:
     assert "config" in completion_values
     assert "completions" in completion_values
     assert "settings" not in completion_values
+
+
+@pytest.mark.unit
+def test_complete_components_respects_component_ids_param() -> None:
+    ctx = MagicMock()
+    param = MagicMock()
+
+    results = complete_components(ctx, param, "", component_ids=("config", "mcps"))
+
+    completion_values = [item.value for item in results]
+    assert "config" in completion_values
+    assert "mcps" in completion_values
+    assert "skills" not in completion_values

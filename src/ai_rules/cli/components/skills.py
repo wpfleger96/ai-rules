@@ -35,58 +35,66 @@ class SkillsComponent(Component):
         for target in ctx.selected_targets:
             if not isinstance(target, Agent):
                 continue
-            if target.agent_id not in AGENT_SKILLS_DIRS:
+
+            if target.agent_id == "shared":
+                target_dirs = list(AGENT_SKILLS_DIRS.items())
+            elif target.agent_id in AGENT_SKILLS_DIRS:
+                target_dirs = [(target.agent_id, AGENT_SKILLS_DIRS[target.agent_id])]
+            else:
                 continue
 
-            user_skills_dir = AGENT_SKILLS_DIRS[target.agent_id].expanduser()
+            for _agent_id, skills_dir_path in target_dirs:
+                user_skills_dir = skills_dir_path.expanduser()
 
-            for skill_folder in skill_folders:
-                symlink_target = user_skills_dir / skill_folder.name
-                if ctx.config.is_excluded(str(symlink_target)):
-                    skipped += 1
-                    continue
-
-                result, _msg = create_symlink(
-                    symlink_target,
-                    skill_folder,
-                    force=ctx.yes,
-                    dry_run=ctx.dry_run,
-                )
-                if result == SymlinkResult.ERROR:
-                    errors += 1
-                elif result == SymlinkResult.ALREADY_CORRECT:
-                    skipped += 1
-                else:
-                    created += 1
-
-            if not ctx.dry_run and user_skills_dir.exists():
-                config_skills_abs = skills_source_dir.resolve()
-                for existing in user_skills_dir.iterdir():
-                    if not existing.is_symlink():
+                for skill_folder in skill_folders:
+                    symlink_target = user_skills_dir / skill_folder.name
+                    if ctx.config.is_excluded(str(symlink_target)):
+                        skipped += 1
                         continue
-                    try:
-                        link_target = existing.resolve()
-                    except (OSError, RuntimeError):
-                        link_target = None
 
-                    if link_target is None:
-                        existing_raw = Path(os.readlink(existing))
-                        if not existing_raw.is_absolute():
-                            existing_raw = (existing.parent / existing_raw).resolve()
+                    result, _msg = create_symlink(
+                        symlink_target,
+                        skill_folder,
+                        force=ctx.yes,
+                        dry_run=ctx.dry_run,
+                    )
+                    if result == SymlinkResult.ERROR:
+                        errors += 1
+                    elif result == SymlinkResult.ALREADY_CORRECT:
+                        skipped += 1
+                    else:
+                        created += 1
+
+                if not ctx.dry_run and user_skills_dir.exists():
+                    config_skills_abs = skills_source_dir.resolve()
+                    for existing in user_skills_dir.iterdir():
+                        if not existing.is_symlink():
+                            continue
                         try:
-                            existing_raw.relative_to(config_skills_abs)
+                            link_target = existing.resolve()
+                        except (OSError, RuntimeError):
+                            link_target = None
+
+                        if link_target is None:
+                            existing_raw = Path(os.readlink(existing))
+                            if not existing_raw.is_absolute():
+                                existing_raw = (
+                                    existing.parent / existing_raw
+                                ).resolve()
+                            try:
+                                existing_raw.relative_to(config_skills_abs)
+                            except ValueError:
+                                continue
+                            remove_symlink(existing, force=True)
+                            continue
+
+                        try:
+                            link_target.relative_to(config_skills_abs)
                         except ValueError:
                             continue
-                        remove_symlink(existing, force=True)
-                        continue
 
-                    try:
-                        link_target.relative_to(config_skills_abs)
-                    except ValueError:
-                        continue
-
-                    if not link_target.exists():
-                        remove_symlink(existing, force=True)
+                        if not link_target.exists():
+                            remove_symlink(existing, force=True)
 
         return ComponentResult(
             ok=errors == 0,
@@ -107,27 +115,33 @@ class SkillsComponent(Component):
         for target in ctx.selected_targets:
             if not isinstance(target, Agent):
                 continue
-            if target.agent_id not in AGENT_SKILLS_DIRS:
+
+            if target.agent_id == "shared":
+                target_dirs = list(AGENT_SKILLS_DIRS.items())
+            elif target.agent_id in AGENT_SKILLS_DIRS:
+                target_dirs = [(target.agent_id, AGENT_SKILLS_DIRS[target.agent_id])]
+            else:
                 continue
 
-            user_skills_dir = AGENT_SKILLS_DIRS[target.agent_id].expanduser()
-            if not user_skills_dir.exists():
-                continue
-
-            for existing in user_skills_dir.iterdir():
-                if not existing.is_symlink():
-                    continue
-                try:
-                    link_target = existing.resolve()
-                    link_target.relative_to(config_skills_abs)
-                except (ValueError, OSError, RuntimeError):
+            for _agent_id, skills_dir_path in target_dirs:
+                user_skills_dir = skills_dir_path.expanduser()
+                if not user_skills_dir.exists():
                     continue
 
-                success, _msg = remove_symlink(existing, force=ctx.yes)
-                if success:
-                    removed += 1
-                else:
-                    skipped += 1
+                for existing in user_skills_dir.iterdir():
+                    if not existing.is_symlink():
+                        continue
+                    try:
+                        link_target = existing.resolve()
+                        link_target.relative_to(config_skills_abs)
+                    except (ValueError, OSError, RuntimeError):
+                        continue
+
+                    success, _msg = remove_symlink(existing, force=ctx.yes)
+                    if success:
+                        removed += 1
+                    else:
+                        skipped += 1
 
         return ComponentResult(
             changed=removed > 0,

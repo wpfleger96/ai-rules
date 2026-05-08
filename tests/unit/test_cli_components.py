@@ -16,6 +16,7 @@ def test_install_components_run_in_expected_order():
         "Optional Tools",
         "Config Files",
         "Skills",
+        "Claude Extensions",
         "MCPs",
         "Claude Plugins",
         "Shell Completions",
@@ -58,5 +59,6 @@ def test_uninstall_components_only_remove_symlinks_and_mcps():
     assert [component.label for component in UNINSTALL_COMPONENTS] == [
         "Config Files",
         "Skills",
+        "Claude Extensions",
         "MCPs",
     ]

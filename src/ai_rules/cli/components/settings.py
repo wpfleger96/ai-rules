@@ -8,6 +8,7 @@ from ai_rules.cli.context import CliContext, Component, ComponentResult
 class SettingsComponent(Component):
     label = "Settings"
     component_id = "settings"
+    filterable = False
 
     def install(self, ctx: CliContext) -> ComponentResult:
         if ctx.dry_run:
@@ -37,7 +38,11 @@ class SettingsComponent(Component):
             if expanded.is_symlink():
                 link_dest = expanded.resolve()
                 cache_dir = ctx.config.get_cache_dir()
-                if cache_dir and str(link_dest).startswith(str(cache_dir)):
+                if cache_dir:
+                    try:
+                        link_dest.relative_to(cache_dir)
+                    except ValueError:
+                        continue
                     expanded.unlink()
 
         targets_needing_cache = {
