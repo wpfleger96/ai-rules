@@ -14,7 +14,13 @@ import ai_rules.cli as cli_facade
     help="Comma-separated list of agents to uninstall (default: all)",
     shell_complete=cli_facade.complete_targets,
 )
-def uninstall(yes: bool, agents: str | None) -> None:
+@click.option(
+    "--only",
+    "component_filter",
+    help="Comma-separated list of components to target (default: all)",
+    shell_complete=cli_facade.complete_components,
+)
+def uninstall(yes: bool, agents: str | None, component_filter: str | None) -> None:
     """Remove AI agent symlinks."""
     from rich.console import Console
     from rich.prompt import Confirm
@@ -30,6 +36,8 @@ def uninstall(yes: bool, agents: str | None) -> None:
     config = Config.load()
     all_targets = cli_facade.get_targets(config_dir, config)
     selected_targets = cli_facade.select_targets(all_targets, agents)
+
+    parsed_filter = cli_facade.select_components(UNINSTALL_COMPONENTS, component_filter)
 
     if not yes:
         console.print("[yellow]Warning:[/yellow] This will remove symlinks for:\n")
@@ -49,6 +57,7 @@ def uninstall(yes: bool, agents: str | None) -> None:
         all_targets=tuple(all_targets),
         selected_targets=tuple(selected_targets),
         target_filter=agents,
+        component_filter=parsed_filter,
         yes=yes,
     )
     result = run_components(UNINSTALL_COMPONENTS, "uninstall", cli_ctx)

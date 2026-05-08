@@ -9,6 +9,7 @@ from ai_rules.cli.context import CliContext, Component, ComponentResult
 
 class ClaudeExtensionsComponent(Component):
     label = "Claude Extensions"
+    component_id = "extensions"
 
     def status(self, ctx: CliContext) -> ComponentResult:
         target = ctx.selected_target("claude")

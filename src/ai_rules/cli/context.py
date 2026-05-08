@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Literal
@@ -32,6 +33,7 @@ class CliContext:
     all_targets: tuple[ConfigTarget, ...]
     selected_targets: tuple[ConfigTarget, ...]
     target_filter: str | None = None
+    component_filter: tuple[str, ...] | None = None
     yes: bool = False
     dry_run: bool = False
     rebuild_cache: bool = False
@@ -52,8 +54,13 @@ class CliContext:
         )
 
 
-class Component:
+class Component(ABC):
     label: str
+    filterable: bool = True
+
+    @property
+    @abstractmethod
+    def component_id(self) -> str: ...
 
     def install(self, ctx: CliContext) -> ComponentResult:
         return ComponentResult()

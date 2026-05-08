@@ -11,6 +11,8 @@ from ai_rules.config import Config
 
 
 class FakeComponent(Component):
+    component_id = "fake"
+
     def __init__(self, label: str, result: ComponentResult):
         self.label = label
         self.result = result
