@@ -216,7 +216,7 @@ CODEX_EXIT="-1"; GEMINI_EXIT="-1"
 
 if [ "$CODEX_AVAILABLE" = "yes" ]; then
   CODEX_RAN="yes"
-  timeout 300 codex exec -C "$REPO_ROOT" \
+  timeout 600 codex exec -C "$REPO_ROOT" \
     --dangerously-bypass-approvals-and-sandbox \
     "Run cat \"$WORK_DIR/prompt.txt\" and follow the instructions in the output." \
     < /dev/null \
@@ -226,7 +226,7 @@ fi
 
 if [ "$GEMINI_AVAILABLE" = "yes" ]; then
   GEMINI_RAN="yes"
-  GEMINI_API_KEY=$(cat ~/.env/gemini_cli.key) timeout 300 gemini --yolo \
+  GEMINI_API_KEY=$(cat ~/.env/gemini_cli.key) timeout 600 gemini --yolo \
     --include-directories "$WORK_DIR" \
     -p "Read the file at $WORK_DIR/prompt.txt and follow the review instructions inside it." \
     > "$GEMINI_OUT" 2>&1 &

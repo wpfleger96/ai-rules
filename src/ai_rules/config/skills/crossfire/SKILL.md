@@ -144,7 +144,7 @@ trap 'rm -rf "$PROMPT_DIR" "$CODEX_OUT" "$CODEX_ERR" "$GEMINI_OUT"' EXIT INT TER
 
 # Codex (background) — only if available
 if [ "$CODEX_AVAILABLE" = "yes" ]; then
-  timeout 300 codex exec -C "$REPO_ROOT" \
+  timeout 600 codex exec -C "$REPO_ROOT" \
     --dangerously-bypass-approvals-and-sandbox \
     "Run cat \"$PROMPT_FILE\" and follow the instructions in the output." \
     < /dev/null \
@@ -154,7 +154,7 @@ fi
 
 # Gemini (background) — only if available
 if [ "$GEMINI_AVAILABLE" = "yes" ]; then
-  GEMINI_API_KEY=$(cat ~/.env/gemini_cli.key) timeout 300 gemini --yolo \
+  GEMINI_API_KEY=$(cat ~/.env/gemini_cli.key) timeout 600 gemini --yolo \
     --include-directories "$PROMPT_DIR" \
     -p "Read the file at $PROMPT_FILE and follow the review instructions inside it." \
     > "$GEMINI_OUT" 2>&1 &
