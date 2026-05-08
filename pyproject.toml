@@ -59,17 +59,10 @@ tag_format = "v{version}"
 branch = "main"
 commit_parser = "conventional"
 commit_message = "chore(release): {version} [skip ci]"
+allow_zero_version = true
 
 [tool.semantic_release.commit_parser_opts]
 allowed_types = ["feat", "fix", "chore", "ci", "docs", "style", "refactor", "test"]
-
-[tool.semantic_release.commit_type_map]
-chore = "patch"
-ci = "patch"
-docs = "patch"
-style = "patch"
-refactor = "patch"
-test = "patch"
 
 [tool.ruff.lint]
 select = ["I", "F", "UP", "B"]  # isort, pyflakes, pyupgrade, bugbear
