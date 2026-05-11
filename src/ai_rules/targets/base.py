@@ -11,6 +11,7 @@ from pathlib import Path
 from typing import Any
 
 from ai_rules.config import Config
+from ai_rules.utils import deep_merge
 
 
 class ConfigTarget(ABC):
@@ -177,7 +178,14 @@ class ConfigTarget(ABC):
 
                     for field in preserved:
                         if field in existing:
-                            merged[field] = existing[field]
+                            if isinstance(merged.get(field), dict) and isinstance(
+                                existing[field], dict
+                            ):
+                                merged[field] = deep_merge(
+                                    merged[field], existing[field]
+                                )
+                            else:
+                                merged[field] = existing[field]
                 except CONFIG_PARSE_ERRORS:
                     pass
 

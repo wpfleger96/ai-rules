@@ -390,6 +390,81 @@ settings_overrides:
         assert result["model"] == "new"
         assert result["enabledPlugins"] == {"my-plugin@marketplace": True}
 
+    def test_build_merged_settings_preserves_profile_hooks_over_empty_cache(
+        self, tmp_path, monkeypatch
+    ):
+        """Profile-contributed hooks survive when existing cache has empty hooks."""
+        import json
+
+        home = tmp_path / "home"
+        home.mkdir()
+        monkeypatch.setenv("HOME", str(home))
+
+        cache_dir = home / ".ai-agent-rules" / "cache" / "claude"
+        cache_dir.mkdir(parents=True)
+        cache_file = cache_dir / "settings.json"
+        cache_file.write_text(json.dumps({"model": "old", "hooks": {}}))
+
+        config_dir = tmp_path / "config"
+        claude_dir = config_dir / "claude"
+        claude_dir.mkdir(parents=True)
+        (claude_dir / "settings.json").write_text(
+            json.dumps({"model": "base", "hooks": {}})
+        )
+
+        stop_hook = [{"hooks": [{"type": "command", "command": "python3 test.py"}]}]
+        config = Config(
+            settings_overrides={"claude": {"hooks": {"Stop": stop_hook}}}
+        )
+        agent = ClaudeAgent(config_dir, config)
+        result_path = agent.build_merged_settings(force_rebuild=True)
+
+        assert result_path is not None
+        with open(result_path) as f:
+            result = json.load(f)
+        assert "Stop" in result["hooks"]
+        assert result["hooks"]["Stop"] == stop_hook
+
+    def test_build_merged_settings_merges_profile_and_user_hooks(
+        self, tmp_path, monkeypatch
+    ):
+        """Profile hooks and user-added hooks coexist in merged output."""
+        import json
+
+        home = tmp_path / "home"
+        home.mkdir()
+        monkeypatch.setenv("HOME", str(home))
+
+        user_hook = [{"hooks": [{"type": "command", "command": "user_hook.sh"}]}]
+        cache_dir = home / ".ai-agent-rules" / "cache" / "claude"
+        cache_dir.mkdir(parents=True)
+        cache_file = cache_dir / "settings.json"
+        cache_file.write_text(
+            json.dumps({"model": "old", "hooks": {"PreCompact": user_hook}})
+        )
+
+        config_dir = tmp_path / "config"
+        claude_dir = config_dir / "claude"
+        claude_dir.mkdir(parents=True)
+        (claude_dir / "settings.json").write_text(
+            json.dumps({"model": "base", "hooks": {}})
+        )
+
+        profile_hook = [{"hooks": [{"type": "command", "command": "profile_hook.py"}]}]
+        config = Config(
+            settings_overrides={"claude": {"hooks": {"Stop": profile_hook}}}
+        )
+        agent = ClaudeAgent(config_dir, config)
+        result_path = agent.build_merged_settings(force_rebuild=True)
+
+        assert result_path is not None
+        with open(result_path) as f:
+            result = json.load(f)
+        assert "Stop" in result["hooks"]
+        assert "PreCompact" in result["hooks"]
+        assert result["hooks"]["Stop"] == profile_hook
+        assert result["hooks"]["PreCompact"] == user_hook
+
     def test_build_merged_settings_includes_managed_mcps(self, tmp_path, monkeypatch):
         """build_merged_settings merges managed MCPs into the cache for agents that store MCPs in settings."""
         import json
