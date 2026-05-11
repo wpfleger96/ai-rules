@@ -413,9 +413,7 @@ settings_overrides:
         )
 
         stop_hook = [{"hooks": [{"type": "command", "command": "python3 test.py"}]}]
-        config = Config(
-            settings_overrides={"claude": {"hooks": {"Stop": stop_hook}}}
-        )
+        config = Config(settings_overrides={"claude": {"hooks": {"Stop": stop_hook}}})
         agent = ClaudeAgent(config_dir, config)
         result_path = agent.build_merged_settings(force_rebuild=True)
 

@@ -254,13 +254,18 @@ class TestBlockContent:
 class TestMain:
     def test_stop_hook_active_exits_zero(self, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setattr(
-            "sys.stdin", type("", (), {"read": lambda self: json.dumps({"stop_hook_active": True})})()
+            "sys.stdin",
+            type(
+                "", (), {"read": lambda self: json.dumps({"stop_hook_active": True})}
+            )(),
         )
         with pytest.raises(SystemExit) as exc:
             recall_stop.main()
         assert exc.value.code == 0
 
-    def test_missing_transcript_exits_zero(self, monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_missing_transcript_exits_zero(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         monkeypatch.setattr(
             "sys.stdin", type("", (), {"read": lambda self: json.dumps({})})()
         )
@@ -275,7 +280,11 @@ class TestMain:
         _write_transcript(transcript, [_user_msg("remember this")])
         monkeypatch.setattr(
             "sys.stdin",
-            type("", (), {"read": lambda self: json.dumps({"transcript_path": str(transcript)})})(),
+            type(
+                "",
+                (),
+                {"read": lambda self: json.dumps({"transcript_path": str(transcript)})},
+            )(),
         )
         with pytest.raises(SystemExit) as exc:
             recall_stop.main()
@@ -294,7 +303,11 @@ class TestMain:
         )
         monkeypatch.setattr(
             "sys.stdin",
-            type("", (), {"read": lambda self: json.dumps({"transcript_path": str(transcript)})})(),
+            type(
+                "",
+                (),
+                {"read": lambda self: json.dumps({"transcript_path": str(transcript)})},
+            )(),
         )
         with pytest.raises(SystemExit) as exc:
             recall_stop.main()
@@ -313,7 +326,11 @@ class TestMain:
         )
         monkeypatch.setattr(
             "sys.stdin",
-            type("", (), {"read": lambda self: json.dumps({"transcript_path": str(transcript)})})(),
+            type(
+                "",
+                (),
+                {"read": lambda self: json.dumps({"transcript_path": str(transcript)})},
+            )(),
         )
         with pytest.raises(SystemExit) as exc:
             recall_stop.main()
