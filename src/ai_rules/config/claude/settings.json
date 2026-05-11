@@ -141,5 +141,17 @@
   "showThinkingSummaries": true,
   "skipDangerousModePermissionPrompt": true,
   "skipAutoPermissionPrompt": true,
-  "hooks": {}
+  "hooks": {
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 ~/.claude/hooks/recall_stop.py",
+            "timeout": 30
+          }
+        ]
+      }
+    ]
+  }
 }
