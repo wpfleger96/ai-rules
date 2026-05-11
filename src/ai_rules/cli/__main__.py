@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from ai_rules.cli import entrypoint
+from ai_rules.cli import main
 
 if __name__ == "__main__":
-    entrypoint()
+    main()

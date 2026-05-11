@@ -6,6 +6,26 @@ from pathlib import Path
 
 import pytest
 
+from click.testing import CliRunner
+
+
+@pytest.mark.unit
+def test_entrypoint_uses_canonical_completion_var() -> None:
+    """Both aliases use _AI_AGENT_RULES_COMPLETE for bash completion."""
+    from ai_rules.cli import main
+
+    runner = CliRunner(env={"_AI_AGENT_RULES_COMPLETE": "bash_source"})
+
+    result = runner.invoke(
+        main, [], standalone_mode=False, complete_var="_AI_AGENT_RULES_COMPLETE"
+    )
+    assert result.exit_code == 0
+    assert "_AI_AGENT_RULES_COMPLETE" in result.output
+
+    result_without = runner.invoke(main, [])
+    assert result_without.exit_code != 0
+    assert "_AI_AGENT_RULES_COMPLETE" not in result_without.output
+
 
 @pytest.mark.unit
 def test_cli_package_supports_module_execution() -> None:

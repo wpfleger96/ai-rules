@@ -339,7 +339,7 @@ def main() -> None:
     pass
 
 
-def entrypoint() -> None:
+def cli_entrypoint() -> None:
     main(complete_var="_AI_AGENT_RULES_COMPLETE")
 
 
