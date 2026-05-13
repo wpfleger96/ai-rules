@@ -416,3 +416,17 @@ class TestIsEnabledFiltering:
 
         tools = [self._make_tool("statusline", is_enabled=None)]
         assert len(_filter_enabled(tools)) == 1
+
+    def test_disabled_tool_included_when_explicitly_targeted(self):
+        """--only=<tool> bypasses the is_enabled check."""
+        resolved_only = "recall"
+        tools = [self._make_tool("recall", is_enabled=lambda: False)]
+        tools = [
+            t for t in tools if resolved_only is None or t.tool_id == resolved_only
+        ]
+        tools = [t for t in tools if t.is_installed()]
+        if resolved_only is None:
+            from ai_rules.cli.commands.upgrade import _filter_enabled
+
+            tools = _filter_enabled(tools)
+        assert len(tools) == 1

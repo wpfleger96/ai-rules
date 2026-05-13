@@ -154,8 +154,10 @@ def _get_common_exclusions() -> list[tuple[str, str, bool]]:
     """Get list of common exclusion patterns.
 
     Settings-file entries are derived from the registered ConfigTargets so
-    they stay in sync with each agent's ``settings_symlink_target``. A small
-    static list of rules/hints files (which aren't settings files) is appended.
+    they stay in sync with each agent's ``settings_symlink_target``.  Adding
+    a target to ``TARGET_CLASSES`` automatically adds its settings file here.
+    A small static list of rules/hints files (which aren't settings files)
+    is appended.
 
     Returns:
         List of (pattern, description, default) tuples

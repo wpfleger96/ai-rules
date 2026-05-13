@@ -94,13 +94,15 @@ class Agent(ConfigTarget):
     ) -> tuple[OperationResult, str, list[str]]:
         """Install MCPs by delegating to the agent's MCPManager."""
         mgr = self.get_mcp_manager()
-        assert mgr is not None
+        if mgr is None:
+            raise RuntimeError(f"{type(self).__name__} does not support MCP management")
         return mgr.install_mcps(self.config_dir, self.config, force, dry_run)
 
     def uninstall_mcps(self) -> tuple[OperationResult, str]:
         """Uninstall MCPs by delegating to the agent's MCPManager."""
         mgr = self.get_mcp_manager()
-        assert mgr is not None
+        if mgr is None:
+            raise RuntimeError(f"{type(self).__name__} does not support MCP management")
         return mgr.uninstall_mcps()
 
     def get_mcp_status(self) -> MCPStatus | None:

@@ -376,7 +376,10 @@ class ClaudeMCPManager(MCPManager):
         return result, msg, conflicts
 
     def uninstall_mcps(self) -> tuple[OperationResult, str]:
-        backup = self._create_backup(self._claude_json_path)
+        if self._claude_json_path.exists():
+            backup = self._create_backup(self._claude_json_path)
+        else:
+            backup = None
         result, msg = super().uninstall_mcps()
         if backup:
             msg += f" (backup: {backup})"
