@@ -28,9 +28,10 @@ class CompletionsComponent(Component):
         return CompletionsPlan(has_changes=True, shell=shell, needs_install=True)
 
     def apply(self, ctx: CliContext, plan: ComponentPlan) -> ComponentResult:
-        from ai_rules.cli.runner import get_console
+        if not isinstance(plan, CompletionsPlan):
+            return ComponentResult()
 
-        assert isinstance(plan, CompletionsPlan)
+        from ai_rules.cli.runner import get_console
 
         if not plan.needs_install or plan.shell is None:
             return ComponentResult()

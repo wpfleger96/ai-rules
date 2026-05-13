@@ -2,10 +2,6 @@
 
 from __future__ import annotations
 
-import shutil
-
-from dataclasses import asdict
-
 from ai_rules.cli.context import (
     CliContext,
     Component,
@@ -27,21 +23,11 @@ class ClaudePluginComponent(Component):
             ctx.config.plugins or ctx.config.marketplaces
         ):
             return PluginPlan()
-
-        cli_available = shutil.which("claude") is not None
-
-        plugins_to_sync = [asdict(p) for p in ctx.config.get_plugin_configs()]
-        marketplaces_to_sync = [asdict(m) for m in ctx.config.get_marketplace_configs()]
-
-        return PluginPlan(
-            has_changes=True,
-            cli_available=cli_available,
-            plugins_to_sync=plugins_to_sync,
-            marketplaces_to_sync=marketplaces_to_sync,
-        )
+        return PluginPlan(has_changes=True)
 
     def apply(self, ctx: CliContext, plan: ComponentPlan) -> ComponentResult:
-        assert isinstance(plan, PluginPlan)
+        if not isinstance(plan, PluginPlan):
+            return ComponentResult()
 
         if not plan.has_changes:
             return ComponentResult()

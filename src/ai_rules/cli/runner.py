@@ -191,8 +191,9 @@ def run_install_parallel(
     semantic_list = list(semantic)
     plans = run_components_parallel(semantic_list, "plan", ctx)
 
-    # Phase 4: Parallel apply all semantic components
-    results = run_components_parallel(semantic_list, "apply", ctx, plans=plans)
+    # Phase 4: Parallel apply — skip components whose plan failed
+    apply_list = [c for c in semantic_list if type(plans.get(c)) is not ComponentPlan]
+    results = run_components_parallel(apply_list, "apply", ctx, plans=plans)
 
     # Fold results into accumulator
     for component in semantic_list:
@@ -227,7 +228,7 @@ def get_console(ctx: CliContext) -> RichConsole:
 
 def run_components_parallel(
     components: Iterable[Component],
-    method: str,
+    method: LifecycleOperation,
     ctx: CliContext,
     plans: dict[Component, ComponentPlan] | None = None,
     max_workers: int | None = None,
@@ -304,6 +305,7 @@ def run_components_parallel(
     if errors:
         for comp, exc in errors.items():
             ctx.console.print(f"[red]✗[/red] {comp.label}: {type(exc).__name__}: {exc}")
+            results[comp] = ComponentResult(ok=False, counts={"errors": 1})
         if len(errors) == len(comp_list):
             raise next(iter(errors.values()))
 
@@ -322,6 +324,8 @@ def _run_buffered(
     real_console: RichConsole,
 ) -> None:
     from rich.progress import Progress, SpinnerColumn, TextColumn
+
+    completed_buffers: list[tuple[Component, str]] = []
 
     with Progress(
         SpinnerColumn(),
@@ -355,15 +359,18 @@ def _run_buffered(
 
             buf_content = buffers[comp].getvalue()
             if buf_content.strip():
-                real_console.print(f"\n[bold cyan]{comp.label}[/bold cyan]")
-                real_console.file.write(buf_content)
-                real_console.file.flush()
+                completed_buffers.append((comp, buf_content))
+
+    for comp, buf_content in completed_buffers:
+        real_console.print(f"\n[bold cyan]{comp.label}[/bold cyan]")
+        real_console.file.write(buf_content)
+        real_console.file.flush()
 
 
 def _run_unbuffered(
     pool: ThreadPoolExecutor,
     components: list[Component],
-    method: str,
+    method: LifecycleOperation,
     make_task: Any,
     futures: dict[Future[Any], Component],
     results: dict[Component, Any],

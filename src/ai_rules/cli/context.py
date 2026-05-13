@@ -13,7 +13,9 @@ from ai_rules.agents.base import Agent
 from ai_rules.config import Config
 from ai_rules.targets.base import ConfigTarget
 
-LifecycleOperation = Literal["install", "status", "diff", "validate", "uninstall"]
+LifecycleOperation = Literal[
+    "install", "status", "diff", "validate", "uninstall", "plan", "apply"
+]
 
 
 @dataclass(frozen=True)
@@ -92,20 +94,12 @@ class ComponentPlan:
 @dataclass
 class SettingsPlan(ComponentPlan):
     stale_targets: list[ConfigTarget] = field(default_factory=list)
-    orphaned_cache_ids: set[str] = field(default_factory=set)
     excluded_symlinks_to_clean: list[Path] = field(default_factory=list)
 
 
 @dataclass
 class OptionalToolsPlan(ComponentPlan):
-    recall_needed: bool = False
-    recall_action: str = ""
-    recall_message: str = ""
-    statusline_needed: bool = False
-    statusline_action: str = ""
-    statusline_message: str = ""
-    statusline_from_github: bool = False
-    statusline_local_path: str | None = None
+    pass
 
 
 @dataclass
@@ -122,7 +116,7 @@ class SkillsPlan(ComponentPlan):
 
 @dataclass
 class ClaudeExtensionsPlan(ComponentPlan):
-    symlink_ops: list[tuple[Path, Path]] = field(default_factory=list)
+    symlink_ops: list[tuple[str, Path, Path]] = field(default_factory=list)
 
 
 @dataclass
@@ -133,9 +127,7 @@ class MCPPlan(ComponentPlan):
 
 @dataclass
 class PluginPlan(ComponentPlan):
-    cli_available: bool = False
-    plugins_to_sync: list[dict[str, Any]] = field(default_factory=list)
-    marketplaces_to_sync: list[dict[str, Any]] = field(default_factory=list)
+    pass
 
 
 @dataclass

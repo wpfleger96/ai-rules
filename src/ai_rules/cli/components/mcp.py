@@ -135,8 +135,8 @@ class MCPComponent(Component):
         # The serial install() path handles prompt-based conflict resolution.
         for target_name in plan.conflict_targets:
             console.print(
-                f"[yellow]⚠[/yellow] {target_name}: conflicts detected, skipping "
-                f"(run without --parallel or use -y to force)"
+                f"[yellow]⚠[/yellow] {target_name}: MCP conflicts detected, "
+                f"skipping (use -y to force-apply)"
             )
             skipped += 1
 
@@ -251,8 +251,10 @@ class MCPComponent(Component):
         return self.status(ctx)
 
     def uninstall(self, ctx: CliContext) -> ComponentResult:
+        from ai_rules.cli.runner import get_console
         from ai_rules.mcp import OperationResult
 
+        console = get_console(ctx)
         removed = 0
         for target in ctx.selected_targets:
             if not isinstance(target, Agent):
@@ -264,9 +266,9 @@ class MCPComponent(Component):
 
             result, message = target.uninstall_mcps()
             if result == OperationResult.REMOVED:
-                ctx.console.print(f"  [green]✓[/green] {message}")
+                console.print(f"  [green]✓[/green] {message}")
                 removed += 1
             elif result == OperationResult.NOT_FOUND:
-                ctx.console.print(f"  [dim]•[/dim] {message}")
+                console.print(f"  [dim]•[/dim] {message}")
 
         return ComponentResult(changed=removed > 0, counts={"removed": removed})

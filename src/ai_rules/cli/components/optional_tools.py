@@ -16,32 +16,12 @@ class OptionalToolsComponent(Component):
     component_id = "tools"
 
     def plan(self, ctx: CliContext) -> OptionalToolsPlan:
-        from ai_rules.bootstrap import (
-            ToolSource,
-            get_effective_install_source,
-            is_command_available,
-        )
-        from ai_rules.bootstrap.installer import _is_recall_configured
-
-        recall_needed = _is_recall_configured(ctx.config)
-        recall_available = is_command_available("recall")
-
-        statusline_available = is_command_available("claude-statusline")
-        sl_source, sl_local_path = get_effective_install_source(
-            "statusline", config=ctx.config
-        )
-
-        return OptionalToolsPlan(
-            has_changes=True,
-            recall_needed=recall_needed,
-            recall_action="" if (not recall_needed or recall_available) else "install",
-            statusline_needed=True,
-            statusline_action="" if statusline_available else "install",
-            statusline_from_github=sl_source == ToolSource.GITHUB,
-            statusline_local_path=sl_local_path,
-        )
+        return OptionalToolsPlan(has_changes=True)
 
     def apply(self, ctx: CliContext, plan: ComponentPlan) -> ComponentResult:
+        if not isinstance(plan, OptionalToolsPlan):
+            return ComponentResult()
+
         from ai_rules.bootstrap import (
             ToolSource,
             ensure_recall_installed,
@@ -50,7 +30,6 @@ class OptionalToolsComponent(Component):
         )
         from ai_rules.cli.runner import get_console
 
-        assert isinstance(plan, OptionalToolsPlan)
         console = get_console(ctx)
 
         recall_result, recall_message = ensure_recall_installed(

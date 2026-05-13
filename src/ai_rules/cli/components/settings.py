@@ -45,30 +45,19 @@ class SettingsComponent(Component):
                         continue
                     excluded_symlinks_to_clean.append(expanded)
 
-        targets_needing_cache = {
-            target.target_id for target in ctx.all_targets if target.needs_cache
-        }
-        orphaned_cache_ids: set[str] = set()
-        cache_dir = ctx.config.get_cache_dir()
-        if cache_dir.exists():
-            for agent_dir in cache_dir.iterdir():
-                if agent_dir.is_dir() and agent_dir.name not in targets_needing_cache:
-                    orphaned_cache_ids.add(agent_dir.name)
-
-        has_changes = bool(
-            stale_targets or excluded_symlinks_to_clean or orphaned_cache_ids
-        )
+        has_changes = bool(stale_targets or excluded_symlinks_to_clean)
         return SettingsPlan(
             has_changes=has_changes,
             stale_targets=stale_targets,
-            orphaned_cache_ids=orphaned_cache_ids,
             excluded_symlinks_to_clean=excluded_symlinks_to_clean,
         )
 
     def apply(self, ctx: CliContext, plan: ComponentPlan) -> ComponentResult:
+        if not isinstance(plan, SettingsPlan):
+            return ComponentResult()
+
         from ai_rules.cli.runner import get_console
 
-        assert isinstance(plan, SettingsPlan)
         console = get_console(ctx)
 
         if ctx.dry_run:

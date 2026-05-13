@@ -95,7 +95,8 @@ class SkillsComponent(Component):
         )
 
     def apply(self, ctx: CliContext, plan: ComponentPlan) -> ComponentResult:
-        assert isinstance(plan, SkillsPlan)
+        if not isinstance(plan, SkillsPlan):
+            return ComponentResult()
 
         from ai_rules.symlinks import SymlinkResult, create_symlink, remove_symlink
 
@@ -107,7 +108,7 @@ class SkillsComponent(Component):
             result, _msg = create_symlink(
                 symlink_target,
                 skill_folder,
-                force=ctx.yes,
+                force=True,
                 dry_run=ctx.dry_run,
             )
             if result == SymlinkResult.ERROR:
