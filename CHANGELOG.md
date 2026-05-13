@@ -2,6 +2,23 @@
 
 <!-- version list -->
 
+## v0.47.11 (2026-05-13)
+
+### Bug Fixes
+
+- Add build_command to PSR config so uv.lock stays in sync
+  ([#34](https://github.com/wpfleger96/ai-agent-rules/pull/34),
+  [`af9ddaf`](https://github.com/wpfleger96/ai-agent-rules/commit/af9ddafb93459a8a935ae2ff6d5df107c2074848))
+
+- Install uv in PSR Docker container before lockfile sync
+  ([#35](https://github.com/wpfleger96/ai-agent-rules/pull/35),
+  [`c169040`](https://github.com/wpfleger96/ai-agent-rules/commit/c169040a688d31ce9ed66859e9c44ddf34ea9f59))
+
+- **codex**: Remove commit_attribution from managed config
+  ([#33](https://github.com/wpfleger96/ai-agent-rules/pull/33),
+  [`18b64ca`](https://github.com/wpfleger96/ai-agent-rules/commit/18b64ca965c363945922d361fabe05e638bb3249))
+
+
 ## v0.47.10 (2026-05-13)
 
 ### Bug Fixes
