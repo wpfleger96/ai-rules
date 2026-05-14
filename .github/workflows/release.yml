@@ -54,3 +54,42 @@ jobs:
         uses: python-semantic-release/python-semantic-release@v10.5.3
         with:
           github_token: ${{ steps.app-token.outputs.token }}
+
+      - name: Bundle skills ZIP
+        if: steps.release.outputs.released == 'true'
+        run: |
+          if [ ! -d "src/ai_rules/config/skills" ] || [ -z "$(ls -A src/ai_rules/config/skills)" ]; then
+            echo "::error::Skills directory is empty or missing"
+            exit 1
+          fi
+          cd src/ai_rules/config/skills
+          zip -r "${{ github.workspace }}/skills-bundle.zip" .
+
+      - name: Upload skills bundle to release
+        if: steps.release.outputs.released == 'true'
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+          TAG: ${{ steps.release.outputs.tag }}
+        run: |
+          gh release upload "$TAG" \
+            "${{ github.workspace }}/skills-bundle.zip" \
+            --clobber
+
+      - name: Append download links to release notes
+        if: steps.release.outputs.released == 'true'
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+          REPO: ${{ github.repository }}
+          TAG: ${{ steps.release.outputs.tag }}
+        run: |
+          gh release view "$TAG" --json body -q '.body // ""' > /tmp/release-notes.md
+          {
+            echo ""
+            echo "---"
+            echo ""
+            echo "### Skills Downloads"
+            echo ""
+            echo "- **[Download skills ZIP](https://github.com/${REPO}/releases/download/${TAG}/skills-bundle.zip)** — upload to Claude Desktop via Customize > Skills > +"
+            echo "- **[Browse & download individual skills](https://download-directory.github.io/?url=https://github.com/${REPO}/tree/main/src/ai_rules/config/skills)** — pick specific skills"
+          } >> /tmp/release-notes.md
+          gh release edit "$TAG" --notes-file /tmp/release-notes.md

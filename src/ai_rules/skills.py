@@ -273,7 +273,7 @@ class SkillManager:
         for url_entry in dist.metadata.get_all("Project-URL") or []:
             label, url = url_entry.split(",", 1)
             if label.strip().lower() == "repository":
-                return url.strip()
+                return str(url.strip())
 
         return None
 
