@@ -102,6 +102,8 @@ def skill_show(name: str, url: bool, download_url: bool, raw: bool) -> None:
 
     if url and download_url:
         raise click.UsageError("--url and --download-url are mutually exclusive")
+    if raw and (url or download_url):
+        raise click.UsageError("--raw cannot be combined with --url or --download-url")
 
     if url or download_url:
         managed = manager._get_managed_skills()

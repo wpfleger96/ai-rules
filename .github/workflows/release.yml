@@ -90,6 +90,6 @@ jobs:
             echo "### Skills Downloads"
             echo ""
             echo "- **[Download skills ZIP](https://github.com/${REPO}/releases/download/${TAG}/skills-bundle.zip)** — upload to Claude Desktop via Customize > Skills > +"
-            echo "- **[Browse & download individual skills](https://download-directory.github.io/?url=https://github.com/${REPO}/tree/main/src/ai_rules/config/skills)** — pick specific skills"
+            echo "- **[Browse individual skills](https://github.com/${REPO}/tree/${TAG}/src/ai_rules/config/skills)** — view and download specific skills from GitHub"
           } >> /tmp/release-notes.md
           gh release edit "$TAG" --notes-file /tmp/release-notes.md

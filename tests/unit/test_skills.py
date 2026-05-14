@@ -113,6 +113,27 @@ class TestGetRepoUrl:
 
         assert url is None
 
+    def test_skips_malformed_project_url_entries(self):
+        mock_dist = MagicMock()
+        mock_dist.metadata.get_all.return_value = [
+            "malformed-no-comma",
+            "Repository, https://github.com/wpfleger96/ai-agent-rules",
+        ]
+        with patch("importlib.metadata.distribution", return_value=mock_dist):
+            url = SkillManager._get_repo_url()
+
+        assert url == "https://github.com/wpfleger96/ai-agent-rules"
+
+    def test_strips_trailing_slash_from_repo_url(self):
+        mock_dist = MagicMock()
+        mock_dist.metadata.get_all.return_value = [
+            "Repository, https://github.com/wpfleger96/ai-agent-rules/",
+        ]
+        with patch("importlib.metadata.distribution", return_value=mock_dist):
+            url = SkillManager._get_repo_url()
+
+        assert url == "https://github.com/wpfleger96/ai-agent-rules"
+
 
 @pytest.mark.unit
 class TestGetDownloadUrl:
