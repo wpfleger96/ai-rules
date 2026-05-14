@@ -26,7 +26,7 @@ class ClaudeExtensionsComponent(Component):
         from ai_rules.symlinks import SymlinkResult, create_symlink
 
         ext_manager = ClaudeExtensionManager(ctx.config_dir)
-        created = updated = skipped = errors = 0
+        created = updated = unchanged = skipped = errors = 0
 
         ctx.console.print("\n[bold cyan]Claude Extensions[/bold cyan]")
         for ext_type in ClaudeExtensionManager.USER_DIRS:
@@ -58,6 +58,7 @@ class ClaudeExtensionsComponent(Component):
                     ctx.console.print(
                         f"  [dim]•[/dim] {target_path} [dim](already correct)[/dim]"
                     )
+                    unchanged += 1
                 elif result == SymlinkResult.UPDATED:
                     ctx.console.print(
                         f"  [yellow]↻[/yellow] {target_path} → {source_path}"
@@ -78,6 +79,7 @@ class ClaudeExtensionsComponent(Component):
             counts={
                 "created": created,
                 "updated": updated,
+                "unchanged": unchanged,
                 "skipped": skipped,
                 "errors": errors,
             },
@@ -120,7 +122,7 @@ class ClaudeExtensionsComponent(Component):
         from ai_rules.symlinks import SymlinkResult, create_symlink
 
         console = get_console(ctx)
-        created = updated = skipped = errors = 0
+        created = updated = unchanged = skipped = errors = 0
 
         console.print("\n[bold cyan]Claude Extensions[/bold cyan]")
 
@@ -144,6 +146,7 @@ class ClaudeExtensionsComponent(Component):
                 console.print(
                     f"  [dim]•[/dim] {target_path} [dim](already correct)[/dim]"
                 )
+                unchanged += 1
             elif result == SymlinkResult.UPDATED:
                 console.print(f"  [yellow]↻[/yellow] {target_path} → {source_path}")
                 updated += 1
@@ -162,6 +165,7 @@ class ClaudeExtensionsComponent(Component):
             counts={
                 "created": created,
                 "updated": updated,
+                "unchanged": unchanged,
                 "skipped": skipped,
                 "errors": errors,
             },

@@ -91,7 +91,6 @@ class ConfigComponent(Component):
                 for tgt, src in filtered_symlinks
                 if not _is_specialized_path(tgt)
             ]
-            excluded_count += len(filtered_symlinks) - len(config_symlinks)
             symlink_ops.extend(config_symlinks)
 
         return ConfigPlan(
@@ -110,7 +109,7 @@ class ConfigComponent(Component):
 
         console = get_console(ctx)
 
-        created = updated = skipped = excluded = errors = 0
+        created = updated = unchanged = skipped = excluded = errors = 0
 
         excluded = plan.excluded_count
 
@@ -122,6 +121,7 @@ class ConfigComponent(Component):
                 created += 1
             elif result == SymlinkResult.ALREADY_CORRECT:
                 console.print(f"  [dim]•[/dim] {target} [dim](already correct)[/dim]")
+                unchanged += 1
             elif result == SymlinkResult.UPDATED:
                 console.print(f"  [yellow]↻[/yellow] {target} → {source}")
                 updated += 1
@@ -142,6 +142,7 @@ class ConfigComponent(Component):
             counts={
                 "created": created,
                 "updated": updated,
+                "unchanged": unchanged,
                 "skipped": skipped,
                 "excluded": excluded,
                 "errors": errors,
@@ -152,27 +153,26 @@ class ConfigComponent(Component):
         from ai_rules.cli import cleanup_deprecated_symlinks
         from ai_rules.symlinks import SymlinkResult, create_symlink
 
-        created = updated = skipped = excluded = errors = 0
+        created = updated = unchanged = skipped = excluded = errors = 0
         effective_force = ctx.yes or not ctx.dry_run
 
         for agent in ctx.selected_targets:
             ctx.console.print(f"\n[bold]{agent.name}[/bold]")
 
             filtered_symlinks = agent.get_filtered_symlinks()
-            excluded_count = len(agent.symlinks) - len(filtered_symlinks)
+            user_excluded_count = len(agent.symlinks) - len(filtered_symlinks)
 
             config_symlinks = [
                 (tgt, src)
                 for tgt, src in filtered_symlinks
                 if not _is_specialized_path(tgt)
             ]
-            excluded_count += len(filtered_symlinks) - len(config_symlinks)
 
-            if excluded_count > 0:
+            if user_excluded_count > 0:
                 ctx.console.print(
-                    f"  [dim]({excluded_count} symlink(s) excluded)[/dim]"
+                    f"  [dim]({user_excluded_count} symlink(s) excluded)[/dim]"
                 )
-                excluded += excluded_count
+                excluded += user_excluded_count
 
             for target, source in config_symlinks:
                 result, message = create_symlink(
@@ -186,6 +186,7 @@ class ConfigComponent(Component):
                     ctx.console.print(
                         f"  [dim]•[/dim] {target} [dim](already correct)[/dim]"
                     )
+                    unchanged += 1
                 elif result == SymlinkResult.UPDATED:
                     ctx.console.print(f"  [yellow]↻[/yellow] {target} → {source}")
                     updated += 1
@@ -205,6 +206,7 @@ class ConfigComponent(Component):
         results = {
             "created": created,
             "updated": updated,
+            "unchanged": unchanged,
             "skipped": skipped,
             "excluded": excluded,
             "errors": errors,

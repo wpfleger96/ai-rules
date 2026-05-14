@@ -153,21 +153,46 @@ def format_summary(
     skipped: int,
     excluded: int = 0,
     errors: int = 0,
+    unchanged: int = 0,
 ) -> None:
     """Format and print operation summary."""
     from rich.console import Console
 
     console = Console()
     console.print()
-    if dry_run:
+
+    has_actions = created or updated or skipped or errors
+    if not has_actions and unchanged > 0:
+        console.print(f"[bold]Summary:[/bold] All up to date ({unchanged} unchanged)")
+    elif dry_run:
+        parts = []
+        if created:
+            parts.append(f"create {created}")
+        if updated:
+            parts.append(f"update {updated}")
+        if skipped:
+            parts.append(f"skip {skipped}")
+        if unchanged:
+            parts.append(f"skip {unchanged} unchanged")
         console.print(
-            f"[bold]Summary:[/bold] Would create {created}, "
-            f"update {updated}, skip {skipped}"
+            f"[bold]Summary:[/bold] Would {', '.join(parts)}"
+            if parts
+            else "[bold]Summary:[/bold] No changes"
         )
     else:
+        parts = []
+        if created:
+            parts.append(f"Created {created}")
+        if updated:
+            parts.append(f"updated {updated}")
+        if skipped:
+            parts.append(f"skipped {skipped}")
+        if unchanged:
+            parts.append(f"{unchanged} unchanged")
         console.print(
-            f"[bold]Summary:[/bold] Created {created}, "
-            f"updated {updated}, skipped {skipped}"
+            f"[bold]Summary:[/bold] {', '.join(parts)}"
+            if parts
+            else "[bold]Summary:[/bold] No changes"
         )
 
     if excluded > 0:

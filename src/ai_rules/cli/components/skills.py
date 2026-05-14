@@ -36,6 +36,7 @@ class SkillsComponent(Component):
         symlink_ops: list[tuple[Path, Path]] = []
         cleanup_ops: list[Path] = []
         config_skills_abs = skills_source_dir.resolve()
+        seen_dirs: set[Path] = set()
 
         for target in ctx.selected_targets:
             if not isinstance(target, Agent):
@@ -50,6 +51,10 @@ class SkillsComponent(Component):
 
             for _agent_id, skills_dir_path in target_dirs:
                 user_skills_dir = skills_dir_path.expanduser()
+                resolved_dir = user_skills_dir.resolve()
+                if resolved_dir in seen_dirs:
+                    continue
+                seen_dirs.add(resolved_dir)
 
                 for skill_folder in skill_folders:
                     symlink_target = user_skills_dir / skill_folder.name
@@ -101,7 +106,7 @@ class SkillsComponent(Component):
         from ai_rules.symlinks import SymlinkResult, create_symlink, remove_symlink
 
         created = 0
-        skipped = 0
+        unchanged = 0
         errors = 0
 
         for symlink_target, skill_folder in plan.symlink_ops:
@@ -114,7 +119,7 @@ class SkillsComponent(Component):
             if result == SymlinkResult.ERROR:
                 errors += 1
             elif result == SymlinkResult.ALREADY_CORRECT:
-                skipped += 1
+                unchanged += 1
             else:
                 created += 1
 
@@ -125,7 +130,7 @@ class SkillsComponent(Component):
         return ComponentResult(
             ok=errors == 0,
             changed=created > 0,
-            counts={"created": created, "skipped": skipped, "errors": errors},
+            counts={"created": created, "unchanged": unchanged, "errors": errors},
         )
 
     def install(self, ctx: CliContext) -> ComponentResult:
@@ -137,7 +142,8 @@ class SkillsComponent(Component):
         from ai_rules.symlinks import SymlinkResult, create_symlink, remove_symlink
 
         created = 0
-        skipped = 0
+        unchanged = 0
+        excluded = 0
         errors = 0
 
         skills_source_dir = ctx.config_dir / "skills"
@@ -149,6 +155,8 @@ class SkillsComponent(Component):
             for f in skills_source_dir.glob("*")
             if f.is_dir() and not f.name.startswith(".")
         )
+
+        seen_dirs: set[Path] = set()
 
         for target in ctx.selected_targets:
             if not isinstance(target, Agent):
@@ -163,11 +171,15 @@ class SkillsComponent(Component):
 
             for _agent_id, skills_dir_path in target_dirs:
                 user_skills_dir = skills_dir_path.expanduser()
+                resolved_dir = user_skills_dir.resolve()
+                if resolved_dir in seen_dirs:
+                    continue
+                seen_dirs.add(resolved_dir)
 
                 for skill_folder in skill_folders:
                     symlink_target = user_skills_dir / skill_folder.name
                     if ctx.config.is_excluded(str(symlink_target)):
-                        skipped += 1
+                        excluded += 1
                         continue
 
                     result, _msg = create_symlink(
@@ -179,7 +191,7 @@ class SkillsComponent(Component):
                     if result == SymlinkResult.ERROR:
                         errors += 1
                     elif result == SymlinkResult.ALREADY_CORRECT:
-                        skipped += 1
+                        unchanged += 1
                     else:
                         created += 1
 
@@ -217,7 +229,12 @@ class SkillsComponent(Component):
         return ComponentResult(
             ok=errors == 0,
             changed=created > 0,
-            counts={"created": created, "skipped": skipped, "errors": errors},
+            counts={
+                "created": created,
+                "unchanged": unchanged,
+                "excluded": excluded,
+                "errors": errors,
+            },
         )
 
     def uninstall(self, ctx: CliContext) -> ComponentResult:
