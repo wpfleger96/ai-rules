@@ -2,6 +2,19 @@
 
 <!-- version list -->
 
+## v0.49.1 (2026-05-14)
+
+### Bug Fixes
+
+- Correct misleading install summary counts
+  ([`e09bc72`](https://github.com/wpfleger96/ai-agent-rules/commit/e09bc72d8c0f2ebb21fb0fea939d52b4dfaa1858))
+
+### Continuous Integration
+
+- Sync release workflow
+  ([`a03ee9c`](https://github.com/wpfleger96/ai-agent-rules/commit/a03ee9cf07c0ae4d905351e42f25a39d2c6b3656))
+
+
 ## v0.49.0 (2026-05-14)
 
 ### Bug Fixes
