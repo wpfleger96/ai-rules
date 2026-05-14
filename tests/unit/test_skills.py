@@ -1,5 +1,9 @@
 """Unit tests for skills module."""
 
+import importlib.metadata
+
+from unittest.mock import MagicMock, patch
+
 import pytest
 
 from ai_rules.skills import SkillManager
@@ -67,6 +71,115 @@ class TestGetSkillContent:
         content = manager.get_skill_content("nonexistent")
 
         assert content is None
+
+
+@pytest.mark.unit
+class TestGetRepoUrl:
+    def test_returns_repo_url_from_metadata(self):
+        mock_dist = MagicMock()
+        mock_dist.metadata.get_all.return_value = [
+            "Repository, https://github.com/wpfleger96/ai-agent-rules",
+        ]
+        with patch("importlib.metadata.distribution", return_value=mock_dist):
+            url = SkillManager._get_repo_url()
+
+        assert url == "https://github.com/wpfleger96/ai-agent-rules"
+
+    def test_returns_none_when_package_not_found(self):
+        with patch(
+            "importlib.metadata.distribution",
+            side_effect=importlib.metadata.PackageNotFoundError("ai-agent-rules"),
+        ):
+            url = SkillManager._get_repo_url()
+
+        assert url is None
+
+    def test_returns_none_when_no_repository_url_in_metadata(self):
+        mock_dist = MagicMock()
+        mock_dist.metadata.get_all.return_value = [
+            "Homepage, https://example.com",
+            "Documentation, https://docs.example.com",
+        ]
+        with patch("importlib.metadata.distribution", return_value=mock_dist):
+            url = SkillManager._get_repo_url()
+
+        assert url is None
+
+    def test_returns_none_when_project_url_list_is_empty(self):
+        mock_dist = MagicMock()
+        mock_dist.metadata.get_all.return_value = []
+        with patch("importlib.metadata.distribution", return_value=mock_dist):
+            url = SkillManager._get_repo_url()
+
+        assert url is None
+
+    def test_skips_malformed_project_url_entries(self):
+        mock_dist = MagicMock()
+        mock_dist.metadata.get_all.return_value = [
+            "malformed-no-comma",
+            "Repository, https://github.com/wpfleger96/ai-agent-rules",
+        ]
+        with patch("importlib.metadata.distribution", return_value=mock_dist):
+            url = SkillManager._get_repo_url()
+
+        assert url == "https://github.com/wpfleger96/ai-agent-rules"
+
+    def test_strips_trailing_slash_from_repo_url(self):
+        mock_dist = MagicMock()
+        mock_dist.metadata.get_all.return_value = [
+            "Repository, https://github.com/wpfleger96/ai-agent-rules/",
+        ]
+        with patch("importlib.metadata.distribution", return_value=mock_dist):
+            url = SkillManager._get_repo_url()
+
+        assert url == "https://github.com/wpfleger96/ai-agent-rules"
+
+
+@pytest.mark.unit
+class TestGetDownloadUrl:
+    def test_returns_url_for_all_skills_when_name_is_none(self):
+        mock_dist = MagicMock()
+        mock_dist.metadata.get_all.return_value = [
+            "Repository, https://github.com/wpfleger96/ai-agent-rules",
+        ]
+        with patch("importlib.metadata.distribution", return_value=mock_dist):
+            url = SkillManager.get_download_url()
+
+        assert url is not None
+        assert url.startswith("https://download-directory.github.io/?url=")
+        assert "github.com/wpfleger96/ai-agent-rules" in url
+        assert "/tree/main/src/ai_rules/config/skills" in url
+        assert url.endswith("/tree/main/src/ai_rules/config/skills")
+
+    def test_returns_url_for_specific_skill(self):
+        mock_dist = MagicMock()
+        mock_dist.metadata.get_all.return_value = [
+            "Repository, https://github.com/wpfleger96/ai-agent-rules",
+        ]
+        with patch("importlib.metadata.distribution", return_value=mock_dist):
+            url = SkillManager.get_download_url("research")
+
+        assert url is not None
+        assert url.startswith("https://download-directory.github.io/?url=")
+        assert "/tree/main/src/ai_rules/config/skills/research" in url
+
+    def test_returns_none_when_repo_url_unavailable(self):
+        with patch(
+            "importlib.metadata.distribution",
+            side_effect=importlib.metadata.PackageNotFoundError("ai-agent-rules"),
+        ):
+            url = SkillManager.get_download_url("research")
+
+        assert url is None
+
+    def test_returns_none_for_all_skills_when_repo_url_unavailable(self):
+        with patch(
+            "importlib.metadata.distribution",
+            side_effect=importlib.metadata.PackageNotFoundError("ai-agent-rules"),
+        ):
+            url = SkillManager.get_download_url()
+
+        assert url is None
 
 
 @pytest.mark.unit

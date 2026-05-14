@@ -264,25 +264,41 @@ class SkillManager:
         return skill_file.read_text()
 
     @staticmethod
-    def get_skill_url(name: str) -> str | None:
-        """Construct a versioned GitHub URL for a bundled skill.
-
-        Returns:
-            GitHub blob URL, or None if repo URL can't be determined.
-        """
+    def _get_repo_url() -> str | None:
         try:
             dist = importlib.metadata.distribution("ai-agent-rules")
         except importlib.metadata.PackageNotFoundError:
             return None
 
-        repo_url = None
         for url_entry in dist.metadata.get_all("Project-URL") or []:
-            label, url = url_entry.split(",", 1)
+            parts = url_entry.split(",", 1)
+            if len(parts) < 2:
+                continue
+            label, url = parts
             if label.strip().lower() == "repository":
-                repo_url = url.strip()
-                break
+                return str(url.strip().rstrip("/"))
 
+        return None
+
+    @staticmethod
+    def get_skill_url(name: str) -> str | None:
+        """Construct a versioned GitHub URL for a bundled skill."""
+        repo_url = SkillManager._get_repo_url()
         if not repo_url:
             return None
-
         return f"{repo_url}/blob/main/src/ai_rules/config/skills/{name}/SKILL.md"
+
+    @staticmethod
+    def get_download_url(name: str | None = None) -> str | None:
+        """Construct a download-directory URL for skills.
+
+        Args:
+            name: Skill name for a single skill, or None for all skills.
+        """
+        repo_url = SkillManager._get_repo_url()
+        if not repo_url:
+            return None
+        skills_path = "src/ai_rules/config/skills"
+        if name is not None:
+            skills_path = f"{skills_path}/{name}"
+        return f"https://download-directory.github.io/?url={repo_url}/tree/main/{skills_path}"
