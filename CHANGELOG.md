@@ -2,6 +2,30 @@
 
 <!-- version list -->
 
+## v0.47.12 (2026-05-14)
+
+### Bug Fixes
+
+- Address code review findings for parallel plan/apply
+  ([#36](https://github.com/wpfleger96/ai-agent-rules/pull/36),
+  [`76f4c83`](https://github.com/wpfleger96/ai-agent-rules/commit/76f4c830af1b5f38fa52bb662415c4bdca0b1c5c))
+
+- Use subclasses instead of instance assignment for ClassVar component_id
+  ([#36](https://github.com/wpfleger96/ai-agent-rules/pull/36),
+  [`76f4c83`](https://github.com/wpfleger96/ai-agent-rules/commit/76f4c830af1b5f38fa52bb662415c4bdca0b1c5c))
+
+### Continuous Integration
+
+- Sync publish workflow
+  ([`59f8b4c`](https://github.com/wpfleger96/ai-agent-rules/commit/59f8b4cda2b0cbe85b2bf1536dc577887db1b03c))
+
+### Refactoring
+
+- Add parallel plan/apply architecture for CLI components
+  ([#36](https://github.com/wpfleger96/ai-agent-rules/pull/36),
+  [`76f4c83`](https://github.com/wpfleger96/ai-agent-rules/commit/76f4c830af1b5f38fa52bb662415c4bdca0b1c5c))
+
+
 ## v0.47.11 (2026-05-13)
 
 ### Bug Fixes
