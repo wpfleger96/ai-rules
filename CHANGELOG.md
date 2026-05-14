@@ -2,6 +2,39 @@
 
 <!-- version list -->
 
+## v0.49.0 (2026-05-14)
+
+### Bug Fixes
+
+- Address crossfire review findings ([#37](https://github.com/wpfleger96/ai-agent-rules/pull/37),
+  [`e016b6c`](https://github.com/wpfleger96/ai-agent-rules/commit/e016b6c49c38af55666357d8c18fa8d456b7bca5))
+
+- Generate per-skill ZIPs for Claude Desktop compatibility
+  ([#37](https://github.com/wpfleger96/ai-agent-rules/pull/37),
+  [`e016b6c`](https://github.com/wpfleger96/ai-agent-rules/commit/e016b6c49c38af55666357d8c18fa8d456b7bca5))
+
+- Move skills bundle to release workflow, fix mypy error
+  ([#37](https://github.com/wpfleger96/ai-agent-rules/pull/37),
+  [`e016b6c`](https://github.com/wpfleger96/ai-agent-rules/commit/e016b6c49c38af55666357d8c18fa8d456b7bca5))
+
+### Chores
+
+- Remove Dependabot config (migrated to Renovate)
+  ([#38](https://github.com/wpfleger96/ai-agent-rules/pull/38),
+  [`d430b8b`](https://github.com/wpfleger96/ai-agent-rules/commit/d430b8be89f02c454895b51211294f4c3bb4a3ca))
+
+### Continuous Integration
+
+- Sync shared files
+  ([`7183885`](https://github.com/wpfleger96/ai-agent-rules/commit/71838859a820e20fa28b2f4683b6a0563a5dceab))
+
+### Features
+
+- Add skill download URLs and release ZIP distribution
+  ([#37](https://github.com/wpfleger96/ai-agent-rules/pull/37),
+  [`e016b6c`](https://github.com/wpfleger96/ai-agent-rules/commit/e016b6c49c38af55666357d8c18fa8d456b7bca5))
+
+
 ## v0.48.0 (2026-05-14)
 
 ### Bug Fixes
