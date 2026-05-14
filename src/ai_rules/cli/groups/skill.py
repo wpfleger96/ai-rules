@@ -32,7 +32,12 @@ def complete_skills(
 
 
 @skill.command("list")
-def skill_list() -> None:
+@click.option(
+    "--download-url",
+    is_flag=True,
+    help="Print browser download URL for all skills",
+)
+def skill_list(download_url: bool) -> None:
     """List all bundled skills."""
     from rich.console import Console
     from rich.table import Table
@@ -40,6 +45,18 @@ def skill_list() -> None:
     from ai_rules.skills import SkillManager
 
     console = Console()
+
+    if download_url:
+        url = SkillManager.get_download_url()
+        if url is None:
+            console.print(
+                "[red]Error:[/red] Could not determine GitHub URL. "
+                "Package metadata may be unavailable."
+            )
+            sys.exit(1)
+        click.echo(url)
+        return
+
     config_dir = cli_facade.get_config_dir()
     manager = SkillManager(config_dir=config_dir, agent_id="")
     skills = manager.list_bundled_skills()
@@ -57,8 +74,13 @@ def skill_list() -> None:
 @skill.command("show")
 @click.argument("name", shell_complete=complete_skills)
 @click.option("--url", is_flag=True, help="Print the GitHub URL instead of content")
+@click.option(
+    "--download-url",
+    is_flag=True,
+    help="Print browser download URL for this skill",
+)
 @click.option("--raw", is_flag=True, help="Print raw markdown without formatting")
-def skill_show(name: str, url: bool, raw: bool) -> None:
+def skill_show(name: str, url: bool, download_url: bool, raw: bool) -> None:
     """Show a bundled skill's content.
 
     NAME is the skill directory name (e.g., research, code-reviewer).
@@ -66,6 +88,7 @@ def skill_show(name: str, url: bool, raw: bool) -> None:
     Examples:
         ai-agent-rules skill show research
         ai-agent-rules skill show research --url
+        ai-agent-rules skill show research --download-url
         ai-agent-rules skill show code-reviewer --raw
     """
     from rich.console import Console
@@ -77,7 +100,10 @@ def skill_show(name: str, url: bool, raw: bool) -> None:
     config_dir = cli_facade.get_config_dir()
     manager = SkillManager(config_dir=config_dir, agent_id="")
 
-    if url:
+    if url and download_url:
+        raise click.UsageError("--url and --download-url are mutually exclusive")
+
+    if url or download_url:
         managed = manager._get_managed_skills()
         if name not in managed:
             available = ", ".join(sorted(managed.keys()))
@@ -85,14 +111,19 @@ def skill_show(name: str, url: bool, raw: bool) -> None:
                 f"[red]Error:[/red] Unknown skill '{name}'. Available: {available}"
             )
             sys.exit(1)
-        skill_url = SkillManager.get_skill_url(name)
-        if skill_url is None:
+
+        if download_url:
+            result = SkillManager.get_download_url(name)
+        else:
+            result = SkillManager.get_skill_url(name)
+
+        if result is None:
             console.print(
                 "[red]Error:[/red] Could not determine GitHub URL. "
                 "Package metadata may be unavailable."
             )
             sys.exit(1)
-        click.echo(skill_url)
+        click.echo(result)
         return
 
     content = manager.get_skill_content(name)
