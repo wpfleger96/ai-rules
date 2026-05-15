@@ -222,12 +222,14 @@ def get_content_diff(actual_path: Path, expected_path: Path) -> str | None:
     if actual_path.is_dir() and expected_path.is_dir():
         diffs = []
         actual_files = {
-            p.relative_to(actual_path): p for p in actual_path.rglob("*") if p.is_file()
+            p.relative_to(actual_path): p
+            for p in actual_path.rglob("*")
+            if p.is_file() and "__pycache__" not in p.parts
         }
         expected_files = {
             p.relative_to(expected_path): p
             for p in expected_path.rglob("*")
-            if p.is_file()
+            if p.is_file() and "__pycache__" not in p.parts
         }
 
         all_files = set(actual_files.keys()) | set(expected_files.keys())
@@ -277,12 +279,12 @@ def get_content_diff(actual_path: Path, expected_path: Path) -> str | None:
             expected_parsed = json.loads("".join(expected_lines))
             if actual_parsed == expected_parsed:
                 return None
-            actual_lines = (json.dumps(actual_parsed, indent=2) + "\n").splitlines(
-                keepends=True
-            )
-            expected_lines = (json.dumps(expected_parsed, indent=2) + "\n").splitlines(
-                keepends=True
-            )
+            actual_lines = (
+                json.dumps(actual_parsed, indent=2, sort_keys=True) + "\n"
+            ).splitlines(keepends=True)
+            expected_lines = (
+                json.dumps(expected_parsed, indent=2, sort_keys=True) + "\n"
+            ).splitlines(keepends=True)
         except (json.JSONDecodeError, ValueError):
             pass
 
