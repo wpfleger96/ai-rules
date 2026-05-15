@@ -2,13 +2,22 @@
 
 Use this format for Standard, Medium, and High tier research output. Simple tier queries get a direct answer without this structure.
 
-**File output**: For Standard+ tiers, the orchestrator writes the final report to a file in the working directory: `research-report_{topic-slug}_{date}.md`. The topic slug is lowercase with hyphens, max ~40 chars. The file provides persistence — the report is also output inline in the conversation, but the file ensures it survives context compaction and is easy to reference later.
+**File output**: For Standard+ tiers, the orchestrator writes the final report to the recall knowledge base via the `mcp__recall__write_note` tool at path `research/{topic-slug}.md`. The topic slug is lowercase with hyphens, max ~40 chars. The report is also output inline in the conversation. If recall MCP is not available, fall back to writing to the working directory as `research-report_{topic-slug}_{date}.md`.
 
 ---
 
 ## Template
 
 ```markdown
+---
+title: "Research Report: [Topic]"
+type: research
+tags: [[topic-slug]]
+source_repo: [repo_slug from Context block]
+source_dir: [working_directory from Context block]
+confidence: [HIGH/MEDIUM/LOW]
+---
+
 ## Research Report: [Topic]
 
 **Date:** [date] | **Confidence:** HIGH/MEDIUM/LOW | **Scope:** [e.g., "3 agents covering technical landscape, adoption data, and limitations via web search"]

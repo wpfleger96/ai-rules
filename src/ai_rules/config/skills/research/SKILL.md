@@ -6,7 +6,7 @@ description: >
   'what do we know about', or when a question requires synthesizing information
   from multiple sources. Scales from simple inline answers to 10 parallel
   research agents based on query complexity.
-allowed-tools: Agent, AskUserQuestion, Bash, Read, WebFetch, WebSearch, Write
+allowed-tools: Agent, AskUserQuestion, Bash, Read, WebFetch, WebSearch, Write, mcp__recall__write_note, mcp__recall__edit_note, mcp__recall__search_notes, mcp__recall__read_note
 model: opus
 ---
 
@@ -16,6 +16,7 @@ model: opus
 - Date: !`date -u +"%Y-%m-%d"`
 - Working directory: !`pwd`
 - Project: !`git rev-parse --show-toplevel 2>/dev/null || echo "NO_PROJECT"`
+- Repo slug: !`git rev-parse --show-toplevel 2>/dev/null | xargs basename 2>/dev/null || echo "no-repo"`
 
 # Research
 
@@ -95,10 +96,53 @@ Structure the final report per the format in `references/report-format.md`.
 
 **Write the Bottom Line section LAST** (after completing full synthesis), even though it appears first in the output.
 
-**Write the report to a file** (Standard+ tiers only — Simple tier outputs inline):
-- Path: `{working_directory}/research-report_{topic-slug}_{date}.md`
+**Write the report to recall** (Standard+ tiers only — Simple tier outputs inline):
+- Path: `research/{topic-slug}.md` (via `mcp__recall__write_note`)
 - Topic slug: lowercase, hyphens, max ~40 chars derived from the research query
-- After writing, tell the user the file path so they can find the report
+- The report content MUST include YAML frontmatter as specified in `references/report-format.md`
+- If the recall MCP is not available (no `mcp__recall__write_note` tool), fall back to writing to `{working_directory}/research-report_{topic-slug}_{date}.md` and tell the user the report was written locally because recall wasn't connected
+- After writing, tell the user where the report was saved
+
+After writing the full report, proceed to Phase 5.
+
+## Phase 5: Knowledge base distillation
+
+**This phase runs automatically for all Standard+ tier research when recall MCP is available.** Skip this phase entirely if recall MCP is not available.
+
+Distill the key findings from the full report into a thin, atomic recall reference note. The reference note is the retrieval-optimized layer — it enables `search_notes` to surface the research topic efficiently, while the full report at `research/{topic-slug}.md` preserves full provenance and methodology.
+
+**Step 1 — Check for duplicates:** Call `mcp__recall__search_notes(query="{topic-slug}")`. If an existing distilled note at `references/research/{topic-slug}.md` is found, use `mcp__recall__edit_note` in Step 3 to update rather than overwrite.
+
+**Step 2 — Synthesize a distilled note** from the full report. The distilled note MUST follow this format:
+
+```markdown
+---
+title: "Research: {Topic — human-readable title}"
+type: reference
+tags: [research, {topic-slug}]
+---
+
+## Bottom Line
+
+{Copy the 2-4 sentence Bottom Line from the full report verbatim}
+
+## Observations
+
+- [fact] {Key finding 1 — single sentence distillation}
+- [fact] {Key finding 2}
+- [tip] {Actionable recommendation from findings}
+- [GAP: {Most significant item from What Remains Uncertain}]
+
+## Relations
+
+- source_report [[research/{topic-slug}]]
+```
+
+Include 4-6 observations maximum — the most important facts and actionable insights from the Key Findings section. This is NOT a full summary; it is a searchable index entry. The full report is one wikilink away.
+
+**Step 3 — Write the distilled note:** Call `mcp__recall__write_note(path="references/research/{topic-slug}.md", content=<distilled note>)`. If an existing note was found in Step 1, use `mcp__recall__edit_note` to append new observations to the existing `## Observations` section rather than replacing the note.
+
+**Step 4 — Confirm to user:** Tell the user both paths: "Full report: `research/{topic-slug}.md` | Distilled findings: `references/research/{topic-slug}.md`"
 
 ## Key Requirements
 
@@ -110,7 +154,8 @@ Structure the final report per the format in `references/report-format.md`.
 - **Synthesize, don't concatenate** — your job is connecting dots across findings, not pasting them together
 - **Epistemic honesty** — never paper over disagreements between sources or agents. If confidence is mixed, say so.
 - **Prefer the lower tier when uncertain** — once agents are launched in parallel, you cannot throttle mid-execution
-- **Simple tier outputs inline only** (no file). Standard+ tiers output inline AND write to a file for persistence.
+- **Simple tier outputs inline only** (no recall write). Standard+ tiers output inline AND write to recall for persistence, plus an automatic distilled reference note.
+- **Recall-first, CWD-fallback** — always try to write to recall first. Only write to the working directory if recall MCP tools are not available.
 
 ## Examples
 
