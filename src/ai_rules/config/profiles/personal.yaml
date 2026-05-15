@@ -15,11 +15,11 @@ settings_overrides:
       enabled: true
 plugins:
   - name: pyright-lsp
-    marketplace: cc-marketplace
+    marketplace: claude-plugins-official
   - name: typescript-lsp
-    marketplace: cc-marketplace
+    marketplace: claude-plugins-official
   - name: rust-analyzer-lsp
-    marketplace: cc-marketplace
+    marketplace: claude-plugins-official
 exclude_symlinks: []
 mcp_overrides:
   recall:
