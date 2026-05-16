@@ -2,6 +2,15 @@
 
 <!-- version list -->
 
+## v0.50.1 (2026-05-15)
+
+### Bug Fixes
+
+- Ease up Claude Code shell command permissions
+  ([#41](https://github.com/wpfleger96/ai-agent-rules/pull/41),
+  [`8530be7`](https://github.com/wpfleger96/ai-agent-rules/commit/8530be7f6511ed8daa0aae758aa5dde0112390d4))
+
+
 ## v0.50.0 (2026-05-15)
 
 ### Bug Fixes
